@@ -16,5 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "soularium"
 
-// Modules will be added back as they're created in Phase 0.
-// include(":composeApp", ":domain", ":data")
+include(":domain")

@@ -18,3 +18,4 @@ rootProject.name = "soularium"
 
 include(":domain")
 include(":data")
+include(":composeApp")

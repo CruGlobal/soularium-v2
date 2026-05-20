@@ -1,22 +1,28 @@
 plugins {
-    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ktlint)
 }
 
-java {
-    toolchain { languageVersion.set(JavaLanguageVersion.of(17)) }
-}
+kotlin {
+    jvm()
+    listOf(iosX64(), iosArm64(), iosSimulatorArm64()).forEach { iosTarget ->
+        iosTarget.binaries.framework {
+            baseName = "domain"
+            isStatic = true
+        }
+    }
 
-dependencies {
-    implementation(libs.coroutines.core)
-    implementation(libs.kotlinx.datetime)
-    implementation(libs.kotlinx.serialization.json)
-    testImplementation(kotlin("test"))
-    testImplementation(libs.kotest.assertions)
-    testImplementation(libs.turbine)
-}
-
-tasks.test {
-    useJUnitPlatform()
+    sourceSets {
+        commonMain.dependencies {
+            implementation(libs.coroutines.core)
+            implementation(libs.kotlinx.datetime)
+            implementation(libs.kotlinx.serialization.json)
+        }
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+            implementation(libs.kotest.assertions)
+            implementation(libs.turbine)
+        }
+    }
 }

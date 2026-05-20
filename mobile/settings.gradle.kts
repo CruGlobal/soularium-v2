@@ -17,3 +17,4 @@ dependencyResolutionManagement {
 rootProject.name = "soularium"
 
 include(":domain")
+include(":data")

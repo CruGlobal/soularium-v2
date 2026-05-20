@@ -1,0 +1,39 @@
+# IDEs
+.idea/
+*.iml
+.vscode/
+.fleet/
+
+# Build outputs
+build/
+**/build/
+.gradle/
+**/.gradle/
+local.properties
+
+# Android
+*.apk
+*.aab
+captures/
+
+# iOS / Xcode
+xcuserdata/
+DerivedData/
+**/Pods/
+*.xcworkspace/xcshareddata/swiftpm/
+.swiftpm/
+
+# Kotlin / Native
+.kotlin/
+**/.kotlin/
+
+# macOS
+.DS_Store
+
+# Secrets
+*.keystore
+*.jks
+google-services.json
+GoogleService-Info.plist
+!**/example.google-services.json
+!**/example.GoogleService-Info.plist

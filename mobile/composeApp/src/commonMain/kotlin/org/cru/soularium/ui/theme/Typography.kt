@@ -19,16 +19,17 @@ import soularium.composeapp.generated.resources.OpenSans_SemiboldItalic
 import soularium.composeapp.generated.resources.Res
 
 @Composable
-fun openSansFamily(): FontFamily = FontFamily(
-    Font(Res.font.OpenSans_Regular, FontWeight.Normal),
-    Font(Res.font.OpenSans_Italic, FontWeight.Normal, FontStyle.Italic),
-    Font(Res.font.OpenSans_Light, FontWeight.Light),
-    Font(Res.font.OpenSans_LightItalic, FontWeight.Light, FontStyle.Italic),
-    Font(Res.font.OpenSans_Semibold, FontWeight.SemiBold),
-    Font(Res.font.OpenSans_SemiboldItalic, FontWeight.SemiBold, FontStyle.Italic),
-    Font(Res.font.OpenSans_Bold, FontWeight.Bold),
-    Font(Res.font.OpenSans_BoldItalic, FontWeight.Bold, FontStyle.Italic),
-)
+fun openSansFamily(): FontFamily =
+    FontFamily(
+        Font(Res.font.OpenSans_Regular, FontWeight.Normal),
+        Font(Res.font.OpenSans_Italic, FontWeight.Normal, FontStyle.Italic),
+        Font(Res.font.OpenSans_Light, FontWeight.Light),
+        Font(Res.font.OpenSans_LightItalic, FontWeight.Light, FontStyle.Italic),
+        Font(Res.font.OpenSans_Semibold, FontWeight.SemiBold),
+        Font(Res.font.OpenSans_SemiboldItalic, FontWeight.SemiBold, FontStyle.Italic),
+        Font(Res.font.OpenSans_Bold, FontWeight.Bold),
+        Font(Res.font.OpenSans_BoldItalic, FontWeight.Bold, FontStyle.Italic),
+    )
 
 @Composable
 fun soulariumTypography(): Typography {

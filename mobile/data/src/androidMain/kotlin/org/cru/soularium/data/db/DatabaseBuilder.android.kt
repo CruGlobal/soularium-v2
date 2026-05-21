@@ -11,9 +11,10 @@ fun initDataAndroid(context: Context) {
 }
 
 actual fun getDatabaseBuilder(): RoomDatabase.Builder<SoulariumDatabase> {
-    val ctx = requireNotNull(appContext) {
-        "initDataAndroid(context) must be called before getDatabaseBuilder()."
-    }
+    val ctx =
+        requireNotNull(appContext) {
+            "initDataAndroid(context) must be called before getDatabaseBuilder()."
+        }
     val dbFile = ctx.getDatabasePath("soularium.db")
     return Room.databaseBuilder<SoulariumDatabase>(
         context = ctx,

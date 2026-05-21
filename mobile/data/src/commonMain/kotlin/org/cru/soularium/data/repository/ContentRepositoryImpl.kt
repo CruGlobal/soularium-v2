@@ -7,5 +7,6 @@ import org.cru.soularium.domain.ports.ContentRepository
 
 class ContentRepositoryImpl : ContentRepository {
     override fun questions(): List<Question> = Questions.all
+
     override fun cards(): List<CardImage> = (1..50).map { CardImage(it) }
 }

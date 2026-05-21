@@ -222,22 +222,24 @@ class TransitionTest {
 
     @Test
     fun `CollectingContact SkipContact advances to next participant`() {
-        val r = transition(
-            SessionState.CollectingContact(0),
-            SessionEvent.SkipContact,
-            ctx(names = listOf("Alice", "Bob")),
-        )
+        val r =
+            transition(
+                SessionState.CollectingContact(0),
+                SessionEvent.SkipContact,
+                ctx(names = listOf("Alice", "Bob")),
+            )
         val next = assertIs<SessionState.CollectingContact>(r.next)
         assertEquals(1, next.participantIndex)
     }
 
     @Test
     fun `CollectingContact SkipContact past last participant goes to Concluded`() {
-        val r = transition(
-            SessionState.CollectingContact(1),
-            SessionEvent.SkipContact,
-            ctx(names = listOf("Alice", "Bob")),
-        )
+        val r =
+            transition(
+                SessionState.CollectingContact(1),
+                SessionEvent.SkipContact,
+                ctx(names = listOf("Alice", "Bob")),
+            )
         assertEquals(SessionState.Concluded, r.next)
     }
 

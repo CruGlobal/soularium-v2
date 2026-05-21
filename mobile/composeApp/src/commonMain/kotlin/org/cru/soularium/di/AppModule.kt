@@ -12,16 +12,17 @@ import org.koin.core.module.Module
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
-val appModule: Module = module {
-    single<SoulariumDatabase> { createDatabase() }
-    single { get<SoulariumDatabase>().sessions() }
-    single { get<SoulariumDatabase>().conversations() }
-    single { get<SoulariumDatabase>().cardPicks() }
+val appModule: Module =
+    module {
+        single<SoulariumDatabase> { createDatabase() }
+        single { get<SoulariumDatabase>().sessions() }
+        single { get<SoulariumDatabase>().conversations() }
+        single { get<SoulariumDatabase>().cardPicks() }
 
-    single<SessionRepository> { SessionRepositoryImpl(get(), get(), get()) }
-    single<ContentRepository> { ContentRepositoryImpl() }
+        single<SessionRepository> { SessionRepositoryImpl(get(), get(), get()) }
+        single<ContentRepository> { ContentRepositoryImpl() }
 
-    viewModel { (sessionId: SessionId) ->
-        ConversationViewModel(sessionId, get(), get(), get())
+        viewModel { (sessionId: SessionId) ->
+            ConversationViewModel(sessionId, get(), get(), get())
+        }
     }
-}

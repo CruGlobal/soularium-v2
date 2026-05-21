@@ -11,6 +11,7 @@ import kotlin.random.Random
 value class SessionId(val value: String) {
     companion object {
         fun random(): SessionId = SessionId(generateUuid())
+
         fun fromString(s: String): SessionId = SessionId(s)
     }
 }
@@ -20,6 +21,7 @@ value class SessionId(val value: String) {
 value class ConversationId(val value: String) {
     companion object {
         fun random(): ConversationId = ConversationId(generateUuid())
+
         fun fromString(s: String): ConversationId = ConversationId(s)
     }
 }

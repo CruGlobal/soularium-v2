@@ -34,7 +34,6 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ConversationViewModelTest {
-
     private val testDispatcher = UnconfinedTestDispatcher()
 
     @BeforeTest
@@ -48,81 +47,90 @@ class ConversationViewModelTest {
     }
 
     @Test
-    fun `dispatch StartSession transitions to AddingParticipants and logs analytics`() = runTest(testDispatcher) {
-        val repo = FakeSessionRepository()
-        val analytics = RecordingAnalytics()
-        val vm = ConversationViewModel(
-            sessionId = SessionId.random(),
-            sessionRepository = repo,
-            analytics = analytics,
-            crashReporter = NoOpCrash,
-        )
+    fun `dispatch StartSession transitions to AddingParticipants and logs analytics`() =
+        runTest(testDispatcher) {
+            val repo = FakeSessionRepository()
+            val analytics = RecordingAnalytics()
+            val vm =
+                ConversationViewModel(
+                    sessionId = SessionId.random(),
+                    sessionRepository = repo,
+                    analytics = analytics,
+                    crashReporter = NoOpCrash,
+                )
 
-        vm.state.test {
-            assertEquals(SessionState.NotStarted, awaitItem())
-            vm.dispatch(SessionEvent.StartSession(SessionKind.SOLO))
-            assertEquals(SessionState.AddingParticipants, awaitItem())
+            vm.state.test {
+                assertEquals(SessionState.NotStarted, awaitItem())
+                vm.dispatch(SessionEvent.StartSession(SessionKind.SOLO))
+                assertEquals(SessionState.AddingParticipants, awaitItem())
+            }
+
+            assertTrue(
+                analytics.events.any { it.first == "session_started" && it.second["kind"] == "solo" },
+                "expected a session_started analytics event, got ${analytics.events}",
+            )
         }
 
-        assertTrue(
-            analytics.events.any { it.first == "session_started" && it.second["kind"] == "solo" },
-            "expected a session_started analytics event, got ${analytics.events}",
-        )
-    }
+    @Test
+    fun `dispatch AddParticipant updates context and persists`() =
+        runTest(testDispatcher) {
+            val repo = FakeSessionRepository()
+            val vm =
+                ConversationViewModel(
+                    sessionId = SessionId.random(),
+                    sessionRepository = repo,
+                    analytics = NoOpAnalytics,
+                    crashReporter = NoOpCrash,
+                )
+
+            vm.dispatch(SessionEvent.StartSession(SessionKind.SOLO))
+            vm.dispatch(SessionEvent.AddParticipant("Alice"))
+            vm.dispatch(SessionEvent.AddParticipant("Bob"))
+            advanceUntilIdle()
+
+            assertEquals(listOf("Alice", "Bob"), vm.ui.value.participantNames)
+            assertEquals(listOf("Alice", "Bob"), repo.lastUpsertedParticipants)
+        }
 
     @Test
-    fun `dispatch AddParticipant updates context and persists`() = runTest(testDispatcher) {
-        val repo = FakeSessionRepository()
-        val vm = ConversationViewModel(
-            sessionId = SessionId.random(),
-            sessionRepository = repo,
-            analytics = NoOpAnalytics,
-            crashReporter = NoOpCrash,
-        )
+    fun `PickCard and UnpickCard mutate draft without invoking transition`() =
+        runTest(testDispatcher) {
+            val repo = FakeSessionRepository()
+            val vm =
+                ConversationViewModel(
+                    sessionId = SessionId.random(),
+                    sessionRepository = repo,
+                    analytics = NoOpAnalytics,
+                    crashReporter = NoOpCrash,
+                )
 
-        vm.dispatch(SessionEvent.StartSession(SessionKind.SOLO))
-        vm.dispatch(SessionEvent.AddParticipant("Alice"))
-        vm.dispatch(SessionEvent.AddParticipant("Bob"))
-        advanceUntilIdle()
+            vm.dispatch(SessionEvent.PickCard(7))
+            vm.dispatch(SessionEvent.PickCard(12))
+            vm.dispatch(SessionEvent.UnpickCard(7))
+            advanceUntilIdle()
 
-        assertEquals(listOf("Alice", "Bob"), vm.ui.value.participantNames)
-        assertEquals(listOf("Alice", "Bob"), repo.lastUpsertedParticipants)
-    }
-
-    @Test
-    fun `PickCard and UnpickCard mutate draft without invoking transition`() = runTest(testDispatcher) {
-        val repo = FakeSessionRepository()
-        val vm = ConversationViewModel(
-            sessionId = SessionId.random(),
-            sessionRepository = repo,
-            analytics = NoOpAnalytics,
-            crashReporter = NoOpCrash,
-        )
-
-        vm.dispatch(SessionEvent.PickCard(7))
-        vm.dispatch(SessionEvent.PickCard(12))
-        vm.dispatch(SessionEvent.UnpickCard(7))
-        advanceUntilIdle()
-
-        assertEquals(listOf(12), vm.ui.value.draftPicks)
-    }
+            assertEquals(listOf(12), vm.ui.value.draftPicks)
+        }
 
     @Test
     fun `fresh session shows instructions then BeginSelection-Dismiss reaches SelectingRound1`() =
         runTest(StandardTestDispatcher()) {
             val sessionId = SessionId.random()
-            val repo = FakeSessionRepository().apply {
-                preloadedState = SessionState.InQuestion(1, 0, QuestionActivity.ShowingPrompt)
-                preloadedConversations[sessionId] = listOf(
-                    Conversation(ConversationId.random(), sessionId, 0, ContactInfo("Alice")),
+            val repo =
+                FakeSessionRepository().apply {
+                    preloadedState = SessionState.InQuestion(1, 0, QuestionActivity.ShowingPrompt)
+                    preloadedConversations[sessionId] =
+                        listOf(
+                            Conversation(ConversationId.random(), sessionId, 0, ContactInfo("Alice")),
+                        )
+                }
+            val vm =
+                ConversationViewModel(
+                    sessionId = sessionId,
+                    sessionRepository = repo,
+                    analytics = NoOpAnalytics,
+                    crashReporter = NoOpCrash,
                 )
-            }
-            val vm = ConversationViewModel(
-                sessionId = sessionId,
-                sessionRepository = repo,
-                analytics = NoOpAnalytics,
-                crashReporter = NoOpCrash,
-            )
             advanceUntilIdle()
 
             // First time this session: BeginSelection routes through the help panel.
@@ -145,15 +153,17 @@ class ConversationViewModelTest {
     fun `DismissInstructions marks instructions shown for the rest of the session`() =
         runTest(StandardTestDispatcher()) {
             val sessionId = SessionId.random()
-            val repo = FakeSessionRepository().apply {
-                preloadedState = SessionState.InQuestion(1, 0, QuestionActivity.ShowingPrompt)
-            }
-            val vm = ConversationViewModel(
-                sessionId = sessionId,
-                sessionRepository = repo,
-                analytics = NoOpAnalytics,
-                crashReporter = NoOpCrash,
-            )
+            val repo =
+                FakeSessionRepository().apply {
+                    preloadedState = SessionState.InQuestion(1, 0, QuestionActivity.ShowingPrompt)
+                }
+            val vm =
+                ConversationViewModel(
+                    sessionId = sessionId,
+                    sessionRepository = repo,
+                    analytics = NoOpAnalytics,
+                    crashReporter = NoOpCrash,
+                )
             advanceUntilIdle()
 
             assertFalse(vm.ui.value.instructionsShown)
@@ -164,21 +174,24 @@ class ConversationViewModelTest {
         }
 
     @Test
-    fun `loadState rehydrates from repository on init`() = runTest(StandardTestDispatcher()) {
-        val sessionId = SessionId.random()
-        val repo = FakeSessionRepository().apply {
-            preloadedState = SessionState.InQuestion(3, 0, QuestionActivity.Finalizing)
-        }
-        val vm = ConversationViewModel(
-            sessionId = sessionId,
-            sessionRepository = repo,
-            analytics = NoOpAnalytics,
-            crashReporter = NoOpCrash,
-        )
-        advanceUntilIdle()
+    fun `loadState rehydrates from repository on init`() =
+        runTest(StandardTestDispatcher()) {
+            val sessionId = SessionId.random()
+            val repo =
+                FakeSessionRepository().apply {
+                    preloadedState = SessionState.InQuestion(3, 0, QuestionActivity.Finalizing)
+                }
+            val vm =
+                ConversationViewModel(
+                    sessionId = sessionId,
+                    sessionRepository = repo,
+                    analytics = NoOpAnalytics,
+                    crashReporter = NoOpCrash,
+                )
+            advanceUntilIdle()
 
-        assertEquals(SessionState.InQuestion(3, 0, QuestionActivity.Finalizing), vm.state.value)
-    }
+            assertEquals(SessionState.InQuestion(3, 0, QuestionActivity.Finalizing), vm.state.value)
+        }
 }
 
 private class FakeSessionRepository : SessionRepository {
@@ -187,51 +200,101 @@ private class FakeSessionRepository : SessionRepository {
     var lastUpsertedParticipants: List<String>? = null
     val persistedStates = mutableListOf<Pair<SessionId, SessionState>>()
 
-    override suspend fun createSession(session: Session, initialState: SessionState): SessionId = session.id
+    override suspend fun createSession(
+        session: Session,
+        initialState: SessionState,
+    ): SessionId = session.id
+
     override suspend fun loadSession(id: SessionId): Session? = null
+
     override suspend fun loadState(id: SessionId): SessionState? = preloadedState
-    override suspend fun persistState(id: SessionId, state: SessionState) {
+
+    override suspend fun persistState(
+        id: SessionId,
+        state: SessionState,
+    ) {
         persistedStates += id to state
     }
-    override suspend fun setBookmarked(id: SessionId, bookmarked: Boolean) = Unit
+
+    override suspend fun setBookmarked(
+        id: SessionId,
+        bookmarked: Boolean,
+    ) = Unit
+
     override suspend fun setEnded(id: SessionId) = Unit
-    override suspend fun upsertParticipants(sessionId: SessionId, names: List<String>): List<ConversationId> {
+
+    override suspend fun upsertParticipants(
+        sessionId: SessionId,
+        names: List<String>,
+    ): List<ConversationId> {
         lastUpsertedParticipants = names
         val existing = preloadedConversations[sessionId].orEmpty()
-        val out = names.mapIndexed { idx, n ->
-            existing.getOrNull(idx)?.id ?: ConversationId.random()
-        }
-        preloadedConversations[sessionId] = out.mapIndexed { idx, cid ->
-            Conversation(cid, sessionId, idx, ContactInfo(names[idx]))
-        }
+        val out =
+            names.mapIndexed { idx, n ->
+                existing.getOrNull(idx)?.id ?: ConversationId.random()
+            }
+        preloadedConversations[sessionId] =
+            out.mapIndexed { idx, cid ->
+                Conversation(cid, sessionId, idx, ContactInfo(names[idx]))
+            }
         return out
     }
-    override suspend fun upsertContact(conversationId: ConversationId, info: ContactInfo) = Unit
-    override suspend fun upsertPicks(conversationId: ConversationId, questionNumber: Int, cardIds: List<Int>, isFinal: Boolean) = Unit
+
+    override suspend fun upsertContact(
+        conversationId: ConversationId,
+        info: ContactInfo,
+    ) = Unit
+
+    override suspend fun upsertPicks(
+        conversationId: ConversationId,
+        questionNumber: Int,
+        cardIds: List<Int>,
+        isFinal: Boolean,
+    ) = Unit
+
     override suspend fun loadPicks(conversationId: ConversationId): List<CardPick> = emptyList()
+
     override fun observeCompletedSessions(): Flow<List<Session>> = MutableStateFlow<List<Session>>(emptyList()).asStateFlow()
+
     override fun observeBookmarkedSessions(): Flow<List<Session>> = MutableStateFlow<List<Session>>(emptyList()).asStateFlow()
+
     override suspend fun deleteSession(id: SessionId) = Unit
-    override suspend fun loadConversations(sessionId: SessionId): List<Conversation> =
-        preloadedConversations[sessionId].orEmpty()
+
+    override suspend fun loadConversations(sessionId: SessionId): List<Conversation> = preloadedConversations[sessionId].orEmpty()
 }
 
 private class RecordingAnalytics : AnalyticsTracker {
     val events = mutableListOf<Pair<String, Map<String, Any>>>()
+
     override fun screenView(screenName: String) {
         events += "screen_view" to mapOf("screen_name" to screenName)
     }
-    override fun event(name: String, params: Map<String, Any>) {
+
+    override fun event(
+        name: String,
+        params: Map<String, Any>,
+    ) {
         events += name to params
     }
 }
 
 private object NoOpAnalytics : AnalyticsTracker {
     override fun screenView(screenName: String) = Unit
-    override fun event(name: String, params: Map<String, Any>) = Unit
+
+    override fun event(
+        name: String,
+        params: Map<String, Any>,
+    ) = Unit
 }
 
 private object NoOpCrash : CrashReporter {
-    override fun recordNonFatal(throwable: Throwable, breadcrumb: String?) = Unit
-    override fun setKey(key: String, value: String) = Unit
+    override fun recordNonFatal(
+        throwable: Throwable,
+        breadcrumb: String?,
+    ) = Unit
+
+    override fun setKey(
+        key: String,
+        value: String,
+    ) = Unit
 }

@@ -6,8 +6,9 @@ import org.cru.soularium.domain.ports.Sharer
 import org.koin.core.module.Module
 import org.koin.dsl.module
 
-actual val platformModule: Module = module {
-    single<AnalyticsTracker> { NoOpAnalyticsTracker() }
-    single<CrashReporter> { NoOpCrashReporter() }
-    single<Sharer> { NoOpSharer() }
-}
+actual val platformModule: Module =
+    module {
+        single<AnalyticsTracker> { NoOpAnalyticsTracker() }
+        single<CrashReporter> { NoOpCrashReporter() }
+        single<Sharer> { NoOpSharer() }
+    }

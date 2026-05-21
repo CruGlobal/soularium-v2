@@ -21,5 +21,9 @@ interface CardPickDao {
         "DELETE FROM card_picks WHERE conversation_id = :conversationId " +
             "AND question_number = :questionNumber AND is_final = :isFinal",
     )
-    suspend fun deleteForRound(conversationId: String, questionNumber: Int, isFinal: Boolean)
+    suspend fun deleteForRound(
+        conversationId: String,
+        questionNumber: Int,
+        isFinal: Boolean,
+    )
 }

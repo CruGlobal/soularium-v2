@@ -29,24 +29,31 @@ class SessionRepositoryImpl(
     private val cardPickDao: CardPickDao,
     private val json: Json = Json { ignoreUnknownKeys = true },
 ) : SessionRepository {
-
-    override suspend fun createSession(session: Session, initialState: SessionState): SessionId {
+    override suspend fun createSession(
+        session: Session,
+        initialState: SessionState,
+    ): SessionId {
         sessionDao.upsert(session.toEntity(initialState))
         return session.id
     }
 
-    override suspend fun loadSession(id: SessionId): Session? =
-        sessionDao.byId(id.value)?.toDomain()
+    override suspend fun loadSession(id: SessionId): Session? = sessionDao.byId(id.value)?.toDomain()
 
     override suspend fun loadState(id: SessionId): SessionState? =
         sessionDao.byId(id.value)?.let { json.decodeFromString<SessionState>(it.stateSnapshotJson) }
 
-    override suspend fun persistState(id: SessionId, state: SessionState) {
+    override suspend fun persistState(
+        id: SessionId,
+        state: SessionState,
+    ) {
         val current = sessionDao.byId(id.value) ?: return
         sessionDao.upsert(current.copy(stateSnapshotJson = json.encodeToString(state)))
     }
 
-    override suspend fun setBookmarked(id: SessionId, bookmarked: Boolean) {
+    override suspend fun setBookmarked(
+        id: SessionId,
+        bookmarked: Boolean,
+    ) {
         val current = sessionDao.byId(id.value) ?: return
         val bookmarkedAt = if (bookmarked) Clock.System.now().toEpochMilliseconds() else null
         sessionDao.upsert(current.copy(bookmarkedAt = bookmarkedAt))
@@ -57,7 +64,10 @@ class SessionRepositoryImpl(
         sessionDao.upsert(current.copy(endedAt = Clock.System.now().toEpochMilliseconds()))
     }
 
-    override suspend fun upsertParticipants(sessionId: SessionId, names: List<String>): List<ConversationId> {
+    override suspend fun upsertParticipants(
+        sessionId: SessionId,
+        names: List<String>,
+    ): List<ConversationId> {
         val existing = conversationDao.forSession(sessionId.value)
         val keptIds = mutableListOf<ConversationId>()
         names.forEachIndexed { index, name ->
@@ -80,7 +90,10 @@ class SessionRepositoryImpl(
         return keptIds
     }
 
-    override suspend fun upsertContact(conversationId: ConversationId, info: ContactInfo) {
+    override suspend fun upsertContact(
+        conversationId: ConversationId,
+        info: ContactInfo,
+    ) {
         val current = conversationDao.byId(conversationId.value) ?: return
         conversationDao.upsert(
             current.copy(
@@ -100,24 +113,24 @@ class SessionRepositoryImpl(
         isFinal: Boolean,
     ) {
         cardPickDao.deleteForRound(conversationId.value, questionNumber, isFinal)
-        val entities = cardIds.mapIndexed { i, cid ->
-            CardPickEntity(
-                id = CardPickId.random().value,
-                conversationId = conversationId.value,
-                questionNumber = questionNumber,
-                cardId = cid,
-                pickOrder = i,
-                isFinal = isFinal,
-            )
-        }
+        val entities =
+            cardIds.mapIndexed { i, cid ->
+                CardPickEntity(
+                    id = CardPickId.random().value,
+                    conversationId = conversationId.value,
+                    questionNumber = questionNumber,
+                    cardId = cid,
+                    pickOrder = i,
+                    isFinal = isFinal,
+                )
+            }
         cardPickDao.upsertAll(entities)
     }
 
     override suspend fun loadPicks(conversationId: ConversationId): List<CardPick> =
         cardPickDao.forConversation(conversationId.value).map { it.toDomain() }
 
-    override fun observeCompletedSessions(): Flow<List<Session>> =
-        sessionDao.observeCompleted().map { list -> list.map { it.toDomain() } }
+    override fun observeCompletedSessions(): Flow<List<Session>> = sessionDao.observeCompleted().map { list -> list.map { it.toDomain() } }
 
     override fun observeBookmarkedSessions(): Flow<List<Session>> =
         sessionDao.observeBookmarked().map { list -> list.map { it.toDomain() } }
@@ -129,38 +142,42 @@ class SessionRepositoryImpl(
     override suspend fun loadConversations(sessionId: SessionId): List<Conversation> =
         conversationDao.forSession(sessionId.value).map { it.toDomain() }
 
-    private fun Session.toEntity(state: SessionState) = SessionEntity(
-        id = id.value,
-        kind = kind.name,
-        startedAt = startedAt.toEpochMilliseconds(),
-        endedAt = endedAt?.toEpochMilliseconds(),
-        bookmarkedAt = bookmarkedAt?.toEpochMilliseconds(),
-        stateSnapshotJson = json.encodeToString(state),
-        selectionInstructionsShown = selectionInstructionsShown,
-    )
+    private fun Session.toEntity(state: SessionState) =
+        SessionEntity(
+            id = id.value,
+            kind = kind.name,
+            startedAt = startedAt.toEpochMilliseconds(),
+            endedAt = endedAt?.toEpochMilliseconds(),
+            bookmarkedAt = bookmarkedAt?.toEpochMilliseconds(),
+            stateSnapshotJson = json.encodeToString(state),
+            selectionInstructionsShown = selectionInstructionsShown,
+        )
 
-    private fun SessionEntity.toDomain() = Session(
-        id = SessionId(id),
-        kind = SessionKind.valueOf(kind),
-        startedAt = Instant.fromEpochMilliseconds(startedAt),
-        endedAt = endedAt?.let(Instant::fromEpochMilliseconds),
-        bookmarkedAt = bookmarkedAt?.let(Instant::fromEpochMilliseconds),
-        selectionInstructionsShown = selectionInstructionsShown,
-    )
+    private fun SessionEntity.toDomain() =
+        Session(
+            id = SessionId(id),
+            kind = SessionKind.valueOf(kind),
+            startedAt = Instant.fromEpochMilliseconds(startedAt),
+            endedAt = endedAt?.let(Instant::fromEpochMilliseconds),
+            bookmarkedAt = bookmarkedAt?.let(Instant::fromEpochMilliseconds),
+            selectionInstructionsShown = selectionInstructionsShown,
+        )
 
-    private fun ConversationEntity.toDomain() = Conversation(
-        id = ConversationId(id),
-        sessionId = SessionId(sessionId),
-        displayOrder = displayOrder,
-        contact = ContactInfo(name, surname, email, phone, notes),
-    )
+    private fun ConversationEntity.toDomain() =
+        Conversation(
+            id = ConversationId(id),
+            sessionId = SessionId(sessionId),
+            displayOrder = displayOrder,
+            contact = ContactInfo(name, surname, email, phone, notes),
+        )
 
-    private fun CardPickEntity.toDomain() = CardPick(
-        id = CardPickId(id),
-        conversationId = ConversationId(conversationId),
-        questionNumber = questionNumber,
-        cardId = cardId,
-        pickOrder = pickOrder,
-        isFinal = isFinal,
-    )
+    private fun CardPickEntity.toDomain() =
+        CardPick(
+            id = CardPickId(id),
+            conversationId = ConversationId(conversationId),
+            questionNumber = questionNumber,
+            cardId = cardId,
+            pickOrder = pickOrder,
+            isFinal = isFinal,
+        )
 }

@@ -43,15 +43,16 @@ fun ConversationHost(
         when (current) {
             SessionState.NotStarted -> ConversationStub("Starting…")
             SessionState.AddingParticipants -> ConversationStub("Add Participants")
-            is SessionState.InQuestion -> when (current.activity) {
-                QuestionActivity.ShowingPrompt -> ConversationStub("Question ${current.questionNumber} — Prompt")
-                QuestionActivity.ShowingInstructions -> ConversationStub("Instructions")
-                QuestionActivity.SelectingRound1,
-                QuestionActivity.SelectingRound2,
-                -> ConversationStub("Question ${current.questionNumber} — Selection")
-                QuestionActivity.Finalizing -> ConversationStub("Question ${current.questionNumber} — Finalizing")
-                QuestionActivity.Discussing -> ConversationStub("Question ${current.questionNumber} — Discussing")
-            }
+            is SessionState.InQuestion ->
+                when (current.activity) {
+                    QuestionActivity.ShowingPrompt -> ConversationStub("Question ${current.questionNumber} — Prompt")
+                    QuestionActivity.ShowingInstructions -> ConversationStub("Instructions")
+                    QuestionActivity.SelectingRound1,
+                    QuestionActivity.SelectingRound2,
+                    -> ConversationStub("Question ${current.questionNumber} — Selection")
+                    QuestionActivity.Finalizing -> ConversationStub("Question ${current.questionNumber} — Finalizing")
+                    QuestionActivity.Discussing -> ConversationStub("Question ${current.questionNumber} — Discussing")
+                }
             SessionState.Summary -> ConversationStub("Summary")
             is SessionState.CollectingContact -> ConversationStub("Collecting Contact")
             SessionState.Concluded -> ConversationStub("Concluded")

@@ -3,38 +3,49 @@ package org.cru.soularium.domain.session
 import org.cru.soularium.domain.DomainError
 import org.cru.soularium.domain.content.Questions
 
-fun transition(state: SessionState, event: SessionEvent, ctx: SessionContext): TransitionResult =
+fun transition(
+    state: SessionState,
+    event: SessionEvent,
+    ctx: SessionContext,
+): TransitionResult =
     when (state) {
         SessionState.NotStarted -> transitionNotStarted(event)
         SessionState.AddingParticipants -> transitionAddingParticipants(event, ctx)
         is SessionState.InQuestion -> transitionInQuestion(state, event, ctx)
         SessionState.Summary -> transitionSummary(event)
         is SessionState.CollectingContact -> transitionCollectingContact(state, event, ctx)
-        SessionState.Concluded -> TransitionResult(
-            next = SessionState.Concluded,
-            error = DomainError.InvalidStateTransition("Concluded", event::class.simpleName ?: "?"),
-        )
+        SessionState.Concluded ->
+            TransitionResult(
+                next = SessionState.Concluded,
+                error = DomainError.InvalidStateTransition("Concluded", event::class.simpleName ?: "?"),
+            )
     }
 
 private fun transitionNotStarted(event: SessionEvent): TransitionResult =
     when (event) {
-        is SessionEvent.StartSession -> TransitionResult(
-            next = SessionState.AddingParticipants,
-            effects = listOf(
-                Effect.PersistState(SessionState.AddingParticipants),
-                Effect.LogAnalytics(
-                    event = "session_started",
-                    params = mapOf("kind" to event.kind.name.lowercase()),
+        is SessionEvent.StartSession ->
+            TransitionResult(
+                next = SessionState.AddingParticipants,
+                effects =
+                listOf(
+                    Effect.PersistState(SessionState.AddingParticipants),
+                    Effect.LogAnalytics(
+                        event = "session_started",
+                        params = mapOf("kind" to event.kind.name.lowercase()),
+                    ),
                 ),
-            ),
-        )
-        else -> TransitionResult(
-            next = SessionState.NotStarted,
-            error = DomainError.InvalidStateTransition("NotStarted", event::class.simpleName ?: "?"),
-        )
+            )
+        else ->
+            TransitionResult(
+                next = SessionState.NotStarted,
+                error = DomainError.InvalidStateTransition("NotStarted", event::class.simpleName ?: "?"),
+            )
     }
 
-private fun transitionAddingParticipants(event: SessionEvent, ctx: SessionContext): TransitionResult =
+private fun transitionAddingParticipants(
+    event: SessionEvent,
+    ctx: SessionContext,
+): TransitionResult =
     when (event) {
         is SessionEvent.AddParticipant -> {
             val names = ctx.participantNames + event.name
@@ -44,9 +55,10 @@ private fun transitionAddingParticipants(event: SessionEvent, ctx: SessionContex
             )
         }
         is SessionEvent.RemoveParticipant -> {
-            val names = ctx.participantNames.toMutableList().also {
-                if (event.index in it.indices) it.removeAt(event.index)
-            }
+            val names =
+                ctx.participantNames.toMutableList().also {
+                    if (event.index in it.indices) it.removeAt(event.index)
+                }
             TransitionResult(
                 next = SessionState.AddingParticipants,
                 effects = listOf(Effect.PersistParticipants(names)),
@@ -66,10 +78,11 @@ private fun transitionAddingParticipants(event: SessionEvent, ctx: SessionContex
                 )
             }
         }
-        else -> TransitionResult(
-            next = SessionState.AddingParticipants,
-            error = DomainError.InvalidStateTransition("AddingParticipants", event::class.simpleName ?: "?"),
-        )
+        else ->
+            TransitionResult(
+                next = SessionState.AddingParticipants,
+                error = DomainError.InvalidStateTransition("AddingParticipants", event::class.simpleName ?: "?"),
+            )
     }
 
 private fun transitionInQuestion(
@@ -100,35 +113,37 @@ private fun transitionInQuestion(
             TransitionResult(next = state)
 
         SessionEvent.ConfirmSelection -> {
-            val targetActivity = when (state.activity) {
-                QuestionActivity.SelectingRound1 -> {
-                    val needed = if (question.selectionRounds == 2) question.requiredImageCount + 1 else question.requiredImageCount
-                    if (ctx.currentDraftPicks.size < needed) {
-                        return TransitionResult(
-                            next = state,
-                            error = DomainError.InvalidSelectionCount(needed, ctx.currentDraftPicks.size),
-                        )
+            val targetActivity =
+                when (state.activity) {
+                    QuestionActivity.SelectingRound1 -> {
+                        val needed = if (question.selectionRounds == 2) question.requiredImageCount + 1 else question.requiredImageCount
+                        if (ctx.currentDraftPicks.size < needed) {
+                            return TransitionResult(
+                                next = state,
+                                error = DomainError.InvalidSelectionCount(needed, ctx.currentDraftPicks.size),
+                            )
+                        }
+                        if (question.selectionRounds == 2) QuestionActivity.SelectingRound2 else QuestionActivity.Finalizing
                     }
-                    if (question.selectionRounds == 2) QuestionActivity.SelectingRound2 else QuestionActivity.Finalizing
-                }
-                QuestionActivity.SelectingRound2 -> {
-                    if (ctx.currentDraftPicks.size != question.requiredImageCount) {
-                        return TransitionResult(
-                            next = state,
-                            error = DomainError.InvalidSelectionCount(question.requiredImageCount, ctx.currentDraftPicks.size),
-                        )
+                    QuestionActivity.SelectingRound2 -> {
+                        if (ctx.currentDraftPicks.size != question.requiredImageCount) {
+                            return TransitionResult(
+                                next = state,
+                                error = DomainError.InvalidSelectionCount(question.requiredImageCount, ctx.currentDraftPicks.size),
+                            )
+                        }
+                        QuestionActivity.Finalizing
                     }
-                    QuestionActivity.Finalizing
+                    else -> return TransitionResult(
+                        next = state,
+                        error = DomainError.InvalidStateTransition(state.toString(), event::class.simpleName ?: "?"),
+                    )
                 }
-                else -> return TransitionResult(
-                    next = state,
-                    error = DomainError.InvalidStateTransition(state.toString(), event::class.simpleName ?: "?"),
-                )
-            }
             val next = state.copy(activity = targetActivity)
             TransitionResult(
                 next = next,
-                effects = listOf(
+                effects =
+                listOf(
                     Effect.PersistState(next),
                     Effect.PersistPicks(
                         questionNumber = state.questionNumber,
@@ -151,7 +166,8 @@ private fun transitionInQuestion(
             val next = state.copy(activity = QuestionActivity.Discussing)
             TransitionResult(
                 next = next,
-                effects = listOf(
+                effects =
+                listOf(
                     Effect.PersistState(next),
                     Effect.PersistPicks(
                         questionNumber = state.questionNumber,
@@ -161,7 +177,8 @@ private fun transitionInQuestion(
                     ),
                     Effect.LogAnalytics(
                         event = "question_completed",
-                        params = mapOf(
+                        params =
+                        mapOf(
                             "question_number" to state.questionNumber,
                             "participant_index" to state.activeParticipantIndex,
                             "picks_count" to question.requiredImageCount,
@@ -173,30 +190,35 @@ private fun transitionInQuestion(
 
         SessionEvent.EndDiscussion -> {
             val isLastParticipant = state.activeParticipantIndex >= ctx.participantNames.size - 1
-            val next = when {
-                !isLastParticipant -> state.copy(
-                    activeParticipantIndex = state.activeParticipantIndex + 1,
-                    activity = QuestionActivity.ShowingPrompt,
-                )
-                state.questionNumber < 5 -> SessionState.InQuestion(
-                    questionNumber = state.questionNumber + 1,
-                    activeParticipantIndex = 0,
-                    activity = QuestionActivity.ShowingPrompt,
-                )
-                else -> SessionState.Summary
-            }
+            val next =
+                when {
+                    !isLastParticipant ->
+                        state.copy(
+                            activeParticipantIndex = state.activeParticipantIndex + 1,
+                            activity = QuestionActivity.ShowingPrompt,
+                        )
+                    state.questionNumber < 5 ->
+                        SessionState.InQuestion(
+                            questionNumber = state.questionNumber + 1,
+                            activeParticipantIndex = 0,
+                            activity = QuestionActivity.ShowingPrompt,
+                        )
+                    else -> SessionState.Summary
+                }
             TransitionResult(next = next, effects = listOf(Effect.PersistState(next)))
         }
 
-        SessionEvent.Bookmark -> TransitionResult(
-            next = state,
-            effects = listOf(Effect.PersistBookmark(true)),
-        )
+        SessionEvent.Bookmark ->
+            TransitionResult(
+                next = state,
+                effects = listOf(Effect.PersistBookmark(true)),
+            )
 
-        else -> TransitionResult(
-            next = state,
-            error = DomainError.InvalidStateTransition(state.toString(), event::class.simpleName ?: "?"),
-        )
+        else ->
+            TransitionResult(
+                next = state,
+                error = DomainError.InvalidStateTransition(state.toString(), event::class.simpleName ?: "?"),
+            )
     }
 }
 
@@ -206,31 +228,37 @@ private fun transitionSummary(event: SessionEvent): TransitionResult =
             val next = SessionState.CollectingContact(event.participantIndex)
             TransitionResult(
                 next = next,
-                effects = listOf(
+                effects =
+                listOf(
                     Effect.PersistState(next),
                     Effect.PersistContact(event.participantIndex, event.info),
                 ),
             )
         }
-        SessionEvent.SkipContact -> TransitionResult(
-            next = SessionState.Concluded,
-            effects = listOf(Effect.PersistState(SessionState.Concluded)),
-        )
-        SessionEvent.Conclude -> TransitionResult(
-            next = SessionState.Concluded,
-            effects = listOf(
-                Effect.PersistState(SessionState.Concluded),
-                Effect.LogAnalytics(event = "session_completed", params = emptyMap()),
-            ),
-        )
-        SessionEvent.Bookmark -> TransitionResult(
-            next = SessionState.Summary,
-            effects = listOf(Effect.PersistBookmark(true)),
-        )
-        else -> TransitionResult(
-            next = SessionState.Summary,
-            error = DomainError.InvalidStateTransition("Summary", event::class.simpleName ?: "?"),
-        )
+        SessionEvent.SkipContact ->
+            TransitionResult(
+                next = SessionState.Concluded,
+                effects = listOf(Effect.PersistState(SessionState.Concluded)),
+            )
+        SessionEvent.Conclude ->
+            TransitionResult(
+                next = SessionState.Concluded,
+                effects =
+                listOf(
+                    Effect.PersistState(SessionState.Concluded),
+                    Effect.LogAnalytics(event = "session_completed", params = emptyMap()),
+                ),
+            )
+        SessionEvent.Bookmark ->
+            TransitionResult(
+                next = SessionState.Summary,
+                effects = listOf(Effect.PersistBookmark(true)),
+            )
+        else ->
+            TransitionResult(
+                next = SessionState.Summary,
+                error = DomainError.InvalidStateTransition("Summary", event::class.simpleName ?: "?"),
+            )
     }
 
 private fun transitionCollectingContact(
@@ -243,7 +271,8 @@ private fun transitionCollectingContact(
             val next = SessionState.CollectingContact(event.participantIndex)
             TransitionResult(
                 next = next,
-                effects = listOf(
+                effects =
+                listOf(
                     Effect.PersistState(next),
                     Effect.PersistContact(event.participantIndex, event.info),
                 ),
@@ -261,19 +290,23 @@ private fun transitionCollectingContact(
                 TransitionResult(next = next, effects = listOf(Effect.PersistState(next)))
             }
         }
-        SessionEvent.Conclude -> TransitionResult(
-            next = SessionState.Concluded,
-            effects = listOf(
-                Effect.PersistState(SessionState.Concluded),
-                Effect.LogAnalytics(event = "session_completed", params = emptyMap()),
-            ),
-        )
-        SessionEvent.Bookmark -> TransitionResult(
-            next = state,
-            effects = listOf(Effect.PersistBookmark(true)),
-        )
-        else -> TransitionResult(
-            next = state,
-            error = DomainError.InvalidStateTransition(state.toString(), event::class.simpleName ?: "?"),
-        )
+        SessionEvent.Conclude ->
+            TransitionResult(
+                next = SessionState.Concluded,
+                effects =
+                listOf(
+                    Effect.PersistState(SessionState.Concluded),
+                    Effect.LogAnalytics(event = "session_completed", params = emptyMap()),
+                ),
+            )
+        SessionEvent.Bookmark ->
+            TransitionResult(
+                next = state,
+                effects = listOf(Effect.PersistBookmark(true)),
+            )
+        else ->
+            TransitionResult(
+                next = state,
+                error = DomainError.InvalidStateTransition(state.toString(), event::class.simpleName ?: "?"),
+            )
     }

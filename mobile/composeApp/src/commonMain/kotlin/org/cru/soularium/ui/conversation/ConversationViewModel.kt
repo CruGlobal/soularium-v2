@@ -31,7 +31,6 @@ class ConversationViewModel(
     private val analytics: AnalyticsTracker,
     private val crashReporter: CrashReporter,
 ) : ViewModel() {
-
     private val _state = MutableStateFlow<SessionState>(SessionState.NotStarted)
     val state: StateFlow<SessionState> = _state.asStateFlow()
 
@@ -62,12 +61,13 @@ class ConversationViewModel(
         }
 
         val previousState = _state.value
-        val ctx = SessionContext(
-            participantNames = _ui.value.participantNames,
-            currentDraftPicks = _ui.value.draftPicks,
-            currentRoundFinalPicks = _ui.value.roundFinals,
-            showInstructionsForThisSession = !_ui.value.instructionsShown,
-        )
+        val ctx =
+            SessionContext(
+                participantNames = _ui.value.participantNames,
+                currentDraftPicks = _ui.value.draftPicks,
+                currentRoundFinalPicks = _ui.value.roundFinals,
+                showInstructionsForThisSession = !_ui.value.instructionsShown,
+            )
         val result = transition(previousState, event, ctx)
 
         if (result.error != null) {
@@ -91,7 +91,10 @@ class ConversationViewModel(
         }
     }
 
-    private fun resetDraftIfNeeded(previous: SessionState, next: SessionState) {
+    private fun resetDraftIfNeeded(
+        previous: SessionState,
+        next: SessionState,
+    ) {
         val prevQ = previous as? SessionState.InQuestion
         val nextQ = next as? SessionState.InQuestion
         when {

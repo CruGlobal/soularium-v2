@@ -16,7 +16,9 @@ import org.cru.soularium.data.db.entities.SessionEntity
 @ConstructedBy(SoulariumDatabaseConstructor::class)
 abstract class SoulariumDatabase : RoomDatabase() {
     abstract fun sessions(): SessionDao
+
     abstract fun conversations(): ConversationDao
+
     abstract fun cardPicks(): CardPickDao
 }
 

@@ -65,19 +65,19 @@ fun IntroScreen(onContinue: () -> Unit) {
     ) {
         Column(
             modifier =
-                Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding()
-                    .navigationBarsPadding()
-                    .padding(horizontal = 24.dp),
+            Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             HorizontalPager(
                 state = pagerState,
                 modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
+                Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
             ) { page ->
                 when (page) {
                     PAGE_CONCEPT -> IntroConcept()
@@ -110,10 +110,10 @@ fun IntroScreen(onContinue: () -> Unit) {
                     }
                 },
                 modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .height(52.dp)
-                        .semantics { contentDescription = nextLabel },
+                Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+                    .semantics { contentDescription = nextLabel },
             ) {
                 Text(
                     text = nextLabel,
@@ -130,9 +130,9 @@ fun IntroScreen(onContinue: () -> Unit) {
 private fun IntroConcept(modifier: Modifier = Modifier) {
     Column(
         modifier =
-            modifier
-                .fillMaxSize()
-                .padding(top = 48.dp),
+        modifier
+            .fillMaxSize()
+            .padding(top = 48.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Top,
     ) {
@@ -156,9 +156,9 @@ private fun IntroConcept(modifier: Modifier = Modifier) {
 private fun IntroHowItWorks(modifier: Modifier = Modifier) {
     Column(
         modifier =
-            modifier
-                .fillMaxSize()
-                .padding(top = 48.dp),
+        modifier
+            .fillMaxSize()
+            .padding(top = 48.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Top,
     ) {
@@ -207,10 +207,10 @@ private fun PageIndicatorRow(
             val dotSize = if (isSelected) 10.dp else 8.dp
             Box(
                 modifier =
-                    Modifier
-                        .size(dotSize)
-                        .clip(CircleShape)
-                        .background(color),
+                Modifier
+                    .size(dotSize)
+                    .clip(CircleShape)
+                    .background(color),
             )
         }
     }

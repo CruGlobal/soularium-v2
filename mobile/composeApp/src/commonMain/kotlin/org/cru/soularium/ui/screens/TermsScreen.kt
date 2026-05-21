@@ -54,20 +54,20 @@ fun TermsScreen(
     ) {
         Column(
             modifier =
-                Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding()
-                    .navigationBarsPadding()
-                    .padding(horizontal = 24.dp),
+            Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Column(
                 modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .verticalScroll(scrollState)
-                        .padding(top = 48.dp, bottom = 24.dp),
+                Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .verticalScroll(scrollState)
+                    .padding(top = 48.dp, bottom = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
@@ -95,10 +95,10 @@ fun TermsScreen(
             Button(
                 onClick = onAgree,
                 modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .height(52.dp)
-                        .semantics { contentDescription = agreeLabel },
+                Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+                    .semantics { contentDescription = agreeLabel },
             ) {
                 Text(
                     text = agreeLabel,
@@ -111,10 +111,10 @@ fun TermsScreen(
             OutlinedButton(
                 onClick = onBack,
                 modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .height(52.dp)
-                        .semantics { contentDescription = backLabel },
+                Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+                    .semantics { contentDescription = backLabel },
             ) {
                 Text(
                     text = backLabel,

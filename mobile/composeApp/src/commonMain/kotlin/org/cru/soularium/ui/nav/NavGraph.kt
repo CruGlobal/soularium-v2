@@ -15,6 +15,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import org.cru.soularium.domain.SessionId
 import org.cru.soularium.ui.conversation.ConversationHost
+import org.cru.soularium.ui.screens.IntroScreen
+import org.cru.soularium.ui.screens.TermsScreen
 
 @Composable
 fun NavGraph() {
@@ -24,8 +26,19 @@ fun NavGraph() {
     // wired against device-state persistence in a later phase.
     NavHost(navController = navController, startDestination = Routes.HOME) {
         composable(Routes.SPLASH) { StubScreen("Splash") }
-        composable(Routes.INTRO) { StubScreen("Intro") }
-        composable(Routes.TERMS) { StubScreen("Terms") }
+        composable(Routes.INTRO) {
+            IntroScreen(onContinue = { navController.navigate(Routes.TERMS) })
+        }
+        composable(Routes.TERMS) {
+            TermsScreen(
+                onAgree = {
+                    navController.navigate(Routes.HOME) {
+                        popUpTo(Routes.INTRO) { inclusive = true }
+                    }
+                },
+                onBack = { navController.popBackStack() },
+            )
+        }
         composable(Routes.HOME) { StubScreen("Home") }
         composable(Routes.PAST) { StubScreen("Past Conversations") }
         composable(Routes.ABOUT) { StubScreen("About") }

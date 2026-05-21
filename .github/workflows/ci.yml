@@ -21,11 +21,11 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: ktlint
         run: ./gradlew ktlintCheck
-      - name: Domain tests (JVM)
-        run: ./gradlew :domain:test
+      - name: Domain tests
+        run: ./gradlew :domain:allTests
       - name: Common tests (data + composeApp)
         run: ./gradlew :data:allTests :composeApp:allTests
       - name: Android assemble
         run: ./gradlew :composeApp:assembleDebug
       - name: iOS framework
-        run: ./gradlew :composeApp:linkPodDebugFrameworkIosSimulatorArm64
+        run: ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64

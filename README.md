@@ -19,7 +19,7 @@ asdf, `export JAVA_HOME=~/.asdf/installs/java/temurin-17.0.19+10` first).
 ```bash
 cd mobile
 ./gradlew :composeApp:assembleDebug                          # Android APK
-./gradlew :composeApp:linkPodDebugFrameworkIosSimulatorArm64 # iOS framework
+./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64    # iOS framework
 ./gradlew ktlintCheck                                        # lint all modules
 ./gradlew :domain:test :data:allTests :composeApp:allTests   # tests
 ```

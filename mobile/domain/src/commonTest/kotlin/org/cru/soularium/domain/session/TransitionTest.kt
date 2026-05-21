@@ -105,7 +105,7 @@ class TransitionTest {
     }
 
     @Test
-    fun `Q1 round1 ConfirmSelection with only 3 picks errors (needs at least 4)`() {
+    fun `Q1 round1 ConfirmSelection with only 3 picks errors - needs at least 4`() {
         val s = SessionState.InQuestion(1, 0, QuestionActivity.SelectingRound1)
         val r = transition(s, SessionEvent.ConfirmSelection, ctx(draft = listOf(1, 2, 3)))
         assertEquals(s, r.next)

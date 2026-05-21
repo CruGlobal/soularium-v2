@@ -39,21 +39,23 @@ import soularium.composeapp.generated.resources.locale_zh_hans
 import soularium.composeapp.generated.resources.settings_language
 import soularium.composeapp.generated.resources.settings_title
 
-// TODO: locale persistence + runtime locale switching land with the device-state / i18n phase.
-
 /**
- * Supported app locales. Each entry maps to its display-name string resource.
+ * Supported app locales. Each entry carries its IETF [code] (persisted in
+ * device state) and maps to its display-name string resource.
  *
- * Persistence of the selected locale is intentionally deferred — see the TODO
- * comment above. The caller is responsible for storing the value if/when
- * device-state support is available.
+ * The chosen locale is persisted via the device-state store. Runtime
+ * application of a non-system locale still depends on a Compose-resources
+ * locale-override API (CMP 1.8+); until then the picker records the
+ * preference and reflects it in the UI.
  */
-enum class AppLocale {
-    EN,
-    ES,
-    FR,
-    PL,
-    ZH_HANS,
+enum class AppLocale(
+    val code: String,
+) {
+    EN("en"),
+    ES("es"),
+    FR("fr"),
+    PL("pl"),
+    ZH_HANS("zh-Hans"),
     ;
 
     val labelRes: StringResource
@@ -65,6 +67,11 @@ enum class AppLocale {
                 PL -> Res.string.locale_pl
                 ZH_HANS -> Res.string.locale_zh_hans
             }
+
+    companion object {
+        /** Maps a stored locale code back to an [AppLocale], defaulting to [EN]. */
+        fun fromCode(code: String?): AppLocale = entries.firstOrNull { it.code == code } ?: EN
+    }
 }
 
 /**

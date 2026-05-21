@@ -1,7 +1,6 @@
 package org.cru.soularium.ui.nav
 
 object Routes {
-    const val SPLASH = "splash"
     const val INTRO = "intro"
     const val TERMS = "terms"
     const val HOME = "home"

@@ -26,6 +26,8 @@ kotlin {
             implementation(libs.coroutines.core)
             api(libs.room.runtime)
             implementation(libs.sqlite.bundled)
+            implementation(libs.datastore.preferences.core)
+            implementation(libs.okio)
             implementation(libs.kotlinx.datetime)
             api(libs.kotlinx.serialization.json)
         }

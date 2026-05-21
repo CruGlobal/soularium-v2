@@ -8,9 +8,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavType
@@ -34,24 +31,27 @@ import org.cru.soularium.ui.screens.TermsScreen
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
-fun NavGraph() {
+fun NavGraph(
+    startDestination: String,
+    deviceStateViewModel: DeviceStateViewModel,
+) {
     val navController = rememberNavController()
 
-    // In-memory until device-state persistence lands; see SettingsScreen TODO.
-    var locale by remember { mutableStateOf(AppLocale.EN) }
-
-    // Start destination is HOME until first-launch routing (Intro/Terms) is
-    // wired against device-state persistence in a later phase.
-    NavHost(navController = navController, startDestination = Routes.HOME) {
-        composable(Routes.SPLASH) { StubScreen("Splash") }
+    NavHost(navController = navController, startDestination = startDestination) {
         composable(Routes.INTRO) {
-            IntroScreen(onContinue = { navController.navigate(Routes.TERMS) })
+            IntroScreen(
+                onContinue = {
+                    deviceStateViewModel.markIntroSeen()
+                    navController.navigate(Routes.TERMS)
+                },
+            )
         }
         composable(Routes.TERMS) {
             TermsScreen(
                 onAgree = {
+                    deviceStateViewModel.markTosAgreed()
                     navController.navigate(Routes.HOME) {
-                        popUpTo(Routes.INTRO) { inclusive = true }
+                        popUpTo(startDestination) { inclusive = true }
                     }
                 },
                 onBack = { navController.popBackStack() },
@@ -108,9 +108,10 @@ fun NavGraph() {
             CardsAndQuestionsScreen(onBack = { navController.popBackStack() })
         }
         composable(Routes.SETTINGS) {
+            val deviceState by deviceStateViewModel.deviceState.collectAsState()
             SettingsScreen(
-                selectedLocale = locale,
-                onLocaleSelected = { locale = it },
+                selectedLocale = AppLocale.fromCode(deviceState.locale),
+                onLocaleSelected = { deviceStateViewModel.setLocale(it.code) },
                 onBack = { navController.popBackStack() },
             )
         }

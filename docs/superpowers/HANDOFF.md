@@ -1,6 +1,6 @@
 # Soularium v2 — Session Handoff
 
-Last updated: 2026-05-20
+Last updated: 2026-05-21
 
 ## TL;DR for the next Claude
 
@@ -49,21 +49,44 @@ Read these in order:
 - `data/repository/ContentRepositoryImpl.kt` — in-memory bundled content
 - **Compiles cleanly for Android AND iOS** (with one harmless Beta warning about expect/actual classes)
 
-## What's next (Phases 6–11 — pick up here)
+### Phase 6 — Theme, resources, DI, ViewModel, navigation (Tasks 20–25) ✅
+
+- Task 20: 50 card images (`card_NN.jpg`, 2208×1468 landscape) + thumbnails (`card_NN_thumb.png`) in `composeApp/src/commonMain/composeResources/drawable/`.
+- Task 21: Open Sans TTFs + `ui/theme/` (`Color.kt` with a completed M3 light scheme, `Typography.kt`, `Theme.kt`).
+- Task 22: full English `values/strings.xml`; empty `<resources/>` stubs for `values-es/fr/pl/zh-rCN/`.
+- Task 23: Koin — `appModule` + `platformModule` (expect/actual), no-op Analytics/Crash/Sharer placeholders, `SoulariumApplication` (Android) / `initKoin()` (iOS).
+- Task 24: `ConversationViewModel` (6 coroutines/Turbine tests).
+- Task 25: `Routes` + `NavGraph` + `ConversationHost` (the single conversation destination, `AnimatedContent` over `SessionState`).
+
+### Phase 7 — All 14 screens (Tasks 26–39) ✅
+
+Built via parallel subagent waves with two-stage (spec + code-quality) review:
+- Top-level (`ui/screens/`): Intro, Terms, Home (+ `MenuBottomSheet`), Past Conversations (+ `PastConversationsViewModel`), About, Resources, Cards & Questions, Settings.
+- Conversation subscreens (`ui/conversation/`): AddParticipants, QuestionPrompt, InstructionPanel, Selection, Finalizing, Discussing, Summary, ContactCollection — all wired into `ConversationHost`.
+- `ConversationViewModel` extended: `ensureStarted(kind)` bootstraps a new session, draft picks survive through Finalizing/Discussing, `loadSummaries()` + `shareSummary()` (via the `Sharer` port + `shareUrlFor`).
+- Helpers added: `ui/content/CardImages.kt` (card id → drawable), `domain/Session.kt` `newSession()`, `domain/DateFormatting.kt`.
+
+### Infrastructure note — ktlint
+
+`ktlintCheck` had never passed (the bundled `ktlint_official` ruleset flagged ~1000 violations and crashed on rule-disable). Fixed in `mobile/.editorconfig` (switched to `intellij_idea` code style) + `mobile/build.gradle.kts` (excludes generated sources). `ktlintCheck` is now green for all three modules — keep it that way.
+
+## What's next (Phases 8–11 — pick up here)
 
 The plan (`docs/superpowers/plans/2026-05-20-soularium-v2-mobile.md`) has these in detail:
 
-- **Task 20** — Migrate 50 card images from `/Users/danielbisgrove/Documents/Web_Dev/soularium-android/app/src/main/res/drawable/card_*.jpg` and `_thumb.png` into `mobile/composeApp/src/commonMain/composeResources/drawable/`.
-- **Task 21** — Soularium theme: copy Open Sans TTFs from the Android repo's `assets/fonts/`, write `ui/theme/Color.kt`, `Typography.kt`, `Theme.kt`. Apply in `App.kt`.
-- **Task 22** — `composeResources/values/strings.xml` (English) with all UI strings the spec implies. Stubs for `values-es/`, `values-fr/`, `values-pl/`, `values-zh-rCN/`.
-- **Task 23** — Koin DI setup wiring repos + ports.
-- **Task 24** — `ConversationViewModel` with Turbine-tested state flow.
-- **Task 25** — Compose Navigation graph skeleton.
-- **Tasks 26–39** — 14 screens (Intro, Terms, Home, AddParticipants, QuestionPrompt, InstructionPanel, Selection, Finalizing, Discussing, Summary, ContactCollection, PastConversations, About, Resources, CardsAndQuestions, Settings).
-- **Tasks 40–43** — Sharer expect/actual, Firebase analytics + crash, BackHandler.
-- **Tasks 44–45** — Crowdin `.yml` + GitHub Action.
+- **Task 40** — `Sharer` expect/actual: Android `Intent.ACTION_SEND`, iOS `UIActivityViewController`. Currently a `NoOpSharer` placeholder in `di/Placeholders.kt`; replace its Koin binding in `PlatformModule.android.kt` / `.ios.kt`.
+- **Tasks 41–42** — Firebase analytics + Crashlytics. **BLOCKED on Cru:** needs `google-services.json` + `GoogleService-Info.plist` (gitignored, not in repo). Ship Android-side no-op stubs until the files land.
+- **Task 43** — `BackHandler` in `ConversationHost` ("bookmark and exit" / "discard" dialog).
+- **Tasks 44–45** — Crowdin `.yml` + GitHub Action. Needs a Cru Crowdin account decision.
 - **Tasks 46–47** — CI workflow + release workflow stub.
-- **Tasks 48–51** — Accessibility audit, E2E smoke tests, real-device testing, Firebase App Distribution setup.
+- **Tasks 48–51** — Accessibility audit, E2E smoke tests, real-device testing, Firebase App Distribution.
+
+### Known follow-ups / loose ends
+
+- `NavGraph` starts at `HOME`; first-launch Intro→Terms routing waits on device-state (DataStore) persistence — not yet built. Settings locale + Terms agreement are in-memory only for the same reason.
+- The Summary → contact-collection handoff is wired minimally; the `CollectContact` state-machine semantics around advancing/concluding deserve a closer look during E2E testing (Task 49).
+- No `ConclusionScreen` — `Concluded` state auto-exits the conversation destination.
+- Asset bundle is ~37 MB (50 full JPGs + 50 PNG thumbnails). The PNG thumbnails are oversized; converting them to JPG would save ~12 MB if binary size matters.
 
 ## Critical environment / setup notes
 
@@ -150,4 +173,4 @@ The next big chunk is **UI**. Two facts to hold in mind:
 
 2. **All UI strings go through `Res.string.*`.** No string literals in composables. The Crowdin pipeline (Task 44/45) depends on this.
 
-That's it. Pick up at Task 20 (card image migration).
+That's it. Pick up at Task 40 (Sharer expect/actual).

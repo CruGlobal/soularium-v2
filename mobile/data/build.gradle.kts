@@ -22,12 +22,12 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            implementation(project(":domain"))
+            api(project(":domain"))
             implementation(libs.coroutines.core)
-            implementation(libs.room.runtime)
+            api(libs.room.runtime)
             implementation(libs.sqlite.bundled)
             implementation(libs.kotlinx.datetime)
-            implementation(libs.kotlinx.serialization.json)
+            api(libs.kotlinx.serialization.json)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

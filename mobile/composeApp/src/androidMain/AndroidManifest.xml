@@ -3,6 +3,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
+        android:name=".SoulariumApplication"
         android:label="Soularium"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">

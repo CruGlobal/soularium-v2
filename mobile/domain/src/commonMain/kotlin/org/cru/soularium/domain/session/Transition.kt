@@ -268,7 +268,15 @@ private fun transitionCollectingContact(
 ): TransitionResult =
     when (event) {
         is SessionEvent.CollectContact -> {
-            val next = SessionState.CollectingContact(event.participantIndex)
+            // Persist this participant's contact, then advance — to the next
+            // participant's contact form, or Concluded after the last one.
+            val nextIndex = state.participantIndex + 1
+            val next =
+                if (nextIndex >= ctx.participantNames.size) {
+                    SessionState.Concluded
+                } else {
+                    SessionState.CollectingContact(nextIndex)
+                }
             TransitionResult(
                 next = next,
                 effects =

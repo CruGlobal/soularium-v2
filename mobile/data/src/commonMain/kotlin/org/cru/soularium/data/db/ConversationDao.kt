@@ -1,17 +1,18 @@
 package org.cru.soularium.data.db
 
 import androidx.room.Dao
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Upsert
 import org.cru.soularium.data.db.entities.ConversationEntity
 
 @Dao
 interface ConversationDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    // @Upsert, not @Insert REPLACE — REPLACE would delete-and-reinsert the row,
+    // cascading away child card_picks.
+    @Upsert
     suspend fun upsert(conversation: ConversationEntity)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     suspend fun upsertAll(conversations: List<ConversationEntity>)
 
     @Query("SELECT * FROM conversations WHERE session_id = :sessionId ORDER BY display_order")

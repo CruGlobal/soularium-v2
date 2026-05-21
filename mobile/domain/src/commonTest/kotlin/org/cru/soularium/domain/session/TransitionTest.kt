@@ -243,6 +243,31 @@ class TransitionTest {
         assertEquals(SessionState.Concluded, r.next)
     }
 
+    @Test
+    fun `CollectingContact CollectContact saves contact and advances to next participant`() {
+        val r =
+            transition(
+                SessionState.CollectingContact(0),
+                SessionEvent.CollectContact(0, ContactInfo("Alice", email = "alice@example.com")),
+                ctx(names = listOf("Alice", "Bob")),
+            )
+        val next = assertIs<SessionState.CollectingContact>(r.next)
+        assertEquals(1, next.participantIndex)
+        assertEquals(1, r.effects.filterIsInstance<Effect.PersistContact>().size)
+    }
+
+    @Test
+    fun `CollectingContact CollectContact for last participant goes to Concluded`() {
+        val r =
+            transition(
+                SessionState.CollectingContact(1),
+                SessionEvent.CollectContact(1, ContactInfo("Bob")),
+                ctx(names = listOf("Alice", "Bob")),
+            )
+        assertEquals(SessionState.Concluded, r.next)
+        assertEquals(1, r.effects.filterIsInstance<Effect.PersistContact>().size)
+    }
+
     // --- Bookmark from any state ---
 
     @Test

@@ -1,14 +1,13 @@
 package org.cru.soularium.data.db
 
 import androidx.room.Dao
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Upsert
 import org.cru.soularium.data.db.entities.CardPickEntity
 
 @Dao
 interface CardPickDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     suspend fun upsertAll(picks: List<CardPickEntity>)
 
     @Query(

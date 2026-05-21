@@ -47,7 +47,20 @@ class SessionRepositoryImpl(
         state: SessionState,
     ) {
         val current = sessionDao.byId(id.value) ?: return
-        sessionDao.upsert(current.copy(stateSnapshotJson = json.encodeToString(state)))
+        // Reaching Concluded ends the session, so it surfaces under
+        // Past Conversations → Completed (which filters on ended_at).
+        val endedAt =
+            if (state == SessionState.Concluded) {
+                current.endedAt ?: Clock.System.now().toEpochMilliseconds()
+            } else {
+                current.endedAt
+            }
+        sessionDao.upsert(
+            current.copy(
+                stateSnapshotJson = json.encodeToString(state),
+                endedAt = endedAt,
+            ),
+        )
     }
 
     override suspend fun setBookmarked(

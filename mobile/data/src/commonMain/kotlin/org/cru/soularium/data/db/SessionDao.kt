@@ -1,15 +1,16 @@
 package org.cru.soularium.data.db
 
 import androidx.room.Dao
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 import org.cru.soularium.data.db.entities.SessionEntity
 
 @Dao
 interface SessionDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    // @Upsert (not @Insert REPLACE): REPLACE deletes the existing row first,
+    // which cascades to child conversations/card_picks. @Upsert updates in place.
+    @Upsert
     suspend fun upsert(session: SessionEntity)
 
     @Query("SELECT * FROM sessions WHERE id = :id")

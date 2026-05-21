@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App -->
+    <string name="app_name">Soularium</string>
+    <string name="app_tagline">A Dialogue in Pictures</string>
+    <string name="app_tagline_caps">A DIALOGUE IN PICTURES</string>
+
+    <!-- Menu / navigation -->
+    <string name="menu_my_soularium">MySoularium</string>
+    <string name="menu_past_conversations">Past Conversations</string>
+    <string name="menu_about">About Soularium</string>
+    <string name="menu_resources">Resources</string>
+    <string name="menu_cards_and_questions">Images &amp; Questions</string>
+    <string name="menu_settings">Settings</string>
+    <string name="menu_close">Close menu</string>
+
+    <!-- Top-level CTAs -->
+    <string name="cta_start_conversation">Start a Conversation</string>
+    <string name="cta_create_my_soularium">Create MySoularium</string>
+    <string name="cta_continue">Continue</string>
+
+    <!-- Buttons -->
+    <string name="action_next">Next</string>
+    <string name="action_back">Back</string>
+    <string name="action_done">Done</string>
+    <string name="action_ok">OK</string>
+    <string name="action_okay">Okay</string>
+    <string name="action_got_it">Got It</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_save">Save</string>
+    <string name="action_skip">Skip</string>
+    <string name="action_skip_for_now">Skip for Now</string>
+    <string name="action_add">Add</string>
+    <string name="action_remove">Remove</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_confirm">Confirm</string>
+    <string name="action_agree">Agree</string>
+    <string name="action_select">Select</string>
+    <string name="action_discuss">Discuss</string>
+    <string name="action_ready">Ready</string>
+    <string name="action_share">Share</string>
+    <string name="action_bookmark">Bookmark</string>
+    <string name="action_bookmark_conversation">Bookmark Conversation</string>
+    <string name="action_share_via_sms">SMS</string>
+    <string name="action_share_via_email">Email</string>
+    <string name="action_lets_begin">Let’s Begin</string>
+
+    <!-- Intro / onboarding -->
+    <string name="intro_page1_title">Welcome to Soularium</string>
+    <string name="intro_page1_body">Soularium helps people talk about their life and spiritual journey. It’s 50 images and 5 questions.</string>
+    <string name="intro_page2_title">How it works</string>
+    <string name="intro_page2_body">Simply choose the images that describe your experiences.</string>
+    <string name="intro_ready_prompt">Ready to begin your Soularium experience?</string>
+
+    <!-- Terms of use -->
+    <string name="terms_title">Terms of Use</string>
+    <string name="terms_confirm_prompt">By tapping ‘Agree’, you agree to the Soularium app Terms of Use.</string>
+    <string name="terms_review_note">You can review the Terms of Use anytime from Resources.</string>
+    <string name="terms_thanks_heading">Thanks!</string>
+
+    <!-- Home -->
+    <string name="home_hero_title">My</string>
+    <string name="home_hero_subtitle">Soularium</string>
+    <string name="home_hero_tm">Soularium™</string>
+    <string name="home_my_soularium_caption">Before using Soularium with others, answer the questions yourself.</string>
+
+    <!-- Add participants -->
+    <string name="participants_title">Who else is in this conversation?</string>
+    <string name="participants_add_prompt">Enter person’s name:</string>
+    <string name="participants_name_hint">Name</string>
+    <string name="participants_name_placeholder">Raoul</string>
+    <string name="participants_empty">Add at least one person to begin.</string>
+    <string name="participants_remove_action">Remove %s</string>
+
+    <!-- Question prompt headers -->
+    <string name="question_label">QUESTION</string>
+    <string name="question_index">Question %1$d of %2$d</string>
+    <string name="your_turn">Alright, %s.\nYour turn.</string>
+    <string name="please_return_device_to">Please return device to %s.</string>
+    <string name="please_return_device_to_owner">Please return device to the device owner.</string>
+
+    <!-- Question 1 -->
+    <string name="q1_prompt">Which 3 images would you choose to describe your life right now?</string>
+    <string name="q1_selection">Choose images that describe your life right now.</string>
+    <string name="q1_finalizing">Which 3 MOST describe your life right now?</string>
+    <string name="q1_discussion">Why? What do each of these images represent about your life?</string>
+
+    <!-- Question 2 -->
+    <string name="q2_prompt">Which 3 images represent what you WISH were a part of your life right now?</string>
+    <string name="q2_selection">Choose images that represent what you wish were part of your life.</string>
+    <string name="q2_finalizing">Which 3 MOST describe what you want right now?</string>
+    <string name="q2_discussion">Why? What desire does each image represent?</string>
+
+    <!-- Question 3 -->
+    <string name="q3_prompt">Which image would you choose to describe God?</string>
+    <string name="q3_selection">Choose 1 image that describes God.</string>
+    <string name="q3_finalizing">Which 1 image MOST describes God to you?</string>
+    <string name="q3_discussion">Why? What does it say about God to you?</string>
+
+    <!-- Question 4 -->
+    <string name="q4_prompt">Think about your life so far. Which image best describes what you’ve experienced spiritually?</string>
+    <string name="q4_selection">Choose 1 image that describes your spiritual experience so far.</string>
+    <string name="q4_finalizing">Which 1 BEST describes what you’ve experienced spiritually?</string>
+    <string name="q4_discussion">Why? What does that image represent?</string>
+
+    <!-- Question 5 -->
+    <string name="q5_prompt">When you think about your spiritual life or journey, which image best represents what you wish were true?</string>
+    <string name="q5_selection">Choose 1 image that represents what you wish were true.</string>
+    <string name="q5_finalizing">Which 1 BEST represents what you wish were true of your spiritual life?</string>
+    <string name="q5_discussion">Why? What does that image represent?</string>
+
+    <!-- Selection screen -->
+    <string name="selection_choose_3">CHOOSE 3</string>
+    <string name="selection_choose_1">CHOOSE 1</string>
+    <string name="selection_x_selected">%d selected</string>
+    <string name="selection_navigation_instructions">Tap an image to select it. Tap again to deselect.</string>
+    <string name="selection_round_1_label">Round 1 — wide selection</string>
+    <string name="selection_round_2_label">Round 2 — narrow to 3</string>
+    <string name="selection_finish_picks">Finish making your selections to continue.</string>
+
+    <!-- Finalizing screen -->
+    <string name="finalizing_title">Your final picks</string>
+    <string name="finalizing_swap_hint">Tap a card to swap it for another.</string>
+
+    <!-- Discussion screen -->
+    <string name="discuss_instructions">DISCUSS</string>
+    <string name="discuss_each_image">Discuss Each Image</string>
+    <string name="image_x_of_y">Image %1$d of %2$d</string>
+
+    <!-- Summary -->
+    <string name="summary_title">%s\'s Life In Pictures</string>
+    <string name="summary_thats_a_wrap">That\'s a Wrap</string>
+    <string name="summary_where_next">Where do you want to take this conversation?</string>
+    <string name="summary_meet_again">Meet Again</string>
+    <string name="summary_great_talking">Great talking with you today!</string>
+    <string name="summary_meet_again_caption">Let’s meet again to talk more.</string>
+    <string name="summary_share_prompt">Do you want to share these images with %s?</string>
+    <string name="summary_share_sms_body">Explore MySoularium — Your Life In Pictures: %s</string>
+    <string name="summary_share_email_subject">Your Life in Pictures: %s</string>
+
+    <!-- Contact collection -->
+    <string name="contact_title">Stay in touch</string>
+    <string name="contact_first_name">First Name</string>
+    <string name="contact_last_name">Last Name</string>
+    <string name="contact_email_hint">Email (Optional)</string>
+    <string name="contact_phone_hint">Phone (Optional)</string>
+    <string name="contact_notes_label">Notes</string>
+    <string name="contact_save_conversation">Save Conversation</string>
+    <string name="contact_create_prompt">To create MySoularium, provide your name.</string>
+    <string name="contact_ready_to_share">You’re ready to share your story in future Soularium conversations.</string>
+    <string name="contact_invalid_phone">That phone number doesn’t look right.</string>
+
+    <!-- Past conversations -->
+    <string name="past_title">Past Conversations</string>
+    <string name="past_tab_completed">Completed</string>
+    <string name="past_tab_bookmarked">Bookmarked</string>
+    <string name="past_empty_completed">No completed conversations yet.</string>
+    <string name="past_empty_bookmarked">No bookmarked conversations.</string>
+    <string name="past_completed_date">COMPLETED</string>
+    <string name="past_delete_confirm_title">Delete this conversation?</string>
+    <string name="past_delete_confirm_body">This can\'t be undone.</string>
+    <string name="past_kind_solo">MySoularium</string>
+    <string name="past_kind_group">Group</string>
+
+    <!-- About -->
+    <string name="about_title">About Soularium</string>
+    <string name="about_what_is_heading">WHAT IS SOULARIUM?</string>
+    <string name="about_what_is_body">Soularium is a set of 50 images and 5 questions that help people talk about their life and spiritual journey. People simply choose the images that describe their experiences.</string>
+    <string name="about_meaningful_body">Because images connect deeply with our experiences, they enable us to engage in meaningful conversations about life and God. With Soularium you\'ll discover how easy and enjoyable it is to come alongside someone on their journey.</string>
+    <string name="about_50_5">Soularium: 50 images, 5 questions.</string>
+    <string name="about_how_to_heading">HOW TO START A SOULARIUM CONVERSATION</string>
+    <string name="about_how_to_body">There are many ways — so just do what comes naturally to you. Or try this: “Would you be willing to tell me about your spiritual journey sometime?” If your friend is interested, suggest using Soularium. Then: “I’ve found that people enjoy using photos to describe their life and spiritual experiences. Would you be willing to choose the ones that describe yours?” Show your friend Soularium.</string>
+    <string name="about_tips_heading">HELPFUL TIPS</string>
+    <string name="about_tip_listening_title">1. Soularium is about LISTENING.</string>
+    <string name="about_tip_listening_body">Allow people time to select images. Actively listen as they describe their choices.</string>
+    <string name="about_tip_connections_title">2. Look for connections.</string>
+    <string name="about_tip_connections_body">Look for connections between their story and yours. What experiences and desires do you have in common?</string>
+    <string name="about_sunlight">JUST AS SUNLIGHT ILLUMINATES A SOLARIUM, SOULARIUM OPENS A WINDOW TO THE SOUL.</string>
+
+    <!-- Resources -->
+    <string name="resources_title">Resources</string>
+    <string name="resource_mysoularium_header">MYSOULARIUM.COM</string>
+    <string name="resource_mysoularium_label">Go deeper in your Soularium experience.</string>
+    <string name="resource_mysoularium_url">https://mysoularium.com</string>
+    <string name="resource_cru_header">SOULARIUM ON CRU.ORG</string>
+    <string name="resource_cru_label">Videos and free resources. Buy the print version.</string>
+    <string name="resource_cru_url">https://www.cru.org/us/en/train-and-grow/share-the-gospel/evangelism-principles/soularium.html</string>
+    <string name="resource_feedback_header">GIVE US YOUR FEEDBACK</string>
+    <string name="resource_feedback_label">Help make Soularium better.</string>
+    <string name="resource_feedback_email">Soularium@cru.org</string>
+    <string name="resource_feedback_subject">Feedback — Soularium mobile</string>
+    <string name="resource_share_header">SHARE THIS APP</string>
+    <string name="resource_share_label">Who else should know about Soularium?</string>
+    <string name="resource_share_subject">Soularium mobile app</string>
+    <string name="resource_share_body">Have you seen the Soularium app? Check it out.</string>
+    <string name="resource_terms_header">TERMS OF USE</string>
+    <string name="resource_terms_label">Review the legal terms related to this app.</string>
+    <string name="resource_privacy_header">PRIVACY POLICY</string>
+    <string name="resource_privacy_label">Review the privacy policy related to this app.</string>
+
+    <!-- Cards and questions reference -->
+    <string name="cards_and_questions_title">Images &amp; Questions</string>
+    <string name="cards_tab_cards">Images</string>
+    <string name="cards_tab_questions">Questions</string>
+    <string name="cards_card_number">Image %d</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_language">Language</string>
+    <string name="locale_en">English</string>
+    <string name="locale_es">Español</string>
+    <string name="locale_fr">Français</string>
+    <string name="locale_pl">Polski</string>
+    <string name="locale_zh_hans">中文（简体）</string>
+
+    <!-- Errors / snackbars -->
+    <string name="error_persist_failed">Couldn’t save your conversation. Please try again.</string>
+    <string name="error_no_share_app">No app available for sharing.</string>
+    <string name="error_no_email_app">No email account is configured on this device.</string>
+    <string name="error_no_sms_app">No SMS app is available.</string>
+    <string name="error_invalid_selection_count">Pick %1$d image(s) to continue (you have %2$d).</string>
+
+    <!-- Accessibility content descriptions -->
+    <string name="cd_card_thumb">Image %d</string>
+    <string name="cd_card_selected">Selected</string>
+    <string name="cd_card_not_selected">Not selected</string>
+    <string name="cd_menu_button">Open menu</string>
+    <string name="cd_share_button">Share</string>
+    <string name="cd_bookmark_button">Bookmark</string>
+    <string name="cd_remove_participant">Remove %s</string>
+</resources>

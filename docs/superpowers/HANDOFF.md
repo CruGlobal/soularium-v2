@@ -17,7 +17,7 @@ Read these in order:
 - KMP project at `mobile/` with three modules: `:domain`, `:data`, `:composeApp`
 - Gradle wrapper pinned at 8.10.2
 - `mobile/composeApp/` produces a working Android APK rendering "Soularium v2 — bootstrap OK"
-- iOS Xcode project at `mobile/iosApp/iosApp.xcodeproj` exists (Daniel set this up). **Bundle ID concern still open** — see below.
+- iOS Xcode project at `mobile/iosApp/iosApp.xcodeproj` — fully wired; the iOS app builds and runs the Compose UI on the simulator. See "iOS Xcode integration" below.
 
 ### Phase 1 — Domain types (Tasks 6–9) ✅
 
@@ -119,19 +119,36 @@ Built via parallel subagent waves with two-stage (spec + code-quality) review:
   ```
   Google's `androidx.navigation:navigation-compose` is Android-only and won't resolve for iOS targets. (Already correct in `mobile/gradle/libs.versions.toml`.)
 
-### iOS Xcode bundle ID — STILL OPEN
+### iOS Xcode integration — DONE ✅
 
-Daniel ran the Xcode wizard with **Product Name: `iosApp`** + **Organization Identifier: `org.cru.soularium`**, which produces bundle ID `org.cru.soularium.iosApp`.
+The iOS app builds, launches, and runs the Compose UI on the simulator
+(verified on iPhone 17 Pro, iOS 26.3). Resolved:
 
-The desired bundle ID is **`org.cru.soularium`** (matching the Android side and the discontinued iOS app, so App Store restoration maps cleanly).
+- **Bundle ID** is now `org.cru.soularium` (was `org.cru.soularium.iosApp`).
+- **Compose framework wiring** in `iosApp.xcodeproj/project.pbxproj`: a
+  "Build Kotlin Framework" run-script phase runs
+  `:composeApp:embedAndSignAppleFrameworkForXcode` (it exports `JAVA_HOME`
+  for asdf); `FRAMEWORK_SEARCH_PATHS` + `OTHER_LDFLAGS` (`-framework
+  ComposeApp`) link it; `ENABLE_USER_SCRIPT_SANDBOXING = NO` lets the
+  script run Gradle.
+- `ContentView.swift` hosts `MainViewControllerKt.MainViewController()`.
+- `MainViewController` sets `enforceStrictPlistSanityCheck = false`
+  because the generated Info.plist can't carry
+  `CADisableMinimumFrameDurationOnPhone`.
 
-To fix: open the project in Xcode → Project Navigator → iosApp target → **General** → change **Bundle Identifier** from `org.cru.soularium.iosApp` to `org.cru.soularium`. Then update any matching references in the Compose framework embed step.
+Build/run from the command line:
+```
+xcodebuild -project mobile/iosApp/iosApp.xcodeproj -scheme iosApp \
+  -configuration Debug -sdk iphonesimulator \
+  -destination 'name=iPhone 17 Pro' build
+xcrun simctl install booted <path>/iosApp.app
+xcrun simctl launch booted org.cru.soularium
+```
 
-Not load-bearing until TestFlight submission; can wait.
-
-### iOS Compose framework embed — also still open
-
-The iosApp project doesn't yet have the Run Script Build Phase that calls `./gradlew :composeApp:embedAndSignAppleFrameworkForXcode`. Plan Task 5, Step 4 covers this. Until it's wired in, you can build the Kotlin side via `./gradlew :composeApp:linkPodDebugFrameworkIosSimulatorArm64` but you can't run the iOS app from Xcode. Phase 7 screens can be developed Android-first; iOS verification comes when this is wired.
+**Follow-up (minor):** opt into ProMotion 120Hz by getting
+`CADisableMinimumFrameDurationOnPhone=true` into the Info.plist (needs a
+real `Info.plist` file, since Xcode's `INFOPLIST_KEY_` passthrough
+ignores that key), then the strict check can be re-enabled.
 
 ### Room expect/actual warnings
 

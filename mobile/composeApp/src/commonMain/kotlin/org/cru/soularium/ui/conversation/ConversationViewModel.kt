@@ -180,6 +180,21 @@ class ConversationViewModel(
         }
     }
 
+    /**
+     * Bookmarks the session, then invokes [onComplete] once the write has
+     * settled. [onComplete] is called from inside the persisting coroutine so
+     * the bookmark is durable before the caller navigates away (which clears
+     * this ViewModel and cancels [viewModelScope]).
+     */
+    fun bookmarkAndExit(onComplete: () -> Unit) {
+        viewModelScope.launch {
+            runCatching { sessionRepository.setBookmarked(sessionId, true) }
+                .onFailure { crashReporter.recordNonFatal(it, "bookmarkAndExit") }
+            analytics.event("conversation_bookmarked", emptyMap())
+            onComplete()
+        }
+    }
+
     private suspend fun applyEffects(effects: List<Effect>) {
         for (effect in effects) {
             when (effect) {

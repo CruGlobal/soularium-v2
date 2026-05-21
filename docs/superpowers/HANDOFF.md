@@ -70,16 +70,22 @@ Built via parallel subagent waves with two-stage (spec + code-quality) review:
 
 `ktlintCheck` had never passed (the bundled `ktlint_official` ruleset flagged ~1000 violations and crashed on rule-disable). Fixed in `mobile/.editorconfig` (switched to `intellij_idea` code style) + `mobile/build.gradle.kts` (excludes generated sources). `ktlintCheck` is now green for all three modules — keep it that way.
 
-## What's next (Phases 8–11 — pick up here)
+## Phase 8–11 status (updated 2026-05-21)
 
-The plan (`docs/superpowers/plans/2026-05-20-soularium-v2-mobile.md`) has these in detail:
+### Done
 
-- **Task 40** — `Sharer` expect/actual: Android `Intent.ACTION_SEND`, iOS `UIActivityViewController`. Currently a `NoOpSharer` placeholder in `di/Placeholders.kt`; replace its Koin binding in `PlatformModule.android.kt` / `.ios.kt`.
-- **Tasks 41–42** — Firebase analytics + Crashlytics. **BLOCKED on Cru:** needs `google-services.json` + `GoogleService-Info.plist` (gitignored, not in repo). Ship Android-side no-op stubs until the files land.
-- **Task 43** — `BackHandler` in `ConversationHost` ("bookmark and exit" / "discard" dialog).
-- **Tasks 44–45** — Crowdin `.yml` + GitHub Action. Needs a Cru Crowdin account decision.
-- **Tasks 46–47** — CI workflow + release workflow stub.
-- **Tasks 48–51** — Accessibility audit, E2E smoke tests, real-device testing, Firebase App Distribution.
+- **Task 40 — Sharer** ✅ `AndroidSharer` (`Intent.ACTION_SEND` chooser) and `IosSharer` (`UIActivityViewController`) implement the domain `Sharer` port, bound in the platform Koin modules. `NoOpSharer` removed. No expect/actual class was added — the existing `Sharer` port interface already is the shared contract.
+- **Task 43 — BackHandler** ✅ `expect`/`actual` `PlatformBackHandler` (Android delegates to `androidx.activity.compose.BackHandler`; iOS is a no-op — CMP 1.7.3 has no common BackHandler). `ConversationHost` shows a bookmark / discard / cancel dialog; `ConversationViewModel.bookmarkAndExit` persists the bookmark before invoking the exit callback.
+- **Tasks 44–45 — Crowdin** ✅ `crowdin.yml` + `.github/workflows/crowdin.yml` (weekly + manual sync, opens a PR). Inert until Cru sets the `CROWDIN_PROJECT_ID` / `CROWDIN_PERSONAL_TOKEN` repo secrets — documented in the new root `README.md`.
+- **Tasks 46–47 — CI** ✅ `.github/workflows/ci.yml` (ktlint + domain/data/composeApp tests + Android APK + iOS framework on every PR and push to `main`) and `release.yml` (tag-triggered, unsigned artifacts; iOS archiving stays manual). The full CI command set has been run green locally — no GitHub remote is configured yet, so CI has not run on Actions.
+- **Task 48 — Accessibility audit** ✅ Code-level audit of all 14 screens: meaningful icons/images carry `contentDescription`, `IconButton`s enforce the 48dp interactive target, selection cards carry full `semantics` (label + selected + `Role.Checkbox`). No code defects found. A manual TalkBack/VoiceOver walkthrough is still Daniel's to do (part of Task 50).
+- **Task 49 — E2E smoke tests** ✅ `ConversationFlowTest` (composeApp `commonTest`) drives the four plan scenarios — solo, group-of-3, bookmark+resume, delete — through the real `ConversationViewModel` + state machine against a complete in-memory `SessionRepository`.
+
+### Blocked / deferred — needs Cru
+
+- **Tasks 41–42 — Firebase** Analytics + Crashlytics stay **no-op** (`NoOpAnalyticsTracker` / `NoOpCrashReporter` in `di/Placeholders.kt`). Shipped now: `analytics/scrubAnalyticsParams` (PII/card-detail key scrubbing, 5 unit tests) and `example.google-services.json` / `example.GoogleService-Info.plist` templates. **To finish when the real configs land:** drop `google-services.json` (in `composeApp/`) and `GoogleService-Info.plist` (in the iOS target) — both gitignored; apply the `google-services` + `firebase-crashlytics` Gradle plugins on the Android target; add the Firebase Analytics/Crashlytics SPM dependencies on iOS; implement `FirebaseAnalyticsTracker` / `FirebaseCrashReporter` (the Android tracker should call `scrubAnalyticsParams` before `logEvent`); and swap the Koin bindings in `PlatformModule.android.kt` / `.ios.kt`.
+- **Task 50 — Manual device testing** Daniel: sideload the debug APK on real Android devices, run the iOS build on a real iPhone, verify the share sheets launch and runtime locale switching works, capture store screenshots. This also covers the manual TalkBack/VoiceOver pass from Task 48.
+- **Task 51 — Firebase App Distribution** Needs the Firebase configs (Task 41) plus a Fastlane `firebase_app_distribution` lane and an internal Cru tester group.
 
 ### Known follow-ups / loose ends
 
@@ -145,7 +151,7 @@ cd mobile && ./gradlew :composeApp:assembleDebug
 # → mobile/composeApp/build/outputs/apk/debug/composeApp-debug.apk
 
 # iOS framework build (no Xcode needed)
-cd mobile && ./gradlew :composeApp:linkPodDebugFrameworkIosSimulatorArm64
+cd mobile && ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
 
 # All data targets compile-check
 cd mobile && ./gradlew :data:compileDebugKotlinAndroid :data:compileKotlinIosSimulatorArm64
@@ -173,4 +179,4 @@ The next big chunk is **UI**. Two facts to hold in mind:
 
 2. **All UI strings go through `Res.string.*`.** No string literals in composables. The Crowdin pipeline (Task 44/45) depends on this.
 
-That's it. Pick up at Task 40 (Sharer expect/actual).
+That's it. All of Phases 0–11 that can be done without Cru-side inputs are complete. The remaining work is the Firebase wiring (Tasks 41–42, once the config files land), the Crowdin secrets (Tasks 44–45), and the manual device testing + App Distribution (Tasks 50–51) — see the "Phase 8–11 status" section above.

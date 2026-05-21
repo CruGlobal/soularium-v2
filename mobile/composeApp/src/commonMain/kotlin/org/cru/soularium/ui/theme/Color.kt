@@ -9,6 +9,11 @@ val SoulariumDark = Color(0xFF1A1A1A)
 val SoulariumBackground = Color(0xFFECEAEB)
 val SoulariumSurface = Color(0xFFFFFFFF)
 val SoulariumOnSurface = Color(0xFF1A1A1A)
+val SoulariumSurfaceVariant = Color(0xFFF3F1F2)
+val SoulariumOnSurfaceVariant = Color(0xFF595759)
+val SoulariumOutline = Color(0xFF8C8A8B)
+val SoulariumOutlineVariant = Color(0xFFCFCDCE)
+val SoulariumError = Color(0xFFBA1A1A)
 
 val QuestionProgressColors =
     listOf(
@@ -29,4 +34,10 @@ val SoulariumLightColors =
         onBackground = SoulariumOnSurface,
         surface = SoulariumSurface,
         onSurface = SoulariumOnSurface,
+        surfaceVariant = SoulariumSurfaceVariant,
+        onSurfaceVariant = SoulariumOnSurfaceVariant,
+        outline = SoulariumOutline,
+        outlineVariant = SoulariumOutlineVariant,
+        error = SoulariumError,
+        onError = Color.White,
     )

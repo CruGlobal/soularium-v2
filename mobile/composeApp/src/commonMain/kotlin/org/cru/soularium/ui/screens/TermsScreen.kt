@@ -43,13 +43,14 @@ import soularium.composeapp.generated.resources.terms_title
 fun TermsScreen(
     onAgree: () -> Unit,
     onBack: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val scrollState = rememberScrollState()
     val agreeLabel = stringResource(Res.string.action_agree)
     val backLabel = stringResource(Res.string.action_back)
 
     Surface(
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background,
     ) {
         Column(

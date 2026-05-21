@@ -55,12 +55,15 @@ private const val PAGE_HOW_IT_WORKS = 1
  *                   caller is responsible for navigating to Terms.
  */
 @Composable
-fun IntroScreen(onContinue: () -> Unit) {
+fun IntroScreen(
+    onContinue: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val pagerState = rememberPagerState(pageCount = { PAGE_COUNT })
     val scope = rememberCoroutineScope()
 
     Surface(
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background,
     ) {
         Column(

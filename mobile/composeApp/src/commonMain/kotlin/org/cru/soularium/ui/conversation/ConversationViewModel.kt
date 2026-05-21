@@ -48,10 +48,20 @@ class ConversationViewModel(
 
     private val initialLoad: Job =
         viewModelScope.launch {
-            runCatching { sessionRepository.loadState(sessionId) }
-                .onFailure { crashReporter.recordNonFatal(it, "loadState on init") }
-                .getOrNull()
-                ?.let { _state.value = it }
+            runCatching {
+                val loaded = sessionRepository.loadState(sessionId) ?: return@runCatching
+                _state.value = loaded
+                // Rehydrate participant names so a resumed (e.g. bookmarked)
+                // group session can still advance turns — the transition
+                // function reads participant count from ConversationUiContext.
+                val names =
+                    sessionRepository.loadConversations(sessionId)
+                        .sortedBy { it.displayOrder }
+                        .map { it.contact.name }
+                if (names.isNotEmpty()) {
+                    _ui.update { ui -> ui.copy(participantNames = names) }
+                }
+            }.onFailure { crashReporter.recordNonFatal(it, "loadState on init") }
         }
 
     /**

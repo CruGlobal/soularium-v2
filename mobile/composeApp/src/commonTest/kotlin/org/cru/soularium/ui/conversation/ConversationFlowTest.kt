@@ -161,6 +161,42 @@ class ConversationFlowTest {
         }
 
     @Test
+    fun `bookmarked group session rehydrates participant names on resume`() =
+        runTest(testDispatcher) {
+            val repo = InMemorySessionRepository()
+            val sessionId = SessionId.random()
+
+            val first = viewModel(sessionId, repo)
+            first.ensureStarted(SessionKind.GROUP)
+            advanceUntilIdle()
+            addParticipants(first, "Dana", "Eli")
+            first.dispatch(SessionEvent.ConfirmParticipants)
+            advanceUntilIdle()
+
+            // Both participants finish question 1; bookmark at the start of Q2.
+            playTurn(first)
+            playTurn(first)
+            assertEquals(
+                SessionState.InQuestion(2, 0, QuestionActivity.ShowingPrompt),
+                first.state.value,
+            )
+            first.bookmarkAndExit { }
+            advanceUntilIdle()
+
+            // A fresh ViewModel must restore the participant list, otherwise
+            // group turn advancement breaks (every turn looks like the last).
+            val resumed = viewModel(sessionId, repo)
+            resumed.ensureStarted(SessionKind.GROUP)
+            advanceUntilIdle()
+            assertEquals(listOf("Dana", "Eli"), resumed.ui.value.participantNames)
+
+            // Questions 2-5, both participants each, reaching the summary.
+            repeat(4 * 2) { playTurn(resumed) }
+            assertEquals(SessionState.Summary, resumed.state.value)
+            assertEquals(2, resumed.summaries.value.size)
+        }
+
+    @Test
     fun `deleting a past conversation removes it from the completed list`() =
         runTest(testDispatcher) {
             val repo = InMemorySessionRepository()

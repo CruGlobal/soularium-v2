@@ -12,11 +12,15 @@ object Routes {
     const val SETTINGS = "settings"
 
     const val ARG_SESSION_ID = "sessionId"
+    const val ARG_KIND = "kind"
 
-    const val CONVERSATION = "conversation/{$ARG_SESSION_ID}"
+    const val CONVERSATION = "conversation/{$ARG_SESSION_ID}/{$ARG_KIND}"
     const val SUMMARY = "summary/{$ARG_SESSION_ID}"
 
-    fun conversation(sessionId: String): String = "conversation/$sessionId"
+    fun conversation(
+        sessionId: String,
+        kind: String,
+    ): String = "conversation/$sessionId/$kind"
 
     fun summary(sessionId: String): String = "summary/$sessionId"
 }

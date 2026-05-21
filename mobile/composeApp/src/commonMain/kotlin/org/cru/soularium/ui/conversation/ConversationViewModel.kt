@@ -2,12 +2,15 @@ package org.cru.soularium.ui.conversation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.cru.soularium.domain.SessionId
+import org.cru.soularium.domain.SessionKind
+import org.cru.soularium.domain.newSession
 import org.cru.soularium.domain.ports.AnalyticsTracker
 import org.cru.soularium.domain.ports.CrashReporter
 import org.cru.soularium.domain.ports.SessionRepository
@@ -37,12 +40,30 @@ class ConversationViewModel(
     private val _ui = MutableStateFlow(ConversationUiContext())
     val ui: StateFlow<ConversationUiContext> = _ui.asStateFlow()
 
-    init {
+    private val initialLoad: Job =
         viewModelScope.launch {
             runCatching { sessionRepository.loadState(sessionId) }
                 .onFailure { crashReporter.recordNonFatal(it, "loadState on init") }
                 .getOrNull()
                 ?.let { _state.value = it }
+        }
+
+    /**
+     * Bootstraps a brand-new conversation: if (after the initial load settles)
+     * the session has no persisted state, the session row is created and the
+     * state machine is started. A no-op for a resumed/bookmarked session.
+     */
+    fun ensureStarted(kind: SessionKind) {
+        viewModelScope.launch {
+            initialLoad.join()
+            if (_state.value != SessionState.NotStarted) return@launch
+            runCatching {
+                sessionRepository.createSession(
+                    session = newSession(sessionId, kind),
+                    initialState = SessionState.NotStarted,
+                )
+            }.onFailure { crashReporter.recordNonFatal(it, "createSession") }
+            dispatch(SessionEvent.StartSession(kind))
         }
     }
 

@@ -8,6 +8,7 @@ import org.cru.soularium.domain.SessionId
 import org.cru.soularium.domain.ports.ContentRepository
 import org.cru.soularium.domain.ports.SessionRepository
 import org.cru.soularium.ui.conversation.ConversationViewModel
+import org.cru.soularium.ui.past.PastConversationsViewModel
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
@@ -25,4 +26,5 @@ val appModule: Module =
         viewModel { (sessionId: SessionId) ->
             ConversationViewModel(sessionId, get(), get(), get())
         }
+        viewModel { PastConversationsViewModel(get()) }
     }

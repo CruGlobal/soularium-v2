@@ -48,7 +48,6 @@ import soularium.composeapp.generated.resources.settings_title
  * comment above. The caller is responsible for storing the value if/when
  * device-state support is available.
  */
-@Suppress("unused")
 enum class AppLocale {
     EN,
     ES,

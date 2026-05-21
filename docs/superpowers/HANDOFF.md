@@ -89,7 +89,7 @@ Built via parallel subagent waves with two-stage (spec + code-quality) review:
 
 ### Known follow-ups / loose ends
 
-- `NavGraph` starts at `HOME`; first-launch Intro→Terms routing waits on device-state (DataStore) persistence — not yet built. Settings locale + Terms agreement are in-memory only for the same reason.
+- **Device-state persistence is done.** A DataStore-backed `DeviceStateRepository` (`:data/devicestate/`) persists `has_seen_intro`, `agreed_to_tos`, `last_known_locale`. `DeviceStateViewModel` resolves the nav start destination (Intro → Terms → Home); `App()` shows a splash until it resolves. Intro/Terms persist their completion; Settings persists the locale choice. **Still open:** *applying* a non-system locale at runtime needs a Compose-resources locale-override API (CMP 1.8+) — the choice is persisted and shown in the picker but does not yet re-render the UI in another language. (Translations are empty stubs anyway until Crowdin runs.)
 - The Summary → contact-collection handoff is wired minimally; the `CollectContact` state-machine semantics around advancing/concluding deserve a closer look during E2E testing (Task 49).
 - No `ConclusionScreen` — `Concluded` state auto-exits the conversation destination.
 - Asset bundle is ~37 MB (50 full JPGs + 50 PNG thumbnails). The PNG thumbnails are oversized; converting them to JPG would save ~12 MB if binary size matters.

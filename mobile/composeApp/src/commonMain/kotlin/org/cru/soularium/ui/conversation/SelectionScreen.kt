@@ -54,6 +54,7 @@ import soularium.composeapp.generated.resources.q4_selection
 import soularium.composeapp.generated.resources.q5_selection
 import soularium.composeapp.generated.resources.selection_choose_1
 import soularium.composeapp.generated.resources.selection_choose_3
+import soularium.composeapp.generated.resources.selection_choose_wide
 import soularium.composeapp.generated.resources.selection_finish_picks
 import soularium.composeapp.generated.resources.selection_navigation_instructions
 import soularium.composeapp.generated.resources.selection_round_1_label
@@ -91,8 +92,14 @@ fun SelectionScreen(
 ) {
     val isTwoRoundQuestion = questionNumber <= TWO_ROUND_QUESTION_MAX
     val selectionPrompt = stringResource(questionSelectionRes(questionNumber))
+    // Round 1 of a two-round question is a *wide* pick (>= requiredImageCount + 1);
+    // round 2 narrows to exactly the required count. One-round questions pick one.
     val chooseLabel = stringResource(
-        if (isTwoRoundQuestion) Res.string.selection_choose_3 else Res.string.selection_choose_1,
+        when {
+            !isTwoRoundQuestion -> Res.string.selection_choose_1
+            round >= 2 -> Res.string.selection_choose_3
+            else -> Res.string.selection_choose_wide
+        },
     )
     val selectedCountLabel = stringResource(Res.string.selection_x_selected, selectedCardIds.size)
     val confirmLabel = stringResource(Res.string.action_confirm)

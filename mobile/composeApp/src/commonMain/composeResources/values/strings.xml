@@ -37,6 +37,7 @@
     <string name="action_confirm">Confirm</string>
     <string name="action_agree">Agree</string>
     <string name="action_select">Select</string>
+    <string name="action_change_selection">Change Selection</string>
     <string name="action_discuss">Discuss</string>
     <string name="action_ready">Ready</string>
     <string name="action_share">Share</string>
@@ -71,13 +72,13 @@
     <string name="participants_name_hint">Name</string>
     <string name="participants_name_placeholder">Raoul</string>
     <string name="participants_empty">Add at least one person to begin.</string>
-    <string name="participants_remove_action">Remove %s</string>
+    <string name="participants_remove_action">Remove %1$s</string>
 
     <!-- Question prompt headers -->
     <string name="question_label">QUESTION</string>
     <string name="question_index">Question %1$d of %2$d</string>
-    <string name="your_turn">Alright, %s.\nYour turn.</string>
-    <string name="please_return_device_to">Please return device to %s.</string>
+    <string name="your_turn">Alright, %1$s.\nYour turn.</string>
+    <string name="please_return_device_to">Please return device to %1$s.</string>
     <string name="please_return_device_to_owner">Please return device to the device owner.</string>
 
     <!-- Question 1 -->
@@ -113,7 +114,8 @@
     <!-- Selection screen -->
     <string name="selection_choose_3">CHOOSE 3</string>
     <string name="selection_choose_1">CHOOSE 1</string>
-    <string name="selection_x_selected">%d selected</string>
+    <string name="selection_choose_wide">CHOOSE 4 OR MORE</string>
+    <string name="selection_x_selected">%1$d selected</string>
     <string name="selection_navigation_instructions">Tap an image to select it. Tap again to deselect.</string>
     <string name="selection_round_1_label">Round 1 — wide selection</string>
     <string name="selection_round_2_label">Round 2 — narrow to 3</string>
@@ -121,7 +123,7 @@
 
     <!-- Finalizing screen -->
     <string name="finalizing_title">Your final picks</string>
-    <string name="finalizing_swap_hint">Tap a card to swap it for another.</string>
+    <string name="finalizing_review_hint">Tap Confirm to continue, or Change Selection to pick again.</string>
 
     <!-- Discussion screen -->
     <string name="discuss_instructions">DISCUSS</string>
@@ -135,15 +137,15 @@
     <string name="conversation_exit_discard">Discard</string>
 
     <!-- Summary -->
-    <string name="summary_title">%s\'s Life In Pictures</string>
+    <string name="summary_title">%1$s\'s Life In Pictures</string>
     <string name="summary_thats_a_wrap">That\'s a Wrap</string>
     <string name="summary_where_next">Where do you want to take this conversation?</string>
     <string name="summary_meet_again">Meet Again</string>
     <string name="summary_great_talking">Great talking with you today!</string>
     <string name="summary_meet_again_caption">Let’s meet again to talk more.</string>
-    <string name="summary_share_prompt">Do you want to share these images with %s?</string>
-    <string name="summary_share_sms_body">Explore MySoularium — Your Life In Pictures: %s</string>
-    <string name="summary_share_email_subject">Your Life in Pictures: %s</string>
+    <string name="summary_share_prompt">Do you want to share these images with %1$s?</string>
+    <string name="summary_share_sms_body">Explore MySoularium — Your Life In Pictures: %1$s</string>
+    <string name="summary_share_email_subject">Your Life in Pictures: %1$s</string>
 
     <!-- Contact collection -->
     <string name="contact_title">Stay in touch</string>
@@ -210,8 +212,8 @@
     <string name="cards_and_questions_title">Images &amp; Questions</string>
     <string name="cards_tab_cards">Images</string>
     <string name="cards_tab_questions">Questions</string>
-    <string name="cards_card_number">Image %d</string>
-    <string name="cards_question_number">Question %d</string>
+    <string name="cards_card_number">Image %1$d</string>
+    <string name="cards_question_number">Question %1$d</string>
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>
@@ -230,11 +232,11 @@
     <string name="error_invalid_selection_count">Pick %1$d image(s) to continue (you have %2$d).</string>
 
     <!-- Accessibility content descriptions -->
-    <string name="cd_card_thumb">Image %d</string>
+    <string name="cd_card_thumb">Image %1$d</string>
     <string name="cd_card_selected">Selected</string>
     <string name="cd_card_not_selected">Not selected</string>
     <string name="cd_menu_button">Open menu</string>
     <string name="cd_share_button">Share</string>
     <string name="cd_bookmark_button">Bookmark</string>
-    <string name="cd_remove_participant">Remove %s</string>
+    <string name="cd_remove_participant">Remove %1$s</string>
 </resources>

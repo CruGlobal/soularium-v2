@@ -32,10 +32,10 @@ import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import soularium.composeapp.generated.resources.Res
-import soularium.composeapp.generated.resources.action_back
+import soularium.composeapp.generated.resources.action_change_selection
 import soularium.composeapp.generated.resources.action_confirm
 import soularium.composeapp.generated.resources.cd_card_thumb
-import soularium.composeapp.generated.resources.finalizing_swap_hint
+import soularium.composeapp.generated.resources.finalizing_review_hint
 import soularium.composeapp.generated.resources.finalizing_title
 import soularium.composeapp.generated.resources.q1_finalizing
 import soularium.composeapp.generated.resources.q2_finalizing
@@ -48,8 +48,8 @@ import soularium.composeapp.generated.resources.q5_finalizing
  * confirm their final picks before the discussion begins.
  *
  * Displays the participant's chosen cards ([cardIds]) at full size, the
- * per-question finalizing prompt, a hint about swapping, and two action
- * buttons: Confirm (proceeds to discussion) and Back (returns to selection).
+ * per-question finalizing prompt, a review hint, and two action buttons:
+ * Confirm (proceeds to discussion) and Change Selection (re-opens selection).
  *
  * This is a stateless composable. No ViewModel, no navigation logic.
  *
@@ -57,7 +57,7 @@ import soularium.composeapp.generated.resources.q5_finalizing
  * @param cardIds           ordered list of 1 or 3 card ids (1..50) the
  *                          participant has chosen.
  * @param onConfirm         called when the user taps Confirm.
- * @param onChangeSelection called when the user taps Back to re-pick.
+ * @param onChangeSelection called when the user taps Change Selection to re-pick.
  * @param modifier          optional [Modifier] for the root surface.
  */
 @Composable
@@ -69,7 +69,7 @@ fun FinalizingScreen(
     modifier: Modifier = Modifier,
 ) {
     val confirmLabel = stringResource(Res.string.action_confirm)
-    val backLabel = stringResource(Res.string.action_back)
+    val changeSelectionLabel = stringResource(Res.string.action_change_selection)
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -113,9 +113,9 @@ fun FinalizingScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Swap hint
+                // Review hint
                 Text(
-                    text = stringResource(Res.string.finalizing_swap_hint),
+                    text = stringResource(Res.string.finalizing_review_hint),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -172,16 +172,16 @@ fun FinalizingScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Back / change-selection button
+            // Change-selection button (re-opens the selection screen)
             OutlinedButton(
                 onClick = onChangeSelection,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
-                    .semantics { contentDescription = backLabel },
+                    .semantics { contentDescription = changeSelectionLabel },
             ) {
                 Text(
-                    text = backLabel,
+                    text = changeSelectionLabel,
                     style = MaterialTheme.typography.labelLarge,
                 )
             }

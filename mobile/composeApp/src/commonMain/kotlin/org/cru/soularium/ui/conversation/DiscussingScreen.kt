@@ -33,6 +33,7 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import soularium.composeapp.generated.resources.Res
 import soularium.composeapp.generated.resources.action_done
+import soularium.composeapp.generated.resources.cd_card_thumb
 import soularium.composeapp.generated.resources.discuss_instructions
 import soularium.composeapp.generated.resources.image_x_of_y
 import soularium.composeapp.generated.resources.q1_discussion
@@ -40,6 +41,9 @@ import soularium.composeapp.generated.resources.q2_discussion
 import soularium.composeapp.generated.resources.q3_discussion
 import soularium.composeapp.generated.resources.q4_discussion
 import soularium.composeapp.generated.resources.q5_discussion
+
+/** Card artwork is 3:2 landscape (2208x1468). */
+private const val CARD_ASPECT_RATIO = 3f / 2f
 
 /**
  * Subscreen displayed while the group discusses a participant's finalized picks.
@@ -156,12 +160,11 @@ private fun SingleCardImage(
     cardId: Int,
     modifier: Modifier = Modifier,
 ) {
-    val cardDesc = "Image $cardId"
     Image(
         painter = painterResource(CardImages.full(cardId)),
-        contentDescription = cardDesc,
+        contentDescription = stringResource(Res.string.cd_card_thumb, cardId),
         contentScale = ContentScale.Fit,
-        modifier = modifier.aspectRatio(1f),
+        modifier = modifier.aspectRatio(CARD_ASPECT_RATIO),
     )
 }
 
@@ -202,7 +205,7 @@ private fun MultiCardPager(
                     contentScale = ContentScale.Fit,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .aspectRatio(1f),
+                        .aspectRatio(CARD_ASPECT_RATIO),
                 )
             }
         }

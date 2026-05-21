@@ -58,7 +58,7 @@ fun InstructionPanelScreen(
 
     Surface(
         modifier = modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background.copy(alpha = 0.92f),
+        color = MaterialTheme.colorScheme.background,
     ) {
         Column(
             modifier = Modifier

@@ -46,8 +46,6 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import soularium.composeapp.generated.resources.Res
 import soularium.composeapp.generated.resources.action_confirm
-import soularium.composeapp.generated.resources.cd_card_not_selected
-import soularium.composeapp.generated.resources.cd_card_selected
 import soularium.composeapp.generated.resources.cd_card_thumb
 import soularium.composeapp.generated.resources.q1_selection
 import soularium.composeapp.generated.resources.q2_selection
@@ -243,10 +241,6 @@ private fun SelectableCardItem(
     modifier: Modifier = Modifier,
 ) {
     val cardLabel = stringResource(Res.string.cd_card_thumb, cardId)
-    val stateLabel = stringResource(
-        if (isSelected) Res.string.cd_card_selected else Res.string.cd_card_not_selected,
-    )
-    val fullDesc = "$cardLabel — $stateLabel"
 
     val primaryColor = MaterialTheme.colorScheme.primary
     val onPrimaryColor = MaterialTheme.colorScheme.onPrimary
@@ -267,7 +261,7 @@ private fun SelectableCardItem(
             )
             .clickable(onClick = onToggle)
             .semantics {
-                contentDescription = fullDesc
+                contentDescription = cardLabel
                 selected = isSelected
                 role = Role.Checkbox
             },

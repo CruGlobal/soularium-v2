@@ -6,9 +6,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -50,7 +49,7 @@ fun ConversationHost(
         transitionSpec = { fadeIn() togetherWith fadeOut() },
     ) { current ->
         when (current) {
-            SessionState.NotStarted -> ConversationStub("Starting…")
+            SessionState.NotStarted -> ConversationLoading()
 
             SessionState.AddingParticipants ->
                 AddParticipantsScreen(
@@ -139,7 +138,7 @@ fun ConversationHost(
 
             SessionState.Concluded -> {
                 LaunchedEffect(Unit) { onExit() }
-                ConversationStub("Concluded")
+                ConversationLoading()
             }
         }
     }
@@ -167,10 +166,10 @@ private fun isSelectionValid(
     }
 
 @Composable
-private fun ConversationStub(label: String) {
+private fun ConversationLoading() {
     Surface(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(text = "TODO: $label", style = MaterialTheme.typography.headlineMedium)
+            CircularProgressIndicator()
         }
     }
 }

@@ -134,7 +134,7 @@ fun FinalizingScreen(
                         contentScale = ContentScale.Fit,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .aspectRatio(3f / 4f),
+                            .aspectRatio(3f / 2f),
                     )
                 } else {
                     Row(
@@ -149,7 +149,7 @@ fun FinalizingScreen(
                                 contentScale = ContentScale.Fit,
                                 modifier = Modifier
                                     .weight(1f)
-                                    .aspectRatio(3f / 4f),
+                                    .aspectRatio(3f / 2f),
                             )
                         }
                     }

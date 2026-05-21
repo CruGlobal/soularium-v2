@@ -7,7 +7,12 @@ import org.cru.soularium.di.initKoin
 // the Swift side as MainViewControllerKt.MainViewController().
 @Suppress("ktlint:standard:function-naming")
 fun MainViewController() =
-    ComposeUIViewController {
+    ComposeUIViewController(
+        // The Xcode project uses a generated Info.plist and can't carry the
+        // CADisableMinimumFrameDurationOnPhone key; the strict check is
+        // disabled here. (ProMotion 120Hz opt-in is a later nicety.)
+        configure = { enforceStrictPlistSanityCheck = false },
+    ) {
         initKoin()
         App()
     }

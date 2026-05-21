@@ -2,8 +2,6 @@ package org.cru.soularium.di
 
 import org.cru.soularium.domain.ports.AnalyticsTracker
 import org.cru.soularium.domain.ports.CrashReporter
-import org.cru.soularium.domain.ports.ShareResult
-import org.cru.soularium.domain.ports.Sharer
 
 class NoOpAnalyticsTracker : AnalyticsTracker {
     override fun screenView(screenName: String) = Unit
@@ -24,11 +22,4 @@ class NoOpCrashReporter : CrashReporter {
         key: String,
         value: String,
     ) = Unit
-}
-
-class NoOpSharer : Sharer {
-    override suspend fun share(
-        text: String,
-        subject: String?,
-    ): ShareResult = ShareResult.NoAppAvailable
 }

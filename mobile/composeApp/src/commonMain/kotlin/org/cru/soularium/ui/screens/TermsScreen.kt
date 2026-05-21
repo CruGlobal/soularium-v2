@@ -35,8 +35,7 @@ import soularium.composeapp.generated.resources.terms_title
  * requires the user to tap Agree before accessing Home.
  *
  * @param onAgree called when the user taps the Agree button. The caller is
- *                responsible for navigating to Home.
- *                // TODO: agreed_to_tos persistence lands with device-state phase.
+ *                responsible for persisting agreement and navigating to Home.
  * @param onBack  called when the user taps the Back button.
  */
 @Composable

@@ -137,8 +137,8 @@
     <string name="conversation_exit_discard">Discard</string>
 
     <!-- Summary -->
-    <string name="summary_title">%1$s\'s Life In Pictures</string>
-    <string name="summary_thats_a_wrap">That\'s a Wrap</string>
+    <string name="summary_title">%1$s’s Life In Pictures</string>
+    <string name="summary_thats_a_wrap">That’s a Wrap</string>
     <string name="summary_where_next">Where do you want to take this conversation?</string>
     <string name="summary_meet_again">Meet Again</string>
     <string name="summary_great_talking">Great talking with you today!</string>
@@ -167,7 +167,7 @@
     <string name="past_empty_bookmarked">No bookmarked conversations.</string>
     <string name="past_completed_date">COMPLETED</string>
     <string name="past_delete_confirm_title">Delete this conversation?</string>
-    <string name="past_delete_confirm_body">This can\'t be undone.</string>
+    <string name="past_delete_confirm_body">This can’t be undone.</string>
     <string name="past_kind_solo">MySoularium</string>
     <string name="past_kind_group">Group</string>
 
@@ -175,7 +175,7 @@
     <string name="about_title">About Soularium</string>
     <string name="about_what_is_heading">WHAT IS SOULARIUM?</string>
     <string name="about_what_is_body">Soularium is a set of 50 images and 5 questions that help people talk about their life and spiritual journey. People simply choose the images that describe their experiences.</string>
-    <string name="about_meaningful_body">Because images connect deeply with our experiences, they enable us to engage in meaningful conversations about life and God. With Soularium you\'ll discover how easy and enjoyable it is to come alongside someone on their journey.</string>
+    <string name="about_meaningful_body">Because images connect deeply with our experiences, they enable us to engage in meaningful conversations about life and God. With Soularium you’ll discover how easy and enjoyable it is to come alongside someone on their journey.</string>
     <string name="about_50_5">Soularium: 50 images, 5 questions.</string>
     <string name="about_how_to_heading">HOW TO START A SOULARIUM CONVERSATION</string>
     <string name="about_how_to_body">There are many ways — so just do what comes naturally to you. Or try this: “Would you be willing to tell me about your spiritual journey sometime?” If your friend is interested, suggest using Soularium. Then: “I’ve found that people enjoy using photos to describe their life and spiritual experiences. Would you be willing to choose the ones that describe yours?” Show your friend Soularium.</string>

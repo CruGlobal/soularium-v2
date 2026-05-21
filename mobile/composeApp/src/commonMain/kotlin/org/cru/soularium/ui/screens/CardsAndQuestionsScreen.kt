@@ -53,28 +53,14 @@ import soularium.composeapp.generated.resources.Res
 import soularium.composeapp.generated.resources.action_back
 import soularium.composeapp.generated.resources.cards_and_questions_title
 import soularium.composeapp.generated.resources.cards_card_number
+import soularium.composeapp.generated.resources.cards_question_number
 import soularium.composeapp.generated.resources.cards_tab_cards
 import soularium.composeapp.generated.resources.cards_tab_questions
-import soularium.composeapp.generated.resources.q1_discussion
-import soularium.composeapp.generated.resources.q1_finalizing
 import soularium.composeapp.generated.resources.q1_prompt
-import soularium.composeapp.generated.resources.q1_selection
-import soularium.composeapp.generated.resources.q2_discussion
-import soularium.composeapp.generated.resources.q2_finalizing
 import soularium.composeapp.generated.resources.q2_prompt
-import soularium.composeapp.generated.resources.q2_selection
-import soularium.composeapp.generated.resources.q3_discussion
-import soularium.composeapp.generated.resources.q3_finalizing
 import soularium.composeapp.generated.resources.q3_prompt
-import soularium.composeapp.generated.resources.q3_selection
-import soularium.composeapp.generated.resources.q4_discussion
-import soularium.composeapp.generated.resources.q4_finalizing
 import soularium.composeapp.generated.resources.q4_prompt
-import soularium.composeapp.generated.resources.q4_selection
-import soularium.composeapp.generated.resources.q5_discussion
-import soularium.composeapp.generated.resources.q5_finalizing
 import soularium.composeapp.generated.resources.q5_prompt
-import soularium.composeapp.generated.resources.q5_selection
 
 private const val CARD_GRID_COLUMNS = 3
 private const val TOTAL_CARDS = 50
@@ -242,7 +228,7 @@ private fun QuestionItem(
             .padding(horizontal = 24.dp, vertical = 16.dp),
     ) {
         Text(
-            text = "Question ${question.number}",
+            text = stringResource(Res.string.cards_question_number, question.number),
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.primary,
         )
@@ -263,39 +249,6 @@ private fun questionPromptRes(questionNumber: Int): StringResource =
         3 -> Res.string.q3_prompt
         4 -> Res.string.q4_prompt
         else -> Res.string.q5_prompt
-    }
-
-@Suppress("unused")
-@Composable
-private fun questionSelectionRes(questionNumber: Int): StringResource =
-    when (questionNumber) {
-        1 -> Res.string.q1_selection
-        2 -> Res.string.q2_selection
-        3 -> Res.string.q3_selection
-        4 -> Res.string.q4_selection
-        else -> Res.string.q5_selection
-    }
-
-@Suppress("unused")
-@Composable
-private fun questionFinalizingRes(questionNumber: Int): StringResource =
-    when (questionNumber) {
-        1 -> Res.string.q1_finalizing
-        2 -> Res.string.q2_finalizing
-        3 -> Res.string.q3_finalizing
-        4 -> Res.string.q4_finalizing
-        else -> Res.string.q5_finalizing
-    }
-
-@Suppress("unused")
-@Composable
-private fun questionDiscussionRes(questionNumber: Int): StringResource =
-    when (questionNumber) {
-        1 -> Res.string.q1_discussion
-        2 -> Res.string.q2_discussion
-        3 -> Res.string.q3_discussion
-        4 -> Res.string.q4_discussion
-        else -> Res.string.q5_discussion
     }
 
 @Composable

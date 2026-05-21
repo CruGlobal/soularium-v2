@@ -126,10 +126,7 @@ fun ContactCollectionScreen(
                         imeAction = ImeAction.Next,
                     ),
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .semantics {
-                            contentDescription = "First Name field"
-                        },
+                        .fillMaxWidth(),
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -144,10 +141,7 @@ fun ContactCollectionScreen(
                         imeAction = ImeAction.Next,
                     ),
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .semantics {
-                            contentDescription = "Last Name field"
-                        },
+                        .fillMaxWidth(),
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -162,10 +156,7 @@ fun ContactCollectionScreen(
                         imeAction = ImeAction.Next,
                     ),
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .semantics {
-                            contentDescription = "Email field"
-                        },
+                        .fillMaxWidth(),
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -186,10 +177,7 @@ fun ContactCollectionScreen(
                         imeAction = ImeAction.Next,
                     ),
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .semantics {
-                            contentDescription = "Phone field"
-                        },
+                        .fillMaxWidth(),
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -204,10 +192,7 @@ fun ContactCollectionScreen(
                         imeAction = ImeAction.Done,
                     ),
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .semantics {
-                            contentDescription = "Notes field"
-                        },
+                        .fillMaxWidth(),
                 )
             }
 

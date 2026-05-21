@@ -24,7 +24,7 @@ val appModule: Module =
         single<ContentRepository> { ContentRepositoryImpl() }
 
         viewModel { (sessionId: SessionId) ->
-            ConversationViewModel(sessionId, get(), get(), get())
+            ConversationViewModel(sessionId, get(), get(), get(), get())
         }
         viewModel { PastConversationsViewModel(get()) }
     }

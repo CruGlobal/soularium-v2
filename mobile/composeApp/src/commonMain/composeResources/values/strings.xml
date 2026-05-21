@@ -205,6 +205,7 @@
     <string name="cards_tab_cards">Images</string>
     <string name="cards_tab_questions">Questions</string>
     <string name="cards_card_number">Image %d</string>
+    <string name="cards_question_number">Question %d</string>
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>

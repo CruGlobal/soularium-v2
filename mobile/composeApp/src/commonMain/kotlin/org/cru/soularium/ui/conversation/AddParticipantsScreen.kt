@@ -168,14 +168,12 @@ fun AddParticipantsScreen(
                                 trailingIcon = {
                                     IconButton(
                                         onClick = { onRemoveParticipant(index) },
-                                        modifier = Modifier
-                                            .size(24.dp)
-                                            .semantics { contentDescription = removeDesc },
+                                        modifier = Modifier.semantics { contentDescription = removeDesc },
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.Close,
                                             contentDescription = null,
-                                            modifier = Modifier.size(16.dp),
+                                            modifier = Modifier.size(18.dp),
                                         )
                                     }
                                 },

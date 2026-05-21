@@ -22,6 +22,8 @@ import org.cru.soularium.domain.SessionKind
 import org.cru.soularium.domain.ports.AnalyticsTracker
 import org.cru.soularium.domain.ports.CrashReporter
 import org.cru.soularium.domain.ports.SessionRepository
+import org.cru.soularium.domain.ports.ShareResult
+import org.cru.soularium.domain.ports.Sharer
 import org.cru.soularium.domain.session.QuestionActivity
 import org.cru.soularium.domain.session.SessionEvent
 import org.cru.soularium.domain.session.SessionState
@@ -57,6 +59,7 @@ class ConversationViewModelTest {
                     sessionRepository = repo,
                     analytics = analytics,
                     crashReporter = NoOpCrash,
+                    sharer = NoOpSharer,
                 )
 
             vm.state.test {
@@ -81,6 +84,7 @@ class ConversationViewModelTest {
                     sessionRepository = repo,
                     analytics = NoOpAnalytics,
                     crashReporter = NoOpCrash,
+                    sharer = NoOpSharer,
                 )
 
             vm.dispatch(SessionEvent.StartSession(SessionKind.SOLO))
@@ -102,6 +106,7 @@ class ConversationViewModelTest {
                     sessionRepository = repo,
                     analytics = NoOpAnalytics,
                     crashReporter = NoOpCrash,
+                    sharer = NoOpSharer,
                 )
 
             vm.dispatch(SessionEvent.PickCard(7))
@@ -130,6 +135,7 @@ class ConversationViewModelTest {
                     sessionRepository = repo,
                     analytics = NoOpAnalytics,
                     crashReporter = NoOpCrash,
+                    sharer = NoOpSharer,
                 )
             advanceUntilIdle()
 
@@ -163,6 +169,7 @@ class ConversationViewModelTest {
                     sessionRepository = repo,
                     analytics = NoOpAnalytics,
                     crashReporter = NoOpCrash,
+                    sharer = NoOpSharer,
                 )
             advanceUntilIdle()
 
@@ -187,6 +194,7 @@ class ConversationViewModelTest {
                     sessionRepository = repo,
                     analytics = NoOpAnalytics,
                     crashReporter = NoOpCrash,
+                    sharer = NoOpSharer,
                 )
             advanceUntilIdle()
 
@@ -297,4 +305,11 @@ private object NoOpCrash : CrashReporter {
         key: String,
         value: String,
     ) = Unit
+}
+
+private object NoOpSharer : Sharer {
+    override suspend fun share(
+        text: String,
+        subject: String?,
+    ): ShareResult = ShareResult.Succeeded
 }

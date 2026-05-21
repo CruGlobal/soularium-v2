@@ -14,12 +14,14 @@ import org.cru.soularium.domain.newSession
 import org.cru.soularium.domain.ports.AnalyticsTracker
 import org.cru.soularium.domain.ports.CrashReporter
 import org.cru.soularium.domain.ports.SessionRepository
+import org.cru.soularium.domain.ports.Sharer
 import org.cru.soularium.domain.session.Effect
 import org.cru.soularium.domain.session.QuestionActivity
 import org.cru.soularium.domain.session.SessionContext
 import org.cru.soularium.domain.session.SessionEvent
 import org.cru.soularium.domain.session.SessionState
 import org.cru.soularium.domain.session.transition
+import org.cru.soularium.domain.share.shareUrlFor
 
 data class ConversationUiContext(
     val participantNames: List<String> = emptyList(),
@@ -33,12 +35,16 @@ class ConversationViewModel(
     private val sessionRepository: SessionRepository,
     private val analytics: AnalyticsTracker,
     private val crashReporter: CrashReporter,
+    private val sharer: Sharer,
 ) : ViewModel() {
     private val _state = MutableStateFlow<SessionState>(SessionState.NotStarted)
     val state: StateFlow<SessionState> = _state.asStateFlow()
 
     private val _ui = MutableStateFlow(ConversationUiContext())
     val ui: StateFlow<ConversationUiContext> = _ui.asStateFlow()
+
+    private val _summaries = MutableStateFlow<List<ParticipantSummary>>(emptyList())
+    val summaries: StateFlow<List<ParticipantSummary>> = _summaries.asStateFlow()
 
     private val initialLoad: Job =
         viewModelScope.launch {
@@ -105,6 +111,7 @@ class ConversationViewModel(
 
         _state.value = result.next
         resetDraftIfNeeded(previous = previousState, next = result.next)
+        if (result.next == SessionState.Summary) loadSummaries()
 
         viewModelScope.launch {
             runCatching { applyEffects(result.effects) }
@@ -112,6 +119,12 @@ class ConversationViewModel(
         }
     }
 
+    /**
+     * Draft picks are kept all the way through the Finalizing and Discussing
+     * activities so those screens can display them; they are cleared only when
+     * a fresh turn begins (a new ShowingPrompt). Round 1 picks are shifted into
+     * [ConversationUiContext.roundFinals] when narrowing to round 2.
+     */
     private fun resetDraftIfNeeded(
         previous: SessionState,
         next: SessionState,
@@ -119,17 +132,51 @@ class ConversationViewModel(
         val prevQ = previous as? SessionState.InQuestion
         val nextQ = next as? SessionState.InQuestion
         when {
-            prevQ != null && nextQ != null && prevQ.questionNumber != nextQ.questionNumber -> {
+            nextQ?.activity == QuestionActivity.ShowingPrompt -> {
                 _ui.update { it.copy(draftPicks = emptyList(), roundFinals = emptyList()) }
             }
             prevQ?.activity == QuestionActivity.SelectingRound1 &&
                 nextQ?.activity == QuestionActivity.SelectingRound2 -> {
                 _ui.update { it.copy(roundFinals = it.draftPicks, draftPicks = emptyList()) }
             }
-            prevQ != null && nextQ?.activity == QuestionActivity.Discussing -> {
-                _ui.update { it.copy(draftPicks = emptyList(), roundFinals = emptyList()) }
-            }
             else -> Unit
+        }
+    }
+
+    /** Loads each participant's final 9 picks for the Summary screen. */
+    fun loadSummaries() {
+        viewModelScope.launch {
+            runCatching {
+                sessionRepository.loadConversations(sessionId).map { conversation ->
+                    val cardIds =
+                        sessionRepository.loadPicks(conversation.id)
+                            .filter { it.isFinal }
+                            .sortedWith(compareBy({ it.questionNumber }, { it.pickOrder }))
+                            .map { it.cardId }
+                    ParticipantSummary(
+                        participantIndex = conversation.displayOrder,
+                        name = conversation.contact.name,
+                        cardIds = cardIds,
+                    )
+                }
+            }.onSuccess { _summaries.value = it }
+                .onFailure { crashReporter.recordNonFatal(it, "loadSummaries") }
+        }
+    }
+
+    /** Builds the share URL for one participant and hands it to the platform sharer. */
+    fun shareSummary(participantIndex: Int) {
+        viewModelScope.launch {
+            runCatching {
+                val conversation =
+                    sessionRepository.loadConversations(sessionId)
+                        .firstOrNull { it.displayOrder == participantIndex }
+                        ?: return@launch
+                val picks = sessionRepository.loadPicks(conversation.id)
+                val url = shareUrlFor(conversation, picks)
+                sharer.share(text = url)
+                analytics.event("share_initiated", mapOf("channel" to "other"))
+            }.onFailure { crashReporter.recordNonFatal(it, "shareSummary") }
         }
     }
 

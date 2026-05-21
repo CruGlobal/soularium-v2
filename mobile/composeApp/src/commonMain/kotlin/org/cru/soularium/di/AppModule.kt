@@ -4,9 +4,12 @@ import org.cru.soularium.data.db.SoulariumDatabase
 import org.cru.soularium.data.db.createDatabase
 import org.cru.soularium.data.repository.ContentRepositoryImpl
 import org.cru.soularium.data.repository.SessionRepositoryImpl
+import org.cru.soularium.domain.SessionId
 import org.cru.soularium.domain.ports.ContentRepository
 import org.cru.soularium.domain.ports.SessionRepository
+import org.cru.soularium.ui.conversation.ConversationViewModel
 import org.koin.core.module.Module
+import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
 val appModule: Module = module {
@@ -17,4 +20,8 @@ val appModule: Module = module {
 
     single<SessionRepository> { SessionRepositoryImpl(get(), get(), get()) }
     single<ContentRepository> { ContentRepositoryImpl() }
+
+    viewModel { (sessionId: SessionId) ->
+        ConversationViewModel(sessionId, get(), get(), get())
+    }
 }

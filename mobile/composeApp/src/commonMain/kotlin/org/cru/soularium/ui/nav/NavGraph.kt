@@ -13,6 +13,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import org.cru.soularium.domain.SessionId
+import org.cru.soularium.ui.conversation.ConversationHost
 
 @Composable
 fun NavGraph() {
@@ -36,7 +38,10 @@ fun NavGraph() {
             arguments = listOf(navArgument(Routes.ARG_SESSION_ID) { type = NavType.StringType }),
         ) { entry ->
             val sessionId = entry.arguments?.getString(Routes.ARG_SESSION_ID).orEmpty()
-            StubScreen("Conversation ($sessionId)")
+            ConversationHost(
+                sessionId = SessionId(sessionId),
+                onExit = { navController.popBackStack() },
+            )
         }
 
         composable(

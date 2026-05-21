@@ -198,6 +198,7 @@
     <string name="resource_terms_label">Review the legal terms related to this app.</string>
     <string name="resource_privacy_header">PRIVACY POLICY</string>
     <string name="resource_privacy_label">Review the privacy policy related to this app.</string>
+    <string name="resource_privacy_url">https://www.cru.org/about/privacy.html</string>
 
     <!-- Cards and questions reference -->
     <string name="cards_and_questions_title">Images &amp; Questions</string>

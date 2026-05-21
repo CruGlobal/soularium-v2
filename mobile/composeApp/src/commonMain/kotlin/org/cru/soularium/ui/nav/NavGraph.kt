@@ -6,6 +6,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavType
@@ -15,12 +19,20 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import org.cru.soularium.domain.SessionId
 import org.cru.soularium.ui.conversation.ConversationHost
+import org.cru.soularium.ui.screens.AboutScreen
+import org.cru.soularium.ui.screens.AppLocale
+import org.cru.soularium.ui.screens.HomeScreen
 import org.cru.soularium.ui.screens.IntroScreen
+import org.cru.soularium.ui.screens.ResourcesScreen
+import org.cru.soularium.ui.screens.SettingsScreen
 import org.cru.soularium.ui.screens.TermsScreen
 
 @Composable
 fun NavGraph() {
     val navController = rememberNavController()
+
+    // In-memory until device-state persistence lands; see SettingsScreen TODO.
+    var locale by remember { mutableStateOf(AppLocale.EN) }
 
     // Start destination is HOME until first-launch routing (Intro/Terms) is
     // wired against device-state persistence in a later phase.
@@ -39,12 +51,39 @@ fun NavGraph() {
                 onBack = { navController.popBackStack() },
             )
         }
-        composable(Routes.HOME) { StubScreen("Home") }
+        composable(Routes.HOME) {
+            HomeScreen(
+                onStartConversation = {
+                    navController.navigate(Routes.conversation(SessionId.random().value))
+                },
+                onMySoularium = {
+                    navController.navigate(Routes.conversation(SessionId.random().value))
+                },
+                onMenuPastConversations = { navController.navigate(Routes.PAST) },
+                onMenuAbout = { navController.navigate(Routes.ABOUT) },
+                onMenuResources = { navController.navigate(Routes.RESOURCES) },
+                onMenuCardsAndQuestions = { navController.navigate(Routes.CARDS_AND_QUESTIONS) },
+                onMenuSettings = { navController.navigate(Routes.SETTINGS) },
+            )
+        }
         composable(Routes.PAST) { StubScreen("Past Conversations") }
-        composable(Routes.ABOUT) { StubScreen("About") }
-        composable(Routes.RESOURCES) { StubScreen("Resources") }
+        composable(Routes.ABOUT) {
+            AboutScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.RESOURCES) {
+            ResourcesScreen(
+                onBack = { navController.popBackStack() },
+                onOpenTerms = { navController.navigate(Routes.TERMS) },
+            )
+        }
         composable(Routes.CARDS_AND_QUESTIONS) { StubScreen("Cards & Questions") }
-        composable(Routes.SETTINGS) { StubScreen("Settings") }
+        composable(Routes.SETTINGS) {
+            SettingsScreen(
+                selectedLocale = locale,
+                onLocaleSelected = { locale = it },
+                onBack = { navController.popBackStack() },
+            )
+        }
 
         composable(
             route = Routes.CONVERSATION,

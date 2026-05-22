@@ -2,6 +2,7 @@ package org.cru.soularium.data.db
 
 import androidx.room.Dao
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Upsert
 import org.cru.soularium.data.db.entities.CardPickEntity
 
@@ -25,4 +26,20 @@ interface CardPickDao {
         questionNumber: Int,
         isFinal: Boolean,
     )
+
+    /**
+     * Replaces one round's picks atomically. The delete and the re-insert run
+     * inside a single transaction, so a cancelled or failed write can never
+     * leave the round with its old picks deleted and nothing reinserted.
+     */
+    @Transaction
+    suspend fun replaceRound(
+        conversationId: String,
+        questionNumber: Int,
+        isFinal: Boolean,
+        picks: List<CardPickEntity>,
+    ) {
+        deleteForRound(conversationId, questionNumber, isFinal)
+        upsertAll(picks)
+    }
 }

@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.cru.soularium.domain.SessionId
 import org.cru.soularium.domain.SessionKind
 import org.cru.soularium.domain.newSession
@@ -45,6 +47,12 @@ class ConversationViewModel(
 
     private val _summaries = MutableStateFlow<List<ParticipantSummary>>(emptyList())
     val summaries: StateFlow<List<ParticipantSummary>> = _summaries.asStateFlow()
+
+    // Serializes repository access triggered by this ViewModel so effect
+    // application from concurrent dispatches cannot interleave on the shared
+    // DAOs (e.g. one transition's delete landing inside another transition's
+    // delete-then-insert).
+    private val repoMutex = Mutex()
 
     private val initialLoad: Job =
         viewModelScope.launch {
@@ -137,7 +145,7 @@ class ConversationViewModel(
         if (result.next == SessionState.Summary) loadSummaries()
 
         viewModelScope.launch {
-            runCatching { applyEffects(result.effects) }
+            runCatching { repoMutex.withLock { applyEffects(result.effects) } }
                 .onFailure { crashReporter.recordNonFatal(it, "applyEffects after $event") }
         }
     }
@@ -170,17 +178,19 @@ class ConversationViewModel(
     fun loadSummaries() {
         viewModelScope.launch {
             runCatching {
-                sessionRepository.loadConversations(sessionId).map { conversation ->
-                    val cardIds =
-                        sessionRepository.loadPicks(conversation.id)
-                            .filter { it.isFinal }
-                            .sortedWith(compareBy({ it.questionNumber }, { it.pickOrder }))
-                            .map { it.cardId }
-                    ParticipantSummary(
-                        participantIndex = conversation.displayOrder,
-                        name = conversation.contact.name,
-                        cardIds = cardIds,
-                    )
+                repoMutex.withLock {
+                    sessionRepository.loadConversations(sessionId).map { conversation ->
+                        val cardIds =
+                            sessionRepository.loadPicks(conversation.id)
+                                .filter { it.isFinal }
+                                .sortedWith(compareBy({ it.questionNumber }, { it.pickOrder }))
+                                .map { it.cardId }
+                        ParticipantSummary(
+                            participantIndex = conversation.displayOrder,
+                            name = conversation.contact.name,
+                            cardIds = cardIds,
+                        )
+                    }
                 }
             }.onSuccess { _summaries.value = it }
                 .onFailure { crashReporter.recordNonFatal(it, "loadSummaries") }
@@ -191,12 +201,17 @@ class ConversationViewModel(
     fun shareSummary(participantIndex: Int) {
         viewModelScope.launch {
             runCatching {
-                val conversation =
-                    sessionRepository.loadConversations(sessionId)
-                        .firstOrNull { it.displayOrder == participantIndex }
-                        ?: return@launch
-                val picks = sessionRepository.loadPicks(conversation.id)
-                val url = shareUrlFor(conversation, picks)
+                // Hold the lock only for the repository reads, not across the
+                // platform share sheet (which suspends while the user interacts).
+                val url =
+                    repoMutex.withLock {
+                        val conversation =
+                            sessionRepository.loadConversations(sessionId)
+                                .firstOrNull { it.displayOrder == participantIndex }
+                                ?: return@withLock null
+                        val picks = sessionRepository.loadPicks(conversation.id)
+                        shareUrlFor(conversation, picks)
+                    } ?: return@launch
                 sharer.share(text = url)
                 analytics.event("share_initiated", mapOf("channel" to "other"))
             }.onFailure { crashReporter.recordNonFatal(it, "shareSummary") }
@@ -211,7 +226,11 @@ class ConversationViewModel(
      */
     fun bookmarkAndExit(onComplete: () -> Unit) {
         viewModelScope.launch {
-            runCatching { sessionRepository.setBookmarked(sessionId, true) }
+            // Take the same lock the effect pipeline uses, so any in-flight
+            // persistence from a just-dispatched event finishes before the
+            // bookmark write and before the caller navigates away (which
+            // clears this ViewModel and cancels viewModelScope).
+            runCatching { repoMutex.withLock { sessionRepository.setBookmarked(sessionId, true) } }
                 .onFailure { crashReporter.recordNonFatal(it, "bookmarkAndExit") }
             analytics.event("conversation_bookmarked", emptyMap())
             onComplete()

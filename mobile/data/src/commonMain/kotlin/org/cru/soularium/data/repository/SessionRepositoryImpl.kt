@@ -129,7 +129,6 @@ class SessionRepositoryImpl(
         cardIds: List<Int>,
         isFinal: Boolean,
     ) {
-        cardPickDao.deleteForRound(conversationId.value, questionNumber, isFinal)
         val entities =
             cardIds.mapIndexed { i, cid ->
                 CardPickEntity(
@@ -141,7 +140,8 @@ class SessionRepositoryImpl(
                     isFinal = isFinal,
                 )
             }
-        cardPickDao.upsertAll(entities)
+        // Atomic delete-then-insert so a cancelled write can't drop the round.
+        cardPickDao.replaceRound(conversationId.value, questionNumber, isFinal, entities)
     }
 
     override suspend fun loadPicks(conversationId: ConversationId): List<CardPick> =

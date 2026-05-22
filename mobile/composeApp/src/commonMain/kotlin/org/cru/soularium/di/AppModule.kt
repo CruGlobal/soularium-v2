@@ -30,6 +30,6 @@ val appModule: Module =
         viewModel { (sessionId: SessionId) ->
             ConversationViewModel(sessionId, get(), get(), get(), get())
         }
-        viewModel { PastConversationsViewModel(get()) }
+        viewModel { PastConversationsViewModel(get(), get()) }
         viewModel { DeviceStateViewModel(get()) }
     }

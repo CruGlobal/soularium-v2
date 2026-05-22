@@ -213,7 +213,7 @@ class ConversationFlowTest {
             vm.dispatch(SessionEvent.Conclude)
             advanceUntilIdle()
 
-            val past = PastConversationsViewModel(repo)
+            val past = PastConversationsViewModel(repo, SilentCrash)
             advanceUntilIdle()
             assertEquals(1, past.completed.value.size)
             assertEquals(sessionId, past.completed.value.single().sessionId)

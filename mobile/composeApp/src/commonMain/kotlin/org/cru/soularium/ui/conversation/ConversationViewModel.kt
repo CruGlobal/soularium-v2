@@ -73,6 +73,19 @@ class ConversationViewModel(
         viewModelScope.launch {
             initialLoad.join()
             if (_state.value != SessionState.NotStarted) return@launch
+            // The session row can already exist while _state is still
+            // NotStarted — e.g. its persisted snapshot failed to decode during
+            // initialLoad. createSession upserts, so recreating it here would
+            // clobber the real row and orphan its conversations/picks. Only
+            // bootstrap a genuinely new session; on any load error, bail
+            // rather than risk overwriting existing data.
+            val existing =
+                runCatching { sessionRepository.loadSession(sessionId) }
+                    .getOrElse {
+                        crashReporter.recordNonFatal(it, "loadSession in ensureStarted")
+                        return@launch
+                    }
+            if (existing != null) return@launch
             runCatching {
                 sessionRepository.createSession(
                     session = newSession(sessionId, kind),

@@ -173,7 +173,10 @@ class SessionRepositoryImpl(
     private fun SessionEntity.toDomain() =
         Session(
             id = SessionId(id),
-            kind = SessionKind.valueOf(kind),
+            // Tolerate an unrecognised persisted kind (corruption / a value
+            // written by a newer build) rather than throwing and taking down
+            // the whole Past Conversations list.
+            kind = SessionKind.entries.firstOrNull { it.name == kind } ?: SessionKind.SOLO,
             startedAt = Instant.fromEpochMilliseconds(startedAt),
             endedAt = endedAt?.let(Instant::fromEpochMilliseconds),
             bookmarkedAt = bookmarkedAt?.let(Instant::fromEpochMilliseconds),

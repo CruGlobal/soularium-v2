@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.cru.soularium.domain.SessionId
 import org.cru.soularium.domain.SessionKind
+import org.cru.soularium.domain.ports.CrashReporter
 import org.cru.soularium.domain.ports.SessionRepository
 import org.cru.soularium.domain.startedAtLocalDate
 
@@ -36,10 +37,12 @@ data class PastConversationItem(
  * extension that converts each session's start [kotlinx.datetime.Instant] to a local
  * "YYYY-MM-DD" string without requiring `:composeApp` to depend on kotlinx-datetime directly.
  *
- * @param repository the [SessionRepository] used to load and delete sessions.
+ * @param repository    the [SessionRepository] used to load and delete sessions.
+ * @param crashReporter records non-fatal failures, e.g. a failed delete.
  */
 class PastConversationsViewModel(
     private val repository: SessionRepository,
+    private val crashReporter: CrashReporter,
 ) : ViewModel() {
 
     private val _completed = MutableStateFlow<List<PastConversationItem>>(emptyList())
@@ -92,6 +95,7 @@ class PastConversationsViewModel(
     fun delete(sessionId: SessionId) {
         viewModelScope.launch {
             runCatching { repository.deleteSession(sessionId) }
+                .onFailure { crashReporter.recordNonFatal(it, "deleteSession") }
         }
     }
 }

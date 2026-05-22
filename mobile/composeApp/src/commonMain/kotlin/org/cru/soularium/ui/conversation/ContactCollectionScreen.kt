@@ -197,6 +197,7 @@ fun ContactCollectionScreen(
             }
 
             Button(
+                enabled = !phoneError,
                 onClick = {
                     onSave(
                         ContactInfo(

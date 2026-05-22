@@ -249,6 +249,19 @@ class ConversationViewModel(
         }
     }
 
+    /**
+     * Deletes the in-progress session, then invokes [onComplete]. Backs the
+     * "Discard" exit option so an abandoned conversation does not leave an
+     * orphan session row (and, via cascade, its conversations/picks) behind.
+     */
+    fun discardAndExit(onComplete: () -> Unit) {
+        viewModelScope.launch {
+            runCatching { repoMutex.withLock { sessionRepository.deleteSession(sessionId) } }
+                .onFailure { crashReporter.recordNonFatal(it, "discardAndExit") }
+            onComplete()
+        }
+    }
+
     private suspend fun applyEffects(effects: List<Effect>) {
         for (effect in effects) {
             when (effect) {

@@ -74,7 +74,7 @@ fun ConversationHost(
             },
             onDiscard = {
                 showExitDialog = false
-                onExit()
+                viewModel.discardAndExit(onExit)
             },
             onCancel = { showExitDialog = false },
         )

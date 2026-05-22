@@ -100,6 +100,10 @@ class SessionRepositoryImpl(
                 ),
             )
         }
+        // Prune conversation rows left over from a now-shorter participant list,
+        // so removed participants don't linger as orphaned rows (with their
+        // cascaded card_picks) in loadConversations / loadSummaries.
+        conversationDao.deleteFrom(sessionId.value, names.size)
         return keptIds
     }
 

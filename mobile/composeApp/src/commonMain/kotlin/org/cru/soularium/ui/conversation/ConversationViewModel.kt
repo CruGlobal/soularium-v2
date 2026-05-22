@@ -110,7 +110,7 @@ class ConversationViewModel(
         if (result.error != null) {
             analytics.event(
                 name = "transition_error",
-                params = mapOf("error" to (result.error?.toString() ?: "unknown")),
+                params = mapOf("error" to (result.error?.let { it::class.simpleName } ?: "unknown")),
             )
             return
         }
@@ -216,7 +216,9 @@ class ConversationViewModel(
                 }
                 is Effect.PersistPicks -> {
                     val conversations = sessionRepository.loadConversations(sessionId)
-                    val convId = conversations.getOrNull(effect.participantIndex)?.id ?: continue
+                    val convId =
+                        conversations.firstOrNull { it.displayOrder == effect.participantIndex }?.id
+                            ?: continue
                     sessionRepository.upsertPicks(
                         conversationId = convId,
                         questionNumber = effect.questionNumber,
@@ -226,7 +228,9 @@ class ConversationViewModel(
                 }
                 is Effect.PersistContact -> {
                     val conversations = sessionRepository.loadConversations(sessionId)
-                    val convId = conversations.getOrNull(effect.participantIndex)?.id ?: continue
+                    val convId =
+                        conversations.firstOrNull { it.displayOrder == effect.participantIndex }?.id
+                            ?: continue
                     sessionRepository.upsertContact(convId, effect.info)
                 }
                 is Effect.PersistBookmark ->

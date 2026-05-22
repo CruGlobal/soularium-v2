@@ -6,12 +6,11 @@ plugins {
 
 kotlin {
     jvm()
-    listOf(iosX64(), iosArm64(), iosSimulatorArm64()).forEach { iosTarget ->
-        iosTarget.binaries.framework {
-            baseName = "domain"
-            isStatic = true
-        }
-    }
+    // iOS targets compile for KMP; no standalone framework output is needed —
+    // :domain is linked into :composeApp's framework, not shipped on its own.
+    iosX64()
+    iosArm64()
+    iosSimulatorArm64()
 
     sourceSets {
         commonMain.dependencies {

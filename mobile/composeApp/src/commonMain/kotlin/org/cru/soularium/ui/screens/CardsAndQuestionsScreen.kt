@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
@@ -40,7 +39,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import org.cru.soularium.domain.content.Question
@@ -198,7 +196,7 @@ private fun CardThumbnailItem(
         contentScale = ContentScale.Crop,
         modifier = modifier
             .aspectRatio(1f)
-            .clip(RoundedCornerShape(4.dp))
+            .clip(MaterialTheme.shapes.extraSmall)
             .clickable(onClick = onTap),
     )
 }
@@ -263,7 +261,7 @@ private fun CardFullScreenViewer(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.9f))
+            .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.9f))
             .clickable(onClick = onDismiss),
         contentAlignment = Alignment.Center,
     ) {
@@ -285,7 +283,7 @@ private fun CardFullScreenViewer(
             Icon(
                 imageVector = Icons.Filled.Close,
                 contentDescription = closeLabel,
-                tint = Color.White,
+                tint = MaterialTheme.colorScheme.inverseOnSurface,
             )
         }
     }

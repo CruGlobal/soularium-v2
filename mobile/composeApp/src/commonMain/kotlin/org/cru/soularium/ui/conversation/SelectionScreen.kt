@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Button
@@ -251,16 +250,17 @@ private fun SelectableCardItem(
 
     val primaryColor = MaterialTheme.colorScheme.primary
     val onPrimaryColor = MaterialTheme.colorScheme.onPrimary
+    val cardShape = MaterialTheme.shapes.extraSmall
 
     Box(
         modifier = modifier
             .aspectRatio(1f)
-            .clip(RoundedCornerShape(4.dp))
+            .clip(cardShape)
             .then(
                 if (isSelected) {
                     Modifier.border(
                         border = BorderStroke(3.dp, primaryColor),
-                        shape = RoundedCornerShape(4.dp),
+                        shape = cardShape,
                     )
                 } else {
                     Modifier

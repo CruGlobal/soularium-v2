@@ -58,7 +58,19 @@ class ConversationViewModel(
         viewModelScope.launch {
             runCatching {
                 val loaded = sessionRepository.loadState(sessionId) ?: return@runCatching
-                _state.value = loaded
+                // A session bookmarked mid-question persists an in-progress
+                // activity (SelectingRound1/2, Finalizing, Discussing), but the
+                // volatile draft picks behind it are not persisted. Snap back to
+                // the question prompt on resume so the user restarts that
+                // question cleanly instead of landing on an empty selection.
+                _state.value =
+                    if (loaded is SessionState.InQuestion &&
+                        loaded.activity != QuestionActivity.ShowingPrompt
+                    ) {
+                        loaded.copy(activity = QuestionActivity.ShowingPrompt)
+                    } else {
+                        loaded
+                    }
                 // Rehydrate participant names so a resumed (e.g. bookmarked)
                 // group session can still advance turns — the transition
                 // function reads participant count from ConversationUiContext.

@@ -92,6 +92,22 @@ class TransitionTest {
         assertEquals(QuestionActivity.SelectingRound1, next.activity)
     }
 
+    @Test
+    fun `BeginSelection from Finalizing on a two-round question returns to SelectingRound2`() {
+        val s = SessionState.InQuestion(1, 0, QuestionActivity.Finalizing)
+        val r = transition(s, SessionEvent.BeginSelection, ctx())
+        val next = assertIs<SessionState.InQuestion>(r.next)
+        assertEquals(QuestionActivity.SelectingRound2, next.activity)
+    }
+
+    @Test
+    fun `BeginSelection from Finalizing on a one-round question returns to SelectingRound1`() {
+        val s = SessionState.InQuestion(3, 0, QuestionActivity.Finalizing)
+        val r = transition(s, SessionEvent.BeginSelection, ctx())
+        val next = assertIs<SessionState.InQuestion>(r.next)
+        assertEquals(QuestionActivity.SelectingRound1, next.activity)
+    }
+
     // --- InQuestion: ConfirmSelection ---
 
     @Test

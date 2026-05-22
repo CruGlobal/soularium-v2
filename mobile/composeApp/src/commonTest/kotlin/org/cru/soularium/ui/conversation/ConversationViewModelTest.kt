@@ -186,6 +186,30 @@ class ConversationViewModelTest {
             val sessionId = SessionId.random()
             val repo =
                 FakeSessionRepository().apply {
+                    preloadedState = SessionState.InQuestion(3, 0, QuestionActivity.ShowingPrompt)
+                }
+            val vm =
+                ConversationViewModel(
+                    sessionId = sessionId,
+                    sessionRepository = repo,
+                    analytics = NoOpAnalytics,
+                    crashReporter = NoOpCrash,
+                    sharer = NoOpSharer,
+                )
+            advanceUntilIdle()
+
+            assertEquals(SessionState.InQuestion(3, 0, QuestionActivity.ShowingPrompt), vm.state.value)
+        }
+
+    @Test
+    fun `resuming mid-question snaps the activity back to the prompt`() =
+        runTest(StandardTestDispatcher()) {
+            val sessionId = SessionId.random()
+            val repo =
+                FakeSessionRepository().apply {
+                    // Bookmarked mid-selection: the volatile draft picks behind
+                    // Finalizing were never persisted, so resuming there would
+                    // strand the user on an empty selection screen.
                     preloadedState = SessionState.InQuestion(3, 0, QuestionActivity.Finalizing)
                 }
             val vm =
@@ -198,7 +222,7 @@ class ConversationViewModelTest {
                 )
             advanceUntilIdle()
 
-            assertEquals(SessionState.InQuestion(3, 0, QuestionActivity.Finalizing), vm.state.value)
+            assertEquals(SessionState.InQuestion(3, 0, QuestionActivity.ShowingPrompt), vm.state.value)
         }
 }
 

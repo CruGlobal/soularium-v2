@@ -94,10 +94,18 @@ private fun transitionInQuestion(
     return when (event) {
         SessionEvent.BeginSelection -> {
             val targetActivity =
-                if (ctx.showInstructionsForThisSession && state.activity == QuestionActivity.ShowingPrompt) {
-                    QuestionActivity.ShowingInstructions
-                } else {
-                    QuestionActivity.SelectingRound1
+                when {
+                    ctx.showInstructionsForThisSession &&
+                        state.activity == QuestionActivity.ShowingPrompt ->
+                        QuestionActivity.ShowingInstructions
+                    // "Change Selection" from Finalizing returns to the
+                    // narrowing round for a two-round question (so the user
+                    // re-picks the final set with their picks intact), or to
+                    // round 1 for a one-round question.
+                    state.activity == QuestionActivity.Finalizing &&
+                        question.selectionRounds == 2 ->
+                        QuestionActivity.SelectingRound2
+                    else -> QuestionActivity.SelectingRound1
                 }
             val next = state.copy(activity = targetActivity)
             TransitionResult(next = next, effects = listOf(Effect.PersistState(next)))

@@ -1,13 +1,23 @@
 name: CI
 
 on:
-  pull_request:
-    branches: [main]
   push:
-    branches: [main]
+    branches:
+      - staging
+      - main
+  pull_request:
+    branches:
+      - staging
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-and-test:
+    name: 🏗️ Build and Test app
     runs-on: macos-14
     defaults:
       run:
@@ -19,13 +29,13 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
-      - name: ktlint
+      - name: 💅 ktlint
         run: ./gradlew ktlintCheck
-      - name: Domain tests
+      - name: ✅ Domain tests
         run: ./gradlew :domain:allTests
-      - name: Common tests (data + composeApp)
+      - name: ✅ Common tests (data + composeApp)
         run: ./gradlew :data:allTests :composeApp:allTests
-      - name: Android assemble
+      - name: 🏗️ Android assemble
         run: ./gradlew :composeApp:assembleDebug
-      - name: iOS framework
+      - name: 🏗️ iOS framework
         run: ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64

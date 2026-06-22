@@ -1,16 +1,25 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.serialization)
-    alias(libs.plugins.android.library)
+    alias(libs.plugins.android.kotlin.multiplatform.library)
     alias(libs.plugins.ksp)
     alias(libs.plugins.room)
     alias(libs.plugins.ktlint)
 }
 
 kotlin {
-    androidTarget {
-        compilations.all {
-            kotlinOptions { jvmTarget = "17" }
+    @OptIn(org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi::class)
+    compilerOptions {
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
+    android {
+        namespace = "org.cru.soularium.data"
+        compileSdk = 36
+        minSdk = 24
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
         }
     }
     // iOS targets compile for KMP; no standalone framework output is needed —
@@ -36,16 +45,6 @@ kotlin {
             implementation(libs.turbine)
             implementation(libs.coroutines.test)
         }
-    }
-}
-
-android {
-    namespace = "org.cru.soularium.data"
-    compileSdk = 35
-    defaultConfig { minSdk = 24 }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
     }
 }
 

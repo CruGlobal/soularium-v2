@@ -13,7 +13,8 @@ Project docs live in `docs/superpowers/`:
 
 ## Building
 
-Requires JDK 17 (the repo pins `temurin-17.0.19+10` via `.tool-versions`).
+JDK is pinned via `.tool-versions` (currently `temurin-25.0.3+9.0.LTS`); the
+Gradle wrapper (9.x) drives the build. Source/target bytecode is JVM 17.
 
 ```bash
 ./gradlew :androidApp:assembleDebug                          # Android APK
@@ -26,7 +27,9 @@ Requires JDK 17 (the repo pins `temurin-17.0.19+10` via `.tool-versions`).
 
 GitHub Actions workflows live in `.github/workflows/`:
 
-- `ci.yml` — build + test on every PR and push to `main` (no secrets needed)
+- `build.yml` — build + test on every PR and push to `main`/`feature/*`/`release/*`
+  (Android APK, iOS framework, ktlint, Android lint, Android host tests, iOS
+  simulator tests). No secrets needed.
 - `crowdin-upload.yml` — pushes source strings to Crowdin on every push to `main`
 - `crowdin-download.yml` — weekly pull of translations from Crowdin, opens a PR
 

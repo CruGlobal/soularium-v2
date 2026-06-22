@@ -14,7 +14,7 @@ white-label layer** — Soularium v2 is a single Cru-branded app.
 
 | Layer | Technology |
 |---|---|
-| UI framework | Compose Multiplatform 1.7.3 (shared `commonMain` for Android + iOS) |
+| UI framework | Compose Multiplatform 1.11.1 (shared `commonMain` for Android + iOS) |
 | Component library | Material3 (`org.jetbrains.compose.material3`) |
 | Iconography | `compose-material-icons-extended` (`androidx.compose.material.icons.Icons.*`) |
 | Theme entry point | `SoulariumTheme(content)` in `ui/theme/Theme.kt` |
@@ -239,7 +239,8 @@ added/removed/reordered.
 
 - User-visible strings come from Compose resources: `stringResource(Res.string.<key>)`.
   Never inline user-facing English in a screen.
-- The generated resource accessor is `soularium.composeapp.generated.resources.Res`.
+- The generated resource accessor is `org.cru.soularium.generated.resources.Res`
+  (set via `compose.resources.packageOfResClass` in `:shared`'s build script).
   Import `Res` plus the specific keys you use.
 - Source strings: `shared/src/commonMain/composeResources/values/strings.xml`.
   Translations live in `values-es/`, `values-fr/`, `values-pl/`, `values-zh-rCN/` and are

@@ -22,12 +22,10 @@ from there.
 
 ```
 mobile/
-  domain/      → :domain  — pure KMP (jvm + iOS). No Android/Compose deps.
-  data/        → :data    — KMP library (Android via com.android.kotlin.multiplatform.library
-                            + iOS). Room, DataStore, repository impls.
   shared/      → :shared — KMP library (Android via com.android.kotlin.multiplatform.library
-                              + iOS framework). Compose UI, ViewModels, navigation,
-                              Koin wiring, Android-specific actuals.
+                          + iOS framework). Domain models + session state machine, Room +
+                          DataStore persistence, Compose UI, ViewModels, navigation, Koin
+                          wiring, and Android/iOS actuals — all in one module.
   androidApp/  → :androidApp — Pure Android application (com.android.application). Hosts
                               MainActivity + SoulariumApplication + AndroidManifest;
                               depends on :shared.
@@ -41,7 +39,8 @@ There is **no** `build-logic/`, no Gradle convention plugins, and no `feature/`/
 modules. Each module's `build.gradle.kts` configures itself directly using
 `libs.versions.toml` aliases. AGP 9 forbids mixing the Kotlin Multiplatform plugin with
 `com.android.application` (or `com.android.library`) in the same Gradle subproject — that
-is why `:shared` is a KMP library and `:androidApp` is a separate Android-only shell.
+is why `:shared` is a KMP library (via `com.android.kotlin.multiplatform.library`) and
+`:androidApp` is a separate Android-only shell that depends on it.
 
 ## Build & Development Commands
 
@@ -50,11 +49,11 @@ All commands run from `mobile/`.
 ```bash
 # Build
 ./gradlew :androidApp:assembleDebug                         # Android APK
-./gradlew :shared:linkDebugFrameworkIosSimulatorArm64   # iOS framework (no Xcode needed)
+./gradlew :shared:linkDebugFrameworkIosSimulatorArm64       # iOS framework (no Xcode needed)
 
 # Tests
-./gradlew :domain:allTests :data:allTests :shared:allTests  # all unit tests
-./gradlew :domain:jvmTest                                       # fast domain-only JVM subset (~2s)
+./gradlew :shared:allTests                # all unit tests (Android host + iOS simulator)
+./gradlew :shared:testAndroidHostTest     # fast Android-host JVM subset
 
 # Lint & formatting
 ./gradlew ktlintCheck    # check Kotlin formatting (all modules)
@@ -89,33 +88,36 @@ With asdf, export `JAVA_HOME` before any Gradle call:
 > (`org.jetbrains.androidx.*`), not Google's AndroidX artifacts. The catalog is already
 > correct — keep it that way.
 
-## Architecture: 3-Layer Hexagonal
+## Architecture: Hexagonal (single shared module)
 
 ```
 :androidApp  (Android-only shell: MainActivity, SoulariumApplication, manifest)
      │  depends on
      ▼
-:shared  (Compose UI, ViewModels, navigation, Koin wiring) — KMP library
-     │  depends on
-     ▼
-:domain  ◄── pure KMP: hexagonal "ports" + the pure session state machine
-     ▲
-     │  depends on
-:data  (Room, DataStore, repository implementations) — KMP library
+:shared      (KMP library — Android + iOS targets)
+              ├── org.cru.soularium.domain — pure models, ports, session state machine
+              ├── org.cru.soularium.data   — Room + DataStore + repository impls
+              └── org.cru.soularium.ui     — Compose UI, ViewModels, navigation, Koin
 ```
 
-`:androidApp` depends on `:shared`; `:shared` depends on `:domain` and `:data`;
-`:data` depends on `:domain`; `:domain` depends on nothing in this repo. Package roots:
-`org.cru.soularium.app` (androidApp), `org.cru.soularium` (shared),
-`org.cru.soularium.data`, `org.cru.soularium.domain`.
+`:androidApp` depends on `:shared`; `:shared` depends on nothing else in this repo.
+Package roots: `org.cru.soularium.app` (androidApp), `org.cru.soularium` (shared, with
+sub-packages `domain`, `data`, `ui`, `di`, `platform`, `analytics`).
 
-### `:domain` — pure KMP
+The previous three-module split (`:domain`, `:data`, `:composeApp`) collapsed into
+`:shared` once it became clear that AGP 9 already forced `:androidApp` to be a separate
+Android-only shell — the inner-module boundaries were no longer pulling their weight.
+Layering is still enforced by package convention: code in `org.cru.soularium.domain`
+must not import from `data`, `ui`, or platform packages, and `org.cru.soularium.data`
+must not import from `ui`.
 
-- **Ports** (`domain/.../ports/`): interfaces the rest of the app depends on —
+### Domain layer (`org.cru.soularium.domain`)
+
+- **Ports** (`domain/ports/`): interfaces the rest of the app depends on —
   `ContentRepository`, `SessionRepository`, `DeviceStateRepository`, `AnalyticsTracker`,
-  `CrashReporter`, `Sharer`. The interfaces live here; implementations live in `:data`
-  or in the platform Koin modules.
-- **Session state machine** (`domain/.../session/`): `SessionState` (sealed,
+  `CrashReporter`, `Sharer`. The interfaces live here; implementations live in
+  `org.cru.soularium.data` or in the platform Koin modules.
+- **Session state machine** (`domain/session/`): `SessionState` (sealed,
   `@Serializable`), `SessionEvent` (sealed), a **pure** `fun transition(state, event,
   ctx): TransitionResult`, and `Effect` (sealed). `transition()` performs no I/O — side
   effects are *returned as data* (`Effect`) for the ViewModel to execute. Keep it pure
@@ -126,9 +128,9 @@ With asdf, export `JAVA_HOME` before any Gradle call:
 - **Errors**: `DomainError` sealed interface. There is no `Result<T>` wrapper —
   transition errors surface via `TransitionResult.error`.
 
-`:domain` must not reference Compose, Android, or iOS APIs.
+Code under `org.cru.soularium.domain` must not reference Compose, Android, or iOS APIs.
 
-### `:data` — Room + DataStore
+### Data layer (`org.cru.soularium.data`)
 
 - `SoulariumDatabase` is `@Database(version = 1, exportSchema = true)` with
   `@ConstructedBy(SoulariumDatabaseConstructor::class)` and an
@@ -141,14 +143,14 @@ With asdf, export `JAVA_HOME` before any Gradle call:
 - **`SessionState` is persisted as a JSON snapshot string** (`state_snapshot_json`
   column). Renaming or removing a `@Serializable` field in the session-state hierarchy
   breaks already-persisted sessions — treat such changes as schema changes.
-- Exported Room schema JSON lives in `mobile/data/schemas/`. A `@Database` version bump
-  must ship a matching schema JSON and migration.
+- Exported Room schema JSON lives in `mobile/shared/schemas/`. A `@Database` version
+  bump must ship a matching schema JSON and migration.
 - Device flags (intro seen, ToS agreed, locale) persist via DataStore Preferences, not
   Room.
 - Repositories map Room entities ↔ domain models; the mapping must be total (no `!!` on
   optional columns).
 
-### `:shared` — UI
+### UI layer (`org.cru.soularium.ui`)
 
 - **Navigation**: `Routes` (an `object` of string route constants) + `NavGraph.kt`
   wiring a `NavHost`. Cross-screen navigation goes through `Routes`.
@@ -242,7 +244,9 @@ author may dismiss severity < 7 findings.
 ## Key Conventions
 
 - Package structure: `org.cru.soularium.<area>` (e.g. `org.cru.soularium.ui.conversation`,
-  `org.cru.soularium.domain.session`, `org.cru.soularium.data.db`).
+  `org.cru.soularium.domain.session`, `org.cru.soularium.data.db`). The Compose-resources
+  `Res` accessor is generated at `org.cru.soularium.generated.resources` (configured via
+  `compose.resources.packageOfResClass` in `:shared`).
 - Android: `minSdk 24`, `compileSdk`/`targetSdk 36`, JVM target 17, application id
   `org.cru.soularium` (debug builds add a `.dev` suffix). The application id and build
   types live in `:androidApp` — `:shared` is a KMP library with no application id.

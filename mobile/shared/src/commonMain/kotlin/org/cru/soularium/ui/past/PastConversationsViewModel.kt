@@ -35,7 +35,7 @@ data class PastConversationItem(
  *
  * Date formatting uses [org.cru.soularium.domain.startedAtLocalDate], a domain-layer
  * extension that converts each session's start [kotlinx.datetime.Instant] to a local
- * "YYYY-MM-DD" string without requiring `:shared` to depend on kotlinx-datetime directly.
+ * "YYYY-MM-DD" string.
  *
  * @param repository    the [SessionRepository] used to load and delete sessions.
  * @param crashReporter records non-fatal failures, e.g. a failed delete.

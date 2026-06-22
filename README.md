@@ -21,7 +21,7 @@ cd mobile
 ./gradlew :androidApp:assembleDebug                          # Android APK
 ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64        # iOS framework
 ./gradlew ktlintCheck                                        # lint all modules
-./gradlew :domain:test :data:allTests :shared:allTests       # tests
+./gradlew :shared:allTests                                   # tests
 ```
 
 ## CI and GitHub secrets

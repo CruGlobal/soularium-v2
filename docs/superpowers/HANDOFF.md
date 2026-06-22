@@ -1,6 +1,12 @@
 # Soularium v2 — Session Handoff
 
-Last updated: 2026-05-21
+Last updated: 2026-06-22
+
+> **Note (2026-06-22):** the original three-module split (`:domain`, `:data`,
+> `:composeApp`) has been flattened into a single `:shared` KMP module that
+> `:androidApp` depends on. Older sections of this document still describe the
+> pre-flatten layout — see CLAUDE.md for the current architecture and use the
+> commands in "Test/build commands worth remembering" below.
 
 ## TL;DR for the next Claude
 
@@ -83,7 +89,7 @@ Built via parallel subagent waves with two-stage (spec + code-quality) review:
 
 ### Blocked / deferred — needs Cru
 
-- **Tasks 41–42 — Firebase** Analytics + Crashlytics stay **no-op** (`NoOpAnalyticsTracker` / `NoOpCrashReporter` in `di/Placeholders.kt`). Shipped now: `analytics/scrubAnalyticsParams` (PII/card-detail key scrubbing, 5 unit tests) and `example.google-services.json` / `example.GoogleService-Info.plist` templates. **To finish when the real configs land:** drop `google-services.json` (in `composeApp/`) and `GoogleService-Info.plist` (in the iOS target) — both gitignored; apply the `google-services` + `firebase-crashlytics` Gradle plugins on the Android target; add the Firebase Analytics/Crashlytics SPM dependencies on iOS; implement `FirebaseAnalyticsTracker` / `FirebaseCrashReporter` (the Android tracker should call `scrubAnalyticsParams` before `logEvent`); and swap the Koin bindings in `PlatformModule.android.kt` / `.ios.kt`.
+- **Tasks 41–42 — Firebase** Analytics + Crashlytics stay **no-op** (`NoOpAnalyticsTracker` / `NoOpCrashReporter` in `di/Placeholders.kt`). Shipped now: `analytics/scrubAnalyticsParams` (PII/card-detail key scrubbing, 5 unit tests) and `example.google-services.json` / `example.GoogleService-Info.plist` templates. **To finish when the real configs land:** drop `google-services.json` (in `androidApp/`) and `GoogleService-Info.plist` (in the iOS target) — both gitignored; apply the `google-services` + `firebase-crashlytics` Gradle plugins on the Android target; add the Firebase Analytics/Crashlytics SPM dependencies on iOS; implement `FirebaseAnalyticsTracker` / `FirebaseCrashReporter` (the Android tracker should call `scrubAnalyticsParams` before `logEvent`); and swap the Koin bindings in `PlatformModule.android.kt` / `.ios.kt`.
 - **Task 50 — Manual device testing** Daniel: sideload the debug APK on real Android devices, run the iOS build on a real iPhone, verify the share sheets launch and runtime locale switching works, capture store screenshots. This also covers the manual TalkBack/VoiceOver pass from Task 48.
 - **Task 51 — Firebase App Distribution** Needs the Firebase configs (Task 41) plus a Fastlane `firebase_app_distribution` lane and an internal Cru tester group.
 
@@ -127,9 +133,9 @@ The iOS app builds, launches, and runs the Compose UI on the simulator
 - **Bundle ID** is now `org.cru.soularium` (was `org.cru.soularium.iosApp`).
 - **Compose framework wiring** in `iosApp.xcodeproj/project.pbxproj`: a
   "Build Kotlin Framework" run-script phase runs
-  `:composeApp:embedAndSignAppleFrameworkForXcode` (it exports `JAVA_HOME`
+  `:shared:embedAndSignAppleFrameworkForXcode` (it exports `JAVA_HOME`
   for asdf); `FRAMEWORK_SEARCH_PATHS` + `OTHER_LDFLAGS` (`-framework
-  ComposeApp`) link it; `ENABLE_USER_SCRIPT_SANDBOXING = NO` lets the
+  Shared`) link it; `ENABLE_USER_SCRIPT_SANDBOXING = NO` lets the
   script run Gradle.
 - `ContentView.swift` hosts `MainViewControllerKt.MainViewController()`.
 - `MainViewController` sets `enforceStrictPlistSanityCheck = false`
@@ -160,33 +166,36 @@ The Room KMP generated code emits two `expect`/`actual` Beta warnings (`Soulariu
 # JAVA_HOME setup (every shell)
 export JAVA_HOME=~/.asdf/installs/java/temurin-17.0.19+10
 
-# Domain JVM tests — the fast feedback loop, runs in ~2s
-cd mobile && ./gradlew :domain:jvmTest
+# Fast feedback loop — Android-host unit tests
+cd mobile && ./gradlew :shared:testAndroidHostTest
 
 # Android APK build
-cd mobile && ./gradlew :composeApp:assembleDebug
-# → mobile/composeApp/build/outputs/apk/debug/composeApp-debug.apk
+cd mobile && ./gradlew :androidApp:assembleDebug
+# → mobile/androidApp/build/outputs/apk/debug/androidApp-debug.apk
 
 # iOS framework build (no Xcode needed)
-cd mobile && ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
+cd mobile && ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64
 
-# All data targets compile-check
-cd mobile && ./gradlew :data:compileDebugKotlinAndroid :data:compileKotlinIosSimulatorArm64
+# All shared targets compile-check
+cd mobile && ./gradlew :shared:compileDebugKotlinAndroid :shared:compileKotlinIosSimulatorArm64
 ```
 
 ## How the layers fit together
 
 ```
-:composeApp (KMP+CMP UI, ViewModels, navigation)
+:androidApp  (Android-only application shell)
         |
         v
-:domain (pure KMP) <— pure transitions, pure shareUrlFor, ports
-        ^
-        |
-:data (KMP)    Room + repository implementations + DataStore (later)
+:shared (KMP — Android + iOS)
+        ├── org.cru.soularium.domain  — pure transitions, pure shareUrlFor, ports
+        ├── org.cru.soularium.data    — Room + repository implementations + DataStore
+        └── org.cru.soularium.ui      — Compose UI, ViewModels, navigation
 ```
 
-`:composeApp` depends on both `:domain` (for state machine, types) and `:data` (for repository impls). `:data` depends on `:domain` (for entity/value types and port interfaces).
+The three concerns used to be separate Gradle modules (`:domain`, `:data`,
+`:composeApp`); they were flattened into `:shared` once `:androidApp` became
+the sole `com.android.application` shell. Layering is now enforced by package
+convention rather than by separate Gradle subprojects.
 
 ## Mental model for the next phase
 

@@ -292,8 +292,7 @@ class ConversationFlowTest {
 /**
  * In-memory [SessionRepository] that fully persists state, picks, and
  * contacts. Completed/bookmarked status is tracked with id sets rather than
- * the [Session] timestamp fields, since `:shared` does not depend on
- * kotlinx-datetime and so cannot touch `Session.endedAt`/`bookmarkedAt`.
+ * by mutating the [Session] timestamp fields `endedAt`/`bookmarkedAt`.
  */
 private class InMemorySessionRepository : SessionRepository {
     private val sessions = mutableMapOf<SessionId, Session>()

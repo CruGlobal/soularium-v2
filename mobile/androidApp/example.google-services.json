@@ -1,5 +1,5 @@
 {
-  "_comment": "TEMPLATE — copy to mobile/shared/google-services.json and replace placeholder values with Cru's real Firebase Android app config. The real file is gitignored. See docs/superpowers/HANDOFF.md (Firebase) for wiring steps.",
+  "_comment": "TEMPLATE — copy to mobile/androidApp/google-services.json and replace placeholder values with Cru's real Firebase Android app config. The real file is gitignored. See docs/superpowers/HANDOFF.md (Firebase) for wiring steps.",
   "project_info": {
     "project_number": "000000000000",
     "project_id": "soularium-REPLACE-ME",

@@ -16,7 +16,6 @@ firebase-bom = "33.7.0"
 firebase-crashlytics-gradle = "3.0.2"
 google-services = "4.4.2"
 ktlint = "12.1.2"
-turbine = "1.2.0"
 kotest = "5.9.1"
 kotlinx-datetime = "0.6.1"
 kotlinx-serialization = "1.7.3"
@@ -43,7 +42,7 @@ kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serializa
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebase-bom" }
 firebase-analytics = { module = "com.google.firebase:firebase-analytics-ktx" }
 firebase-crashlytics = { module = "com.google.firebase:firebase-crashlytics-ktx" }
-turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
+turbine = "app.cash.turbine:turbine:1.2.1"
 kotest-assertions = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest" }
 markdown-renderer = { module = "com.mikepenz:multiplatform-markdown-renderer-m3", version.ref = "multiplatform-markdown-renderer" }
 

@@ -2,7 +2,7 @@
 agp = "9.2.1"
 androidx-lifecycle = "2.9.6"
 androidx-navigation = "2.9.2"
-coil = "3.0.4"
+coil = "3.5.0"
 compose-multiplatform = "1.11.1"
 coroutines = "1.11.0"
 datastore = "1.1.1"

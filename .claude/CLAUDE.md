@@ -16,21 +16,18 @@ implementation plan, and `HANDOFF.md` (current state).
 
 ## Repository Layout
 
-The repository root contains `.github/`, `docs/`, `crowdin.yml`, `README.md`, and the
-`mobile/` directory. **The Gradle project lives in `mobile/`** — run all Gradle commands
-from there.
+**The Gradle project lives at the repo root** — run all Gradle commands from there.
 
 ```
-mobile/
-  shared/      → :shared — KMP library (Android via com.android.kotlin.multiplatform.library
+shared/        → :shared — KMP library (Android via com.android.kotlin.multiplatform.library
                           + iOS framework). Domain models + session state machine, Room +
                           DataStore persistence, Compose UI, ViewModels, navigation, Koin
                           wiring, and Android/iOS actuals — all in one module.
-  androidApp/  → :androidApp — Pure Android application (com.android.application). Hosts
+androidApp/    → :androidApp — Pure Android application (com.android.application). Hosts
                               MainActivity + SoulariumApplication + AndroidManifest;
                               depends on :shared.
-  iosApp/      → Native iOS shell (SwiftUI) hosting the Compose framework.
-  gradle/libs.versions.toml → Version catalog (single source of dependency versions).
+iosApp/        → Native iOS shell (SwiftUI) hosting the Compose framework.
+gradle/libs.versions.toml → Version catalog (single source of dependency versions).
 .github/workflows/ → build.yml, crowdin-upload.yml, crowdin-download.yml, ai-review-auto-approve.yml
 docs/superpowers/  → design spec, implementation plan, HANDOFF.md
 ```
@@ -44,7 +41,7 @@ is why `:shared` is a KMP library (via `com.android.kotlin.multiplatform.library
 
 ## Build & Development Commands
 
-All commands run from `mobile/`.
+All commands run from the repo root.
 
 ```bash
 # Build
@@ -62,9 +59,7 @@ All commands run from `mobile/`.
 ```
 
 **Java requirement**: Temurin JDK 17 (pinned as `temurin-17.0.19+10` in `.tool-versions`).
-With asdf, export `JAVA_HOME` before any Gradle call:
-`export JAVA_HOME=~/.asdf/installs/java/temurin-17.0.19+10`. Use the repo's Gradle wrapper
-(`mobile/gradlew`, 8.10.2) — not a system Gradle.
+Use the repo's Gradle wrapper (`./gradlew`, 8.10.2) — not a system Gradle.
 
 ## Technology Stack
 
@@ -143,7 +138,7 @@ Code under `org.cru.soularium.domain` must not reference Compose, Android, or iO
 - **`SessionState` is persisted as a JSON snapshot string** (`state_snapshot_json`
   column). Renaming or removing a `@Serializable` field in the session-state hierarchy
   breaks already-persisted sessions — treat such changes as schema changes.
-- Exported Room schema JSON lives in `mobile/shared/schemas/`. A `@Database` version
+- Exported Room schema JSON lives in `shared/schemas/`. A `@Database` version
   bump must ship a matching schema JSON and migration.
 - Device flags (intro seen, ToS agreed, locale) persist via DataStore Preferences, not
   Room.
@@ -234,11 +229,11 @@ author may dismiss severity < 7 findings.
 ## Code Style
 
 - Max line length: 120 characters.
-- ktlint with the `intellij_idea` code style (set in `mobile/.editorconfig`).
+- ktlint with the `intellij_idea` code style (set in `.editorconfig`).
 - `@Composable` functions are exempt from function-naming rules; other functions are
   camelCase.
 - Trailing commas are used and encouraged.
-- ktlint must not lint generated sources — `mobile/build.gradle.kts` already excludes
+- ktlint must not lint generated sources — the root `build.gradle.kts` already excludes
   anything under a `build/` directory.
 
 ## Key Conventions
@@ -254,6 +249,6 @@ author may dismiss severity < 7 findings.
   run-script phase.
 - User-visible strings come from Compose Multiplatform resources
   (`stringResource(Res.string.*)`), never inline literals. Source strings live in
-  `mobile/shared/src/commonMain/composeResources/values/strings.xml`.
+  `shared/src/commonMain/composeResources/values/strings.xml`.
 - Firebase config files (`google-services.json`, `GoogleService-Info.plist`) and
   `local.properties` are gitignored — never commit them.

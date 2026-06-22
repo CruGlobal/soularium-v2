@@ -1,7 +1,7 @@
 ---
 name: agent-review
 description: Multi-agent PR review with smart selection, debate rounds, and consensus
-allowed-tools: Bash(gh pr view:*), Bash(gh pr diff:*), Bash(gh api:*), Bash(gh workflow run:*), Bash(gh auth status:*), Bash(git diff:*), Bash(git branch:*), Bash(git log:*), Bash(git status:*), Bash(git add:*), Bash(git commit:*), Bash(date:*), Bash(jq:*), Bash(cat > .ai-review.json:*), Bash(rm .ai-review.json), Bash(cd mobile:*), Bash(./gradlew:*), Bash(mobile/gradlew:*), Read, Grep, Glob, Write, Edit
+allowed-tools: Bash(gh pr view:*), Bash(gh pr diff:*), Bash(gh api:*), Bash(gh workflow run:*), Bash(gh auth status:*), Bash(git diff:*), Bash(git branch:*), Bash(git log:*), Bash(git status:*), Bash(git add:*), Bash(git commit:*), Bash(date:*), Bash(jq:*), Bash(cat > .ai-review.json:*), Bash(rm .ai-review.json), Bash(./gradlew:*), Bash(gradlew:*), Read, Grep, Glob, Write, Edit
 ---
 
 # Multi-Agent PR Code Review
@@ -95,7 +95,7 @@ Store the changed file list and diff content for use by all agents.
 
 ### Read Project Standards
 
-Read `.claude/CLAUDE.md` to understand the project's coding standards and conventions. This context will be shared with all agents. Additionally, if any UI files change in this PR (anything under `mobile/shared/src/commonMain/kotlin/**/ui/**` or files containing `@Composable`), read `.claude/rules/design_system_rules.md` for Figma → Compose translation conventions, Material3 token mapping, and accessibility requirements — this is mandatory context for the UX agent and informational for the others.
+Read `.claude/CLAUDE.md` to understand the project's coding standards and conventions. This context will be shared with all agents. Additionally, if any UI files change in this PR (anything under `shared/src/commonMain/kotlin/**/ui/**` or files containing `@Composable`), read `.claude/rules/design_system_rules.md` for Figma → Compose translation conventions, Material3 token mapping, and accessibility requirements — this is mandatory context for the UX agent and informational for the others.
 
 ### Calculate Risk Score
 
@@ -104,16 +104,16 @@ Start with a base score of 0, then add points.
 **Dedup rule:** For each changed file, match against the highest-risk pattern first (Critical, then High, then Medium). Each file contributes points from at most one risk tier — do not double-count.
 
 **Critical File Patterns (+3 points each):**
-- `mobile/shared/src/commonMain/kotlin/org/cru/soularium/di/**` — Koin DI wiring (`appModule`, `KoinInit`); a misconfigured graph crashes the whole app
-- `mobile/shared/src/commonMain/kotlin/**/db/**` — Room database, entities, DAOs, the `SoulariumDatabase` definition
-- `mobile/shared/schemas/**` — Room exported schema JSON (production data shape)
-- `mobile/shared/src/androidMain/AndroidManifest.xml` — Android manifest (exported components, permissions)
-- `mobile/iosApp/iosApp.xcodeproj/**`, `mobile/iosApp/iosApp/**.swift` — iOS app shell wiring (Compose framework host)
-- `mobile/gradle/libs.versions.toml` — Version catalog (lib/plugin upgrades)
-- `mobile/settings.gradle.kts` — Module graph (adding/removing modules)
-- `mobile/build.gradle.kts` (root) — Top-level build configuration
-- Each module's `build.gradle.kts` (`mobile/shared/`, `mobile/shared/`, `mobile/shared/`) — module build configuration
-- `mobile/local.properties`, `**/*.keystore`, signing configs — secrets/credentials
+- `shared/src/commonMain/kotlin/org/cru/soularium/di/**` — Koin DI wiring (`appModule`, `KoinInit`); a misconfigured graph crashes the whole app
+- `shared/src/commonMain/kotlin/**/db/**` — Room database, entities, DAOs, the `SoulariumDatabase` definition
+- `shared/schemas/**` — Room exported schema JSON (production data shape)
+- `shared/src/androidMain/AndroidManifest.xml` — Android manifest (exported components, permissions)
+- `iosApp/iosApp.xcodeproj/**`, `iosApp/iosApp/**.swift` — iOS app shell wiring (Compose framework host)
+- `gradle/libs.versions.toml` — Version catalog (lib/plugin upgrades)
+- `settings.gradle.kts` — Module graph (adding/removing modules)
+- `build.gradle.kts` (root) — Top-level build configuration
+- Each module's `build.gradle.kts` (`shared/`, `shared/`, `shared/`) — module build configuration
+- `local.properties`, `**/*.keystore`, signing configs — secrets/credentials
 - `google-services.json`, `GoogleService-Info.plist` — Firebase config (should be gitignored)
 - `.env*` — Environment files (automatic senior review)
 - `.github/workflows/ai-review-auto-approve.yml` — AI auto-approval workflow (controls which PRs bypass human review)
@@ -121,19 +121,19 @@ Start with a base score of 0, then add points.
 - `.claude/rules/*.md` — Repo-specific rule references loaded by review commands
 
 **High-Risk File Patterns (+2 points each):**
-- `mobile/shared/src/commonMain/**` — pure domain layer: the `session/` state machine (`SessionState`, `SessionEvent`, `transition`, `Effect`) and hexagonal `ports/` interfaces
-- `mobile/shared/src/commonMain/**/repository/**` — repository implementations (consumed by UI ViewModels)
-- `mobile/shared/src/commonMain/**/devicestate/**` — DataStore-backed device flag persistence
+- `shared/src/commonMain/**` — pure domain layer: the `session/` state machine (`SessionState`, `SessionEvent`, `transition`, `Effect`) and hexagonal `ports/` interfaces
+- `shared/src/commonMain/**/repository/**` — repository implementations (consumed by UI ViewModels)
+- `shared/src/commonMain/**/devicestate/**` — DataStore-backed device flag persistence
 - Files containing `expect class`/`expect fun`/`expect val`/`expect object` (or their `actual` counterparts) — KMP platform contracts
-- `mobile/shared/src/iosMain/**`, `mobile/shared/src/androidMain/**` — platform-specific app wiring (`platformModule`, `AndroidSharer`/`IosSharer`, `getDatabaseBuilder`)
-- `mobile/shared/src/commonMain/kotlin/**/ui/nav/**` — `Routes` constants and `NavGraph` wiring (a broken route crashes navigation)
+- `shared/src/iosMain/**`, `shared/src/androidMain/**` — platform-specific app wiring (`platformModule`, `AndroidSharer`/`IosSharer`, `getDatabaseBuilder`)
+- `shared/src/commonMain/kotlin/**/ui/nav/**` — `Routes` constants and `NavGraph` wiring (a broken route crashes navigation)
 - `.github/workflows/*` (not already counted) — CI/CD workflows
 - `.github/workflows/crowdin-upload.yml`, `.github/workflows/crowdin-download.yml` — i18n sync workflows (handle `CROWDIN_*` secrets)
 
 **Medium-Risk File Patterns (+1 point each):**
-- `mobile/shared/src/commonMain/kotlin/**/ui/**` — screen composables, ViewModels, theme (excluding `ui/nav/**` which is High)
-- `mobile/shared/src/commonMain/kotlin/**/platform/**` — platform abstraction expects/wrappers (`PlatformBackHandler`, etc.)
-- `mobile/shared/src/commonMain/kotlin/**/analytics/**` — analytics tracker glue and `scrubAnalyticsParams`
+- `shared/src/commonMain/kotlin/**/ui/**` — screen composables, ViewModels, theme (excluding `ui/nav/**` which is High)
+- `shared/src/commonMain/kotlin/**/platform/**` — platform abstraction expects/wrappers (`PlatformBackHandler`, etc.)
+- `shared/src/commonMain/kotlin/**/analytics/**` — analytics tracker glue and `scrubAnalyticsParams`
 
 **Low-Risk Files (0 points):**
 - `**/commonTest/**` — test sources (all tests live in `commonTest`)
@@ -153,13 +153,13 @@ Start with a base score of 0, then add points.
 - Cross-cutting (e.g., DI wiring + Room schema + a `@Serializable` domain rename + CI workflow): ×1.7
 
 **Special Pattern Detection (additional points):**
-- New library or plugin entry in `mobile/gradle/libs.versions.toml`: +2
-- Version bump for a critical lib in `mobile/gradle/libs.versions.toml` (`kotlin`, `agp`, `compose-multiplatform`, `room`, `koin`, `coroutines`, `ksp`, `androidx-navigation`, `androidx-lifecycle`): +3
-- New Room migration / `@Database` version bump without a regenerated exported schema JSON under `mobile/shared/schemas/`: +3 (production data shape change without the schema artifact — red flag)
-- Room `mobile/shared/schemas/*.json` edited without a matching `@Database` version bump in this PR: +3 (likely a manual edit — red flag)
+- New library or plugin entry in `gradle/libs.versions.toml`: +2
+- Version bump for a critical lib in `gradle/libs.versions.toml` (`kotlin`, `agp`, `compose-multiplatform`, `room`, `koin`, `coroutines`, `ksp`, `androidx-navigation`, `androidx-lifecycle`): +3
+- New Room migration / `@Database` version bump without a regenerated exported schema JSON under `shared/schemas/`: +3 (production data shape change without the schema artifact — red flag)
+- Room `shared/schemas/*.json` edited without a matching `@Database` version bump in this PR: +3 (likely a manual edit — red flag)
 - New `expect`/`actual` pair: +1 (sets a KMP contract — verify every active target has an `actual`)
 - New ViewModel without a corresponding test under `commonTest`: +1
-- `@Serializable` field rename or removal in `mobile/shared/`: +2 (`SessionState` is persisted as a JSON snapshot string in the database — renaming or removing a serialized field breaks already-persisted sessions)
+- `@Serializable` field rename or removal in `shared/`: +2 (`SessionState` is persisted as a JSON snapshot string in the database — renaming or removing a serialized field breaks already-persisted sessions)
 
 Cap the final score at 10.
 
@@ -225,24 +225,24 @@ Always include: Architecture, Testing, Standards
 Conditionally include:
 
 - **Security Agent** — if any of these patterns appear in changed files:
-  - `mobile/shared/src/commonMain/kotlin/org/cru/soularium/di/**` (Koin DI wiring)
-  - `mobile/shared/src/androidMain/AndroidManifest.xml` (exported components, permissions)
+  - `shared/src/commonMain/kotlin/org/cru/soularium/di/**` (Koin DI wiring)
+  - `shared/src/androidMain/AndroidManifest.xml` (exported components, permissions)
   - `.github/workflows/**` (CI/CD security controls, especially auto-approve and the Crowdin secrets)
   - `.claude/commands/`, `.claude/rules/` (review process definitions that control AI review behavior)
-  - `mobile/shared/src/commonMain/kotlin/**/analytics/**` (analytics — PII scrubbing)
+  - `shared/src/commonMain/kotlin/**/analytics/**` (analytics — PII scrubbing)
   - Any `Sharer` implementation or share-URL/share-text code
-  - `mobile/local.properties`, `**/*.keystore`, signing configs, `google-services.json`, `GoogleService-Info.plist`
+  - `local.properties`, `**/*.keystore`, signing configs, `google-services.json`, `GoogleService-Info.plist`
   - `.env*` files
 
 - **Data Integrity Agent** — if any of these patterns appear:
-  - `mobile/shared/**` (Room entities, DAOs, repository implementations, DataStore)
-  - `mobile/shared/schemas/**` (Room exported schema JSON)
-  - `mobile/shared/**` `@Serializable` models (the persisted `SessionState` contract surface)
+  - `shared/**` (Room entities, DAOs, repository implementations, DataStore)
+  - `shared/schemas/**` (Room exported schema JSON)
+  - `shared/**` `@Serializable` models (the persisted `SessionState` contract surface)
   - Files with `expect class`/`expect fun`/`expect val`/`expect object` declarations or their `actual` counterparts
   - Room migrations or any `@Database` version change
 
 - **UX Agent** — if any of these patterns appear:
-  - `mobile/shared/src/commonMain/kotlin/**/ui/**` (screen composables, ViewModels, theme, navigation)
+  - `shared/src/commonMain/kotlin/**/ui/**` (screen composables, ViewModels, theme, navigation)
   - Files containing `@Composable` declarations
   - Compose resource files under `**/composeResources/**`
 
@@ -312,12 +312,12 @@ For each valid dismissal, store:
 
 [If dismissals found]:
 Found [N] previously dismissed finding(s):
-• mobile/shared/.../FooViewModel.kt:42 — "Consider hoisting..." (dismissed: "Intentional design choice")
-• mobile/shared/.../FooRepository.kt:15 — "Add test for edge case" (dismissed: "Covered by state-machine test")
+• shared/.../FooViewModel.kt:42 — "Consider hoisting..." (dismissed: "Intentional design choice")
+• shared/.../FooRepository.kt:15 — "Add test for edge case" (dismissed: "Covered by state-machine test")
 
 [If severity ≥ 7 dismissals attempted]:
 ⚠️  Ignored [N] invalid dismissal(s) (severity ≥ 7 findings cannot be dismissed):
-• mobile/shared/.../SessionStateMachine.kt:88 — Severity 8.5/10 — cannot be dismissed
+• shared/.../SessionStateMachine.kt:88 — Severity 8.5/10 — cannot be dismissed
 
 [If no dismissals found]:
 No previously dismissed findings found.
@@ -375,7 +375,7 @@ Apply these five verification categories to every finding:
    - **Example catch:** PR adds `repository.loadConversation(id)` but the `ContentRepository` port still only declares `loadContent()`; the call won't compile, or the new method has no implementation under `org.cru.soularium.data`.
 
 2. **Room & migration correctness** — for every `@Entity`, `@Dao`, `@Database`, or migration in the PR:
-   - **Migration ↔ schema match:** if the `SoulariumDatabase` `@Database(version = N)` was bumped, a `Migration(from, to)` must be registered on the database builder, and the exported schema JSON under `mobile/shared/schemas/` (the `@Database` declares `exportSchema = true`) must be regenerated and committed. Open both files to verify.
+   - **Migration ↔ schema match:** if the `SoulariumDatabase` `@Database(version = N)` was bumped, a `Migration(from, to)` must be registered on the database builder, and the exported schema JSON under `shared/schemas/` (the `@Database` declares `exportSchema = true`) must be regenerated and committed. Open both files to verify.
    - **Migration idempotence:** running the migration twice on the same DB must be safe — custom `Migration` blocks with `db.execSQL` should use `IF NOT EXISTS`/`IF EXISTS` guards on schema changes.
    - **Source-schema column references:** every column referenced in a `Migration` block must exist in the source-version schema (open the previous version's exported schema JSON to verify).
    - **Backfill completeness:** if a migration backfills data, verify it handles ALL existing-row states (nulls, empty strings, unexpected values).
@@ -397,7 +397,7 @@ Apply these five verification categories to every finding:
    - **Threading path:** Room DAOs declared `suspend` (or returning `Flow`) must be called from a coroutine context; verify Flows produced by repositories are collected on appropriate dispatchers (no `Dispatchers.Main` work in `commonMain`).
 
 5. **Removed/changed code ripple effects** — for every public symbol, route constant, Room entity, DAO, port interface method, `@Serializable` class, or `expect` declaration removed or renamed in the PR:
-   - Search the entire repo (`mobile/shared/`, `mobile/shared/`, `mobile/shared/`, `mobile/iosApp/`, test sources) for references to the old name. The new code may compile because the renamed symbol resolves at the call site, but indirect consumers (in-memory test fakes, Swift code in `iosApp`, `Routes` constants referenced in `NavGraph`) may still use the old name.
+   - Search the entire repo (`shared/`, `shared/`, `shared/`, `iosApp/`, test sources) for references to the old name. The new code may compile because the renamed symbol resolves at the call site, but indirect consumers (in-memory test fakes, Swift code in `iosApp`, `Routes` constants referenced in `NavGraph`) may still use the old name.
    - For `expect` removals: search for `actual` declarations on every target — orphaned actuals will not compile.
    - For route changes: search `Routes` and `NavGraph.kt` for the old route string — every `navigate(...)` and `composable(...)` call site that uses it will break navigation at runtime (route strings are not type-checked).
    - For port interface method removals/renames: open every implementation (under `org.cru.soularium.data` and platform Koin modules) AND every in-memory fake in `commonTest` and verify they were updated. A missing fake update breaks every consuming test.
@@ -407,7 +407,7 @@ Apply these five verification categories to every finding:
 If you can't prove a finding with concrete file/line evidence after applying these checks, downgrade its severity or omit it.
 
 **LARGE PR CHUNKING RULE — For PRs with 500+ lines of diff:**
-Instead of passing the entire diff to each agent, pass only the diff hunks relevant to that agent's specialization plus the full changed file list for context. For example, the Security agent receives diffs for `di/**`, `AndroidManifest.xml`, `analytics/**`, signing/Firebase config, and workflow files; the Data Integrity agent receives diffs for Room entities/DAOs/migrations, `mobile/shared/schemas/**`, `@Serializable` domain models, and `expect`/`actual` declarations. Each agent still sees the complete list of changed files and can request to read any file, but the diff in their prompt is focused on their domain. This prevents agents from skimming later files in a large diff.
+Instead of passing the entire diff to each agent, pass only the diff hunks relevant to that agent's specialization plus the full changed file list for context. For example, the Security agent receives diffs for `di/**`, `AndroidManifest.xml`, `analytics/**`, signing/Firebase config, and workflow files; the Data Integrity agent receives diffs for Room entities/DAOs/migrations, `shared/schemas/**`, `@Serializable` domain models, and `expect`/`actual` declarations. Each agent still sees the complete list of changed files and can request to read any file, but the diff in their prompt is focused on their domain. This prevents agents from skimming later files in a large diff.
 
 ### Agent 1: Security Review 🔒
 
@@ -424,8 +424,8 @@ Soularium is an **offline app with a minimal security surface**: no auth, no log
 - **Review process integrity**: changes to `.claude/commands/` or `.claude/rules/` review definitions — verify risk scoring is not weakened, severity thresholds are not lowered (especially the severity ≥ 7 dismissal floor), and review checklists are not stripped of critical checks.
 - **Room SQL injection**: any use of `@RawQuery` or hand-built SQL — must use bound arguments, never string interpolation. Plain `@Query` statements with `:param` placeholders are safe; flag any concatenated SQL.
 - **PII handling**: `scrubAnalyticsParams()` strips PII keys (name/email/phone/notes/card_id) before analytics. Verify any new analytics event passes through scrubbing, that PII does not leak into share-link URLs, and that no PII is written to logs or crash breadcrumbs.
-- **Exported Android components**: `mobile/shared/src/androidMain/AndroidManifest.xml` — `MainActivity` is exported (it is the launcher). Verify no other component is exported without justification, and that no new permission is added beyond `INTERNET` without a clear reason.
-- **Secret / Firebase config exposure**: scan the diff for hardcoded keys or signing passwords. `mobile/local.properties`, `*.keystore`, signing configs, `google-services.json`, and `GoogleService-Info.plist` must not be committed — verify `.gitignore` covers them.
+- **Exported Android components**: `shared/src/androidMain/AndroidManifest.xml` — `MainActivity` is exported (it is the launcher). Verify no other component is exported without justification, and that no new permission is added beyond `INTERNET` without a clear reason.
+- **Secret / Firebase config exposure**: scan the diff for hardcoded keys or signing passwords. `local.properties`, `*.keystore`, signing configs, `google-services.json`, and `GoogleService-Info.plist` must not be committed — verify `.gitignore` covers them.
 - **Share-link safety**: the `Sharer` port (`AndroidSharer` via `Intent.ACTION_SEND`, `IosSharer` via `UIActivityViewController`) shares plain text — it is NOT an arbitrary URL loader. Flag any change that turns it into one, or that builds a share URL from unsanitized user-influenced input.
 - **Coil image loading**: image URLs loaded via Coil should come from bundled/trusted content. Flag URLs constructed by unsanitized concatenation.
 - **Logging hygiene**: no PII in any log or crash breadcrumb. Analytics/crash reporters are no-op until Firebase config lands — verify replacements still scrub.
@@ -435,10 +435,10 @@ Soularium is an **offline app with a minimal security surface**: no auth, no log
 - **`.github/workflows/*.yml`** — `permissions:` block minimal (default to `contents: read`, escalate per-job only); secrets (`CROWDIN_*`, etc.) not echoed in `run:` blocks; `pull_request_target` events handled with care; the `ai-review-auto-approve` gate not weakened
 - **`.claude/commands/*.md`, `.claude/rules/*.md`** — risk-score thresholds preserved; severity ≥ 7 dismissal floor preserved; required reviewer levels preserved; no critical checks stripped from agent prompts
 - **Room `@Dao` / `@RawQuery`** — no string interpolation in SQL; `@Query` uses `:param` placeholders; raw queries use bound args
-- **`mobile/shared/src/commonMain/kotlin/**/analytics/**`** — every event flows through `scrubAnalyticsParams()`; no PII keys (name/email/phone/notes/card_id) reach the tracker; no PII in event names or values
-- **`mobile/shared/src/androidMain/AndroidManifest.xml`** — only `MainActivity` exported (it is the launcher); no other `android:exported="true"` without justification; permissions limited to `INTERNET`; no `android:debuggable="true"` in the release variant
+- **`shared/src/commonMain/kotlin/**/analytics/**`** — every event flows through `scrubAnalyticsParams()`; no PII keys (name/email/phone/notes/card_id) reach the tracker; no PII in event names or values
+- **`shared/src/androidMain/AndroidManifest.xml`** — only `MainActivity` exported (it is the launcher); no other `android:exported="true"` without justification; permissions limited to `INTERNET`; no `android:debuggable="true"` in the release variant
 - **`Sharer` implementations / share code** — share is plain-text `Intent.ACTION_SEND` / `UIActivityViewController`; not converted into an arbitrary URL loader; share URLs not built from unsanitized input
-- **`mobile/local.properties`, `**/*.keystore`, signing configs, `google-services.json`, `GoogleService-Info.plist`** — must not be committed; verify `.gitignore` covers them; no hardcoded passwords in `signingConfigs { }` blocks
+- **`local.properties`, `**/*.keystore`, signing configs, `google-services.json`, `GoogleService-Info.plist`** — must not be committed; verify `.gitignore` covers them; no hardcoded passwords in `signingConfigs { }` blocks
 
 **Output format:**
 ```
@@ -465,7 +465,7 @@ Soularium is an **offline app with a minimal security surface**: no auth, no log
 - Areas needing deeper analysis: [list]
 ```
 
-**CODEBASE CONTEXT SEARCH:** Before flagging a pattern as an issue, use Grep to search for at least 3 other instances of the same pattern across the Kotlin source roots: `mobile/shared/`, `mobile/shared/`, and `mobile/shared/`. If the pattern is used consistently in 3+ other locations, it is an established project convention — do NOT flag it. If it appears only in the current PR or in fewer than 3 places, flag it.
+**CODEBASE CONTEXT SEARCH:** Before flagging a pattern as an issue, use Grep to search for at least 3 other instances of the same pattern across the Kotlin source roots: `shared/`, `shared/`, and `shared/`. If the pattern is used consistently in 3+ other locations, it is an established project convention — do NOT flag it. If it appears only in the current PR or in fewer than 3 places, flag it.
 
 **AUTOMATED FIX GENERATION:** For every issue with a clear fix, generate a ready-to-apply code patch. Show the exact file path and line range. Provide a before/after code block (Kotlin / Gradle Kotlin DSL / YAML / TOML / SQL as appropriate). Only generate fixes where the correct solution is unambiguous. Label each fix with its severity and the issue it addresses.
 
@@ -489,19 +489,19 @@ Soularium is an **offline app with a minimal security surface**: no auth, no log
 - **ViewModel discipline**: ViewModels extend `androidx.lifecycle.ViewModel`, expose state via a private `MutableStateFlow` + public `.asStateFlow()`, and accept UI input via public methods (e.g. `dispatch(event)`). Long-lived collection runs in `viewModelScope`. Flag `GlobalScope.launch` and `runBlocking` in production code.
 - **Coroutine/Flow scope discipline**: no `GlobalScope.launch`; verify `viewModelScope` is used for ViewModel-scoped work. Flag `runBlocking` outside tests. Long-lived Flows tied to a scope that completes.
 - **Error handling**: the domain layer surfaces errors via the `DomainError` sealed interface — there is NO `Result<T>` wrapper convention. Flag a new domain error path that bypasses `DomainError`, or silent error swallowing (`try { ... } catch (e: Throwable) {}`).
-- **Module build configuration**: there is NO `build-logic/` and there are NO Gradle convention plugins — each module's `build.gradle.kts` configures itself directly using `mobile/gradle/libs.versions.toml` aliases. Flag duplicated config that should be a version-catalog alias, or a dependency added without a catalog alias.
+- **Module build configuration**: there is NO `build-logic/` and there are NO Gradle convention plugins — each module's `build.gradle.kts` configures itself directly using `gradle/libs.versions.toml` aliases. Flag duplicated config that should be a version-catalog alias, or a dependency added without a catalog alias.
 - **Technical debt**: created vs reduced by this PR.
 - **Pattern consistency with `.claude/CLAUDE.md` conventions**.
 
 **File-Type Checklists (when these paths appear in the diff, run the matching list):**
 
-- **`mobile/shared/src/commonMain/**` (ports + state machine)** — no Android/iOS/Compose imports; `transition` is pure (no IO, no clock, no logging); side effects modeled as `Effect` data and returned, never executed; `when` over `SessionState`/`SessionEvent` is exhaustive; IDs are `@Serializable @JvmInline value class` over UUID strings; domain models are `@Serializable`; errors flow through `DomainError`
-- **`mobile/shared/src/commonMain/**/repository/**`** — repository implementations satisfy a domain port interface; no Compose imports; framework types not leaked back into the port signature; stateful repos registered `single` in `appModule`
-- **`mobile/shared/src/commonMain/kotlin/org/cru/soularium/di/**` (Koin)** — `single` for stateful objects (database, DAOs, repositories); `viewModel { }` for ViewModels; every constructor dependency satisfied somewhere in `appModule`/`platformModule`; no platform-specific binding in `appModule` that belongs in `platformModule`
-- **ViewModels (`mobile/shared/src/commonMain/kotlin/**/ui/**`)** — extends `androidx.lifecycle.ViewModel`; private `MutableStateFlow` + public `.asStateFlow()`; UI input via public methods; collection in `viewModelScope`; obtained in composables via `koinViewModel`
+- **`shared/src/commonMain/**` (ports + state machine)** — no Android/iOS/Compose imports; `transition` is pure (no IO, no clock, no logging); side effects modeled as `Effect` data and returned, never executed; `when` over `SessionState`/`SessionEvent` is exhaustive; IDs are `@Serializable @JvmInline value class` over UUID strings; domain models are `@Serializable`; errors flow through `DomainError`
+- **`shared/src/commonMain/**/repository/**`** — repository implementations satisfy a domain port interface; no Compose imports; framework types not leaked back into the port signature; stateful repos registered `single` in `appModule`
+- **`shared/src/commonMain/kotlin/org/cru/soularium/di/**` (Koin)** — `single` for stateful objects (database, DAOs, repositories); `viewModel { }` for ViewModels; every constructor dependency satisfied somewhere in `appModule`/`platformModule`; no platform-specific binding in `appModule` that belongs in `platformModule`
+- **ViewModels (`shared/src/commonMain/kotlin/**/ui/**`)** — extends `androidx.lifecycle.ViewModel`; private `MutableStateFlow` + public `.asStateFlow()`; UI input via public methods; collection in `viewModelScope`; obtained in composables via `koinViewModel`
 - **`expect`/`actual` declaration files** — every `expect class`/`expect fun`/`expect val`/`expect object` has a corresponding `actual` for every active KMP target in `:shared` (`androidMain` + `iosMain`); signatures, generic constraints, default values, and `@OptIn` annotations match exactly across the pair
-- **Per-module `build.gradle.kts` (`:shared`, `:androidApp`)** — uses `mobile/gradle/libs.versions.toml` aliases (no hardcoded versions); namespace follows `org.cru.soularium`
-- **`mobile/settings.gradle.kts`** — only `:shared` and `:androidApp` are expected; a new module addition is a significant architectural change — flag for senior review
+- **Per-module `build.gradle.kts` (`:shared`, `:androidApp`)** — uses `gradle/libs.versions.toml` aliases (no hardcoded versions); namespace follows `org.cru.soularium`
+- **`settings.gradle.kts`** — only `:shared` and `:androidApp` are expected; a new module addition is a significant architectural change — flag for senior review
 - **Compose `@Composable` screens** — public, stateless: data params + `on*` callback lambdas + `modifier: Modifier = Modifier` as the LAST parameter; collect ViewModel state via `collectAsState()`; no business logic in the composable
 
 **Output format:**
@@ -534,7 +534,7 @@ Soularium is an **offline app with a minimal security surface**: no auth, no log
 ### Confidence
 ```
 
-**CODEBASE CONTEXT SEARCH:** Before flagging a pattern as an issue, use Grep to search for at least 3 other instances of the same pattern across the Kotlin source roots: `mobile/shared/`, `mobile/shared/`, and `mobile/shared/`. If the pattern is used consistently in 3+ other locations, it is an established project convention — do NOT flag it. If it appears only in the current PR or in fewer than 3 places, flag it.
+**CODEBASE CONTEXT SEARCH:** Before flagging a pattern as an issue, use Grep to search for at least 3 other instances of the same pattern across the Kotlin source roots: `shared/`, `shared/`, and `shared/`. If the pattern is used consistently in 3+ other locations, it is an established project convention — do NOT flag it. If it appears only in the current PR or in fewer than 3 places, flag it.
 
 **AUTOMATED FIX GENERATION:** For every issue with a clear fix, generate a ready-to-apply code patch. Show the exact file path and line range. Provide a before/after code block (Kotlin / Gradle Kotlin DSL / YAML / TOML / SQL as appropriate). Only generate fixes where the correct solution is unambiguous.
 
@@ -548,7 +548,7 @@ Soularium is an **offline app with a minimal security surface**: no auth, no log
 - model: "opus"
 
 **Prompt focus areas:**
-- **Room migration correctness**: every schema change must ship a matching `Migration(from, to)` registered on the database builder. Verify the migration is idempotent (running it twice on the same DB is safe), that all referenced columns/tables exist in the source schema, and that the destination schema matches what the entity classes declare. `SoulariumDatabase` declares `exportSchema = true`, so the exported schema JSON under `mobile/shared/schemas/` must be regenerated and committed. Flag any entity change that bumps the `@Database(version = N)` without a corresponding migration and schema export.
+- **Room migration correctness**: every schema change must ship a matching `Migration(from, to)` registered on the database builder. Verify the migration is idempotent (running it twice on the same DB is safe), that all referenced columns/tables exist in the source schema, and that the destination schema matches what the entity classes declare. `SoulariumDatabase` declares `exportSchema = true`, so the exported schema JSON under `shared/schemas/` must be regenerated and committed. Flag any entity change that bumps the `@Database(version = N)` without a corresponding migration and schema export.
 - **Room entity ↔ DAO consistency**: the three entities are `SessionEntity`, `ConversationEntity`, `CardPickEntity`, with FK cascades and indices. `@Entity` columns must match `@Upsert`/`@Query` projections. Nullable columns must be modeled as nullable Kotlin types. Foreign keys need indexes on the referenced columns to avoid full-table scans on cascading writes. The three DAOs use `@Upsert` + `@Query` + `Flow` return types.
 - **Multiplatform Room wiring**: `SoulariumDatabase` uses `@ConstructedBy(SoulariumDatabaseConstructor::class)` with an `expect object SoulariumDatabaseConstructor : RoomDatabaseConstructor<...>`, and `getDatabaseBuilder()` has Android/iOS actuals. Room codegen runs via KSP (`kspAndroid` + `kspIosArm64` + `kspIosSimulatorArm64`). Flag a target whose entity set changed but whose KSP config was not updated.
 - **Persisted `SessionState` snapshot**: `SessionState` (a sealed `@Serializable` type under `org.cru.soularium.domain`) is persisted as a **JSON snapshot string** in a database column. Renaming or removing a serialized field, or adding a non-nullable field without a default, breaks deserialization of every session persisted before the change. Flag any `@Serializable` change under `org.cru.soularium.domain` that is not backward-compatible with already-stored snapshots.
@@ -562,14 +562,14 @@ Soularium is an **offline app with a minimal security surface**: no auth, no log
 
 **File-Type Checklists (when these paths appear in the diff, run the matching list):**
 
-- **Room `@Entity` classes (`mobile/shared/src/commonMain/**/db/**`)** — every column declared in the entity exists in the DAO `@Upsert`/`@Query` projections; nullable columns map to nullable Kotlin types; primary key declared (`@PrimaryKey`); foreign keys (`foreignKeys = [...]`) accompanied by `indices = [...]` on the referenced columns
+- **Room `@Entity` classes (`shared/src/commonMain/**/db/**`)** — every column declared in the entity exists in the DAO `@Upsert`/`@Query` projections; nullable columns map to nullable Kotlin types; primary key declared (`@PrimaryKey`); foreign keys (`foreignKeys = [...]`) accompanied by `indices = [...]` on the referenced columns
 - **Room `@Dao` interfaces** — `@Query` strings reference real columns and tables; bind parameters use `:name` (not concatenation); `@RawQuery` (if any) uses bound args; `Flow<T>` return types match observability needs; `suspend` for one-shot reads/writes; `@Upsert` used per project convention
-- **Room `@Database` (`SoulariumDatabase`)** — `version` bumped when entities change; new entities listed in `entities = [...]`; `exportSchema = true`; matching schema JSON committed under `mobile/shared/schemas/<dbVersion>.json`; `@ConstructedBy(SoulariumDatabaseConstructor::class)` and the `expect object` constructor present
+- **Room `@Database` (`SoulariumDatabase`)** — `version` bumped when entities change; new entities listed in `entities = [...]`; `exportSchema = true`; matching schema JSON committed under `shared/schemas/<dbVersion>.json`; `@ConstructedBy(SoulariumDatabaseConstructor::class)` and the `expect object` constructor present
 - **Room migrations** — idempotent (re-running on the same DB is safe); references columns/tables that exist in the source schema; produces a destination schema matching the new entity declarations; backfill SQL handles nulls and unexpected values; migration registered on the database builder
-- **Repository implementations (`mobile/shared/src/commonMain/**/repository/*Repository*.kt`)** — implements a domain port; every public method has a corresponding implementation in the in-memory test fake (e.g. `InMemorySessionRepository`/`FakeSessionRepository`); behavior is testable
-- **`@Serializable` classes in `mobile/shared/`** — renamed properties carry `@SerialName("oldName")` to preserve snapshot compat; new non-nullable fields have a default value (`= ""` / `= 0` / etc.) to avoid breaking older persisted `SessionState` JSON; no removed required fields without a migration plan; remember `SessionState` snapshots are persisted in the DB
+- **Repository implementations (`shared/src/commonMain/**/repository/*Repository*.kt`)** — implements a domain port; every public method has a corresponding implementation in the in-memory test fake (e.g. `InMemorySessionRepository`/`FakeSessionRepository`); behavior is testable
+- **`@Serializable` classes in `shared/`** — renamed properties carry `@SerialName("oldName")` to preserve snapshot compat; new non-nullable fields have a default value (`= ""` / `= 0` / etc.) to avoid breaking older persisted `SessionState` JSON; no removed required fields without a migration plan; remember `SessionState` snapshots are persisted in the DB
 - **`expect`/`actual` declaration files** — every `expect` decl has an `actual` for every active KMP target in `:shared` (`androidMain` + `iosMain`); signatures, nullability, and generic constraints match exactly
-- **DataStore device-flag code (`mobile/shared/src/commonMain/**/devicestate/**`)** — preference keys stable; reads default sensibly on a missing key; `createDeviceStateDataStore()` has Android/iOS actuals
+- **DataStore device-flag code (`shared/src/commonMain/**/devicestate/**`)** — preference keys stable; reads default sensibly on a missing key; `createDeviceStateDataStore()` has Android/iOS actuals
 
 **Output format:**
 ```
@@ -599,7 +599,7 @@ Soularium is an **offline app with a minimal security surface**: no auth, no log
 ### Confidence
 ```
 
-**CODEBASE CONTEXT SEARCH:** Before flagging a pattern as an issue, use Grep to search for at least 3 other instances of the same pattern across the Kotlin source roots: `mobile/shared/`, `mobile/shared/`, and `mobile/shared/`. If the pattern is used consistently in 3+ other locations, it is an established project convention — do NOT flag it. If it appears only in the current PR or in fewer than 3 places, flag it.
+**CODEBASE CONTEXT SEARCH:** Before flagging a pattern as an issue, use Grep to search for at least 3 other instances of the same pattern across the Kotlin source roots: `shared/`, `shared/`, and `shared/`. If the pattern is used consistently in 3+ other locations, it is an established project convention — do NOT flag it. If it appears only in the current PR or in fewer than 3 places, flag it.
 
 **AUTOMATED FIX GENERATION:** For every issue with a clear fix, generate a ready-to-apply code patch. Show the exact file path and line range. Provide a before/after code block (Kotlin / Gradle Kotlin DSL / YAML / TOML / SQL as appropriate). Only generate fixes where the correct solution is unambiguous.
 
@@ -625,7 +625,7 @@ Soularium is an **offline app with a minimal security surface**: no auth, no log
 - **Error path testing**: not just happy paths — test failure modes (`DomainError` paths, Room constraint failures, deserialization errors on old snapshots).
 - **Debug output left in production code**: `println`, `Log.*` (Android), debug-level Kermit calls on sensitive data. Allowed in tests, not in `commonMain`/`androidMain`/`iosMain` production sources.
 - **Code smell patterns**: broad catches (`catch (e: Throwable)`/`catch (e: Exception)` without rethrow), hardcoded magic numbers/strings that should be `const val`, `Thread.sleep` in production code, empty `catch` blocks, `!!` non-null assertions on values not proven non-null at the call site.
-- **ktlint compliance**: code should pass `./gradlew ktlintCheck` (run from `mobile/`) with the project's `intellij_idea` code style. Max line length **120**. `@Composable` functions are exempt from function-naming rules; non-composable functions follow camelCase. Test functions use backtick-quoted descriptive names.
+- **ktlint compliance**: code should pass `./gradlew ktlintCheck` (run from the repo root) with the project's `intellij_idea` code style. Max line length **120**. `@Composable` functions are exempt from function-naming rules; non-composable functions follow camelCase. Test functions use backtick-quoted descriptive names.
 
 **File-Type Checklists (when these paths appear in the diff, run the matching list):**
 
@@ -669,7 +669,7 @@ Soularium is an **offline app with a minimal security surface**: no auth, no log
 ### Confidence
 ```
 
-**CODEBASE CONTEXT SEARCH:** Before flagging a pattern as an issue, use Grep to search for at least 3 other instances of the same pattern across the Kotlin source roots: `mobile/shared/`, `mobile/shared/`, and `mobile/shared/`. If the pattern is used consistently in 3+ other locations, it is an established project convention — do NOT flag it. If it appears only in the current PR or in fewer than 3 places, flag it.
+**CODEBASE CONTEXT SEARCH:** Before flagging a pattern as an issue, use Grep to search for at least 3 other instances of the same pattern across the Kotlin source roots: `shared/`, `shared/`, and `shared/`. If the pattern is used consistently in 3+ other locations, it is an established project convention — do NOT flag it. If it appears only in the current PR or in fewer than 3 places, flag it.
 
 **AUTOMATED FIX GENERATION:** For every issue with a clear fix, generate a ready-to-apply code patch. Show the exact file path and line range. Provide a before/after code block (Kotlin / Gradle Kotlin DSL / YAML / TOML / SQL as appropriate). Only generate fixes where the correct solution is unambiguous.
 
@@ -701,9 +701,9 @@ Soularium is an **offline app with a minimal security surface**: no auth, no log
 
 **File-Type Checklists (when these paths appear in the diff, run the matching list):**
 
-- **Screen composables (`mobile/shared/src/commonMain/kotlin/**/ui/**`)** — public, stateless, `(data params, on* callbacks, modifier: Modifier = Modifier)` with `modifier` LAST; collects ViewModel state via `collectAsState()`; `modifier` applied first to the root; uses `MaterialTheme.*` tokens (not hardcoded `Color(0xFF...)`); user-visible strings via `stringResource(...)`; loading/error/empty states distinguished; `LazyColumn`/`LazyRow` items have stable `key`s when the list can reorder
+- **Screen composables (`shared/src/commonMain/kotlin/**/ui/**`)** — public, stateless, `(data params, on* callbacks, modifier: Modifier = Modifier)` with `modifier` LAST; collects ViewModel state via `collectAsState()`; `modifier` applied first to the root; uses `MaterialTheme.*` tokens (not hardcoded `Color(0xFF...)`); user-visible strings via `stringResource(...)`; loading/error/empty states distinguished; `LazyColumn`/`LazyRow` items have stable `key`s when the list can reorder
 - **Theme files** — additions to the color/typography/shape scheme are exposed via `MaterialTheme.*` (no ad-hoc top-level vals); dark/light variants both defined for any new color
-- **Navigation (`mobile/shared/src/commonMain/kotlin/**/ui/nav/**`)** — every `Routes` constant referenced by `navigate(...)` is registered in `NavGraph`'s `NavHost`; route strings not built by fragile concatenation; arguments passed via the Navigation Compose argument API
+- **Navigation (`shared/src/commonMain/kotlin/**/ui/nav/**`)** — every `Routes` constant referenced by `navigate(...)` is registered in `NavGraph`'s `NavHost`; route strings not built by fragile concatenation; arguments passed via the Navigation Compose argument API
 - **Compose resource files (`**/composeResources/values/strings.xml`, `**/composeResources/drawable/*`)** — every user-visible string the diff introduces references a resource (not a Kotlin literal); image resources use `painterResource(Res.drawable.*)`; resource keys follow `feature_section_purpose` naming
 - **Material icon imports** — pulled from `androidx.compose.material.icons.Icons.*`; avoid hand-rolled `ImageVector` paths; `Icon` composables include `contentDescription` (or `null` with a clearly stated reason)
 - **Accessibility surface** — every interactive composable has a `Modifier.semantics { }` annotation OR uses a built-in role-providing primitive (`Button`, `IconButton`, `Switch`, `Checkbox`); image/icon composables include `contentDescription`; touch targets are ≥ 48dp (`Modifier.minimumInteractiveComponentSize()` or larger)
@@ -739,7 +739,7 @@ Soularium is an **offline app with a minimal security surface**: no auth, no log
 ### Confidence
 ```
 
-**CODEBASE CONTEXT SEARCH:** Before flagging a pattern as an issue, use Grep to search for at least 3 other instances of the same pattern across the Kotlin source roots: `mobile/shared/`, `mobile/shared/`, and `mobile/shared/`. If the pattern is used consistently in 3+ other locations, it is an established project convention — do NOT flag it. If it appears only in the current PR or in fewer than 3 places, flag it.
+**CODEBASE CONTEXT SEARCH:** Before flagging a pattern as an issue, use Grep to search for at least 3 other instances of the same pattern across the Kotlin source roots: `shared/`, `shared/`, and `shared/`. If the pattern is used consistently in 3+ other locations, it is an established project convention — do NOT flag it. If it appears only in the current PR or in fewer than 3 places, flag it.
 
 **AUTOMATED FIX GENERATION:** For every issue with a clear fix, generate a ready-to-apply code patch. Show the exact file path and line range. Provide a before/after code block (Kotlin / Gradle Kotlin DSL / YAML / TOML / SQL as appropriate). Only generate fixes where the correct solution is unambiguous.
 
@@ -773,9 +773,9 @@ Read `.claude/CLAUDE.md` thoroughly, then check each standard:
 
 **Build / Module Standards:**
 - [ ] Only the two expected modules: `:shared` and `:androidApp`
-- [ ] Each module's `build.gradle.kts` configures itself directly using `mobile/gradle/libs.versions.toml` aliases (no `build-logic/`, no convention plugins)
+- [ ] Each module's `build.gradle.kts` configures itself directly using `gradle/libs.versions.toml` aliases (no `build-logic/`, no convention plugins)
 - [ ] New dependencies are added via version-catalog aliases, not hardcoded coordinates
-- [ ] Build commands run from `mobile/` (`cd mobile && ./gradlew ...`)
+- [ ] Build commands run from the repo root (`./gradlew ...`)
 
 **KMP Source-Set Standards:**
 - [ ] `commonMain` contains no Android-specific (`android.*`, `androidx.*`) or iOS-specific imports
@@ -783,7 +783,7 @@ Read `.claude/CLAUDE.md` thoroughly, then check each standard:
 - [ ] Cross-package imports respect the layering (`domain` → nothing; `data` → `domain`; `ui` → `domain` + `data`)
 
 **Data Standards:**
-- [ ] Room schema bumps include a matching `Migration` and a regenerated exported schema JSON under `mobile/shared/schemas/`
+- [ ] Room schema bumps include a matching `Migration` and a regenerated exported schema JSON under `shared/schemas/`
 - [ ] `@Serializable` changes under `org.cru.soularium.domain` are backward-compatible with the persisted `SessionState` snapshot (`@SerialName` on renames, defaults on new fields)
 - [ ] Repository implementations satisfy a domain port; in-memory test fakes are kept in sync
 
@@ -800,7 +800,7 @@ Read `.claude/CLAUDE.md` thoroughly, then check each standard:
 - [ ] Test fakes are in-memory classes in the test sources (no `test-fixtures` modules)
 
 **Code Quality Standards:**
-- [ ] Passes `./gradlew ktlintCheck` (run from `mobile/`) with the `intellij_idea` code style
+- [ ] Passes `./gradlew ktlintCheck` (run from the repo root) with the `intellij_idea` code style
 - [ ] Max line length **120**
 - [ ] `@Composable` functions are exempt from function-naming rules; non-composable functions use camelCase
 - [ ] Trailing commas allowed but not enforced
@@ -844,7 +844,7 @@ Read `.claude/CLAUDE.md` thoroughly, then check each standard:
 ### Confidence
 ```
 
-**CODEBASE CONTEXT SEARCH:** Before flagging a pattern as an issue, use Grep to search for at least 3 other instances of the same pattern in `mobile/shared/`, `mobile/shared/`, and `mobile/shared/` (Kotlin source roots). If the pattern is used consistently in 3+ other locations, it is an established project convention — do NOT flag it. If it appears only in the current PR or in fewer than 3 places, flag it.
+**CODEBASE CONTEXT SEARCH:** Before flagging a pattern as an issue, use Grep to search for at least 3 other instances of the same pattern in `shared/`, `shared/`, and `shared/` (Kotlin source roots). If the pattern is used consistently in 3+ other locations, it is an established project convention — do NOT flag it. If it appears only in the current PR or in fewer than 3 places, flag it.
 
 **AUTOMATED FIX GENERATION:** For every issue with a clear fix, generate a ready-to-apply code patch. Show the exact file path and line range. Provide a before/after code block (Kotlin / Gradle Kotlin DSL / YAML / TOML / SQL as appropriate). Only generate fixes where the correct solution is unambiguous.
 
@@ -867,7 +867,7 @@ Analyze dependency impact using KMP/Kotlin-specific patterns. For each changed f
 
 **Module-level Gradle dependents:** For each changed module's `build.gradle.kts`, identify the dependents. Only `:shared` and `:androidApp` exist; `:androidApp` depends on `:shared`. `api(...)` dependencies in `:shared` propagate transitively to `:androidApp`; `implementation(...)` does not.
 
-**Public symbol consumers (Kotlin):** For each public class, function, or constant changed or removed in `commonMain`/`androidMain`/`iosMain`, Grep across `mobile/shared/` and `mobile/androidApp/` for import statements (`import org.cru.soularium.<...>`) and direct usages.
+**Public symbol consumers (Kotlin):** For each public class, function, or constant changed or removed in `commonMain`/`androidMain`/`iosMain`, Grep across `shared/` and `androidApp/` for import statements (`import org.cru.soularium.<...>`) and direct usages.
 
 **`expect`/`actual` consumers:** For each changed `expect` declaration, list every `actual` (one per active target) and every consumer of the declaration. Removing or renaming an `expect` breaks every consumer; changing its signature breaks every `actual`.
 
@@ -877,7 +877,7 @@ Analyze dependency impact using KMP/Kotlin-specific patterns. For each changed f
 
 **`Routes` / navigation consumers:** For each changed `Routes` constant, search `NavGraph.kt` and every `navigate(...)` call site. A route string is not type-checked — a mismatch breaks navigation at runtime.
 
-**Room entity/DAO consumers:** For each changed `@Entity`, list the DAOs that select or upsert it and the repository methods that expose it. Schema-breaking changes require a `Migration` plus a regenerated schema JSON under `mobile/shared/schemas/`.
+**Room entity/DAO consumers:** For each changed `@Entity`, list the DAOs that select or upsert it and the repository methods that expose it. Schema-breaking changes require a `Migration` plus a regenerated schema JSON under `shared/schemas/`.
 
 **`@Serializable` consumers:** For each changed `@Serializable` class, identify call sites that serialize/deserialize it (`Json.encodeToString`/`decodeFromString`, the persisted `SessionState` snapshot column, DataStore values). Renaming a property without `@SerialName` breaks the wire format and any persisted JSON.
 
@@ -886,9 +886,9 @@ For high-impact files (10+ dependents) flag as critical. Display:
 ```
 📦 DEPENDENCY IMPACT ANALYSIS
 
-🚨 CRITICAL IMPACT: mobile/shared/.../ports/SessionRepository.kt — [N] dependents (impl in data package + ViewModels + in-memory fakes)
-⚠️  HIGH IMPACT: mobile/shared/.../session/SessionState.kt — [N] dependents (state machine + persisted snapshot)
-📊 MEDIUM IMPACT: mobile/shared/.../ui/nav/Routes.kt — [N] navigate() call sites
+🚨 CRITICAL IMPACT: shared/.../ports/SessionRepository.kt — [N] dependents (impl in data package + ViewModels + in-memory fakes)
+⚠️  HIGH IMPACT: shared/.../session/SessionState.kt — [N] dependents (state machine + persisted snapshot)
+📊 MEDIUM IMPACT: shared/.../ui/nav/Routes.kt — [N] navigate() call sites
 
 Breaking Changes:
 [List any removed public symbols, renamed expect declarations without actual updates, removed/renamed Routes constants, changed port methods without fake updates, or non-backward-compatible @Serializable changes]
@@ -957,15 +957,15 @@ Exclude from gap review:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Files with good coverage:
-  ✅ mobile/shared/.../session/SessionStateMachine.kt — 4 findings (Architecture, Data Integrity, Testing, Standards)
-  ✅ mobile/shared/.../ui/session/SessionViewModel.kt — 3 findings (Architecture, Testing, Standards)
+  ✅ shared/.../session/SessionStateMachine.kt — 4 findings (Architecture, Data Integrity, Testing, Standards)
+  ✅ shared/.../ui/session/SessionViewModel.kt — 3 findings (Architecture, Testing, Standards)
 
 Files with thin coverage:
-  ⚠️ mobile/shared/.../commonTest/SessionViewModelTest.kt — 1 finding (Testing only)
+  ⚠️ shared/.../commonTest/SessionViewModelTest.kt — 1 finding (Testing only)
 
 Files with NO coverage:
-  ❌ mobile/shared/.../db/ConversationDao.kt — 0 findings
-  ❌ mobile/shared/schemas/org.cru.soularium.data.db.SoulariumDatabase/2.json — 0 findings
+  ❌ shared/.../db/ConversationDao.kt — 0 findings
+  ❌ shared/schemas/org.cru.soularium.data.db.SoulariumDatabase/2.json — 0 findings
 
 [If gap review needed]:
 🔍 [N] file(s) need focused gap review — launching fresh agents...
@@ -1508,7 +1508,7 @@ Findings on files not in the PR diff must be included in the review `body` text 
 
 These findings were identified during the review on files related to the changes but not directly modified in this PR. They cannot be posted as line comments.
 
-**[Severity Label] mobile/path/File.kt:LINE** — Description of the finding
+**[Severity Label] path/File.kt:LINE** — Description of the finding
 - Severity: X.X/10
 - Flagged by: [Agent Name]
 - Recommended Action: [what to do]
@@ -1549,7 +1549,7 @@ Format: `<!-- severity:X.X --> [Label] Description...`
 Example:
 ```json
 {
-  "path": "mobile/shared/src/commonMain/kotlin/org/cru/soularium/ui/session/SessionViewModel.kt",
+  "path": "shared/src/commonMain/kotlin/org/cru/soularium/ui/session/SessionViewModel.kt",
   "line": 42,
   "side": "RIGHT",
   "body": "<!-- severity:5.2 --> [Medium] Consider hoisting this transient flag into the StateFlow for consistency with existing ViewModels."
@@ -1835,17 +1835,17 @@ For each approved finding, make the code change:
 
 **Conflict handling:** if two fixes target the same file/lines and would conflict, apply the higher-severity fix and report the lower-severity one as deferred ("Deferred to next iteration: <finding> conflicted with <higher-severity-finding>"). The deferred fix will reappear in the next iteration's review (or won't, if the higher-severity fix incidentally addresses it).
 
-After all fixes are applied, run the verification commands from the `mobile/` directory (in this order — stop and fix on the first failure rather than running the rest):
+After all fixes are applied, run the verification commands from the `` directory (in this order — stop and fix on the first failure rather than running the rest):
 
-1. **Format Kotlin sources:** `cd mobile && ./gradlew ktlintFormat` — auto-fix any new style issues introduced by the edits
-2. **Lint check:** `./gradlew ktlintCheck` (from `mobile/`) — fail on any remaining ktlint violations. Note: `ktlintFormat` handles auto-fixable rules only; some rules can still flag issues here even after step 1. Treat those as a real fix-needed signal — do not loop step 1 expecting it to clear them.
-3. **All unit tests:** `./gradlew :shared:allTests` (from `mobile/`) — runs every `commonTest` suite across all `:shared` KMP targets. For a fast inner-loop check, `:shared:testAndroidHostTest` covers the Android-host JVM subset.
-4. **Android assembly:** `./gradlew :androidApp:assembleDebug` (from `mobile/`) — confirms the Android app still compiles
-5. **iOS framework link** (only on macOS hosts): `./gradlew :shared:linkDebugFrameworkIosSimulatorArm64` (from `mobile/`) — if not running on macOS, skip with a note: "iOS framework link skipped (not on macOS); CI will run it on `macos-14`"
+1. **Format Kotlin sources:** `./gradlew ktlintFormat` — auto-fix any new style issues introduced by the edits
+2. **Lint check:** `./gradlew ktlintCheck` (from the repo root) — fail on any remaining ktlint violations. Note: `ktlintFormat` handles auto-fixable rules only; some rules can still flag issues here even after step 1. Treat those as a real fix-needed signal — do not loop step 1 expecting it to clear them.
+3. **All unit tests:** `./gradlew :shared:allTests` (from the repo root) — runs every `commonTest` suite across all `:shared` KMP targets. For a fast inner-loop check, `:shared:testAndroidHostTest` covers the Android-host JVM subset.
+4. **Android assembly:** `./gradlew :androidApp:assembleDebug` (from the repo root) — confirms the Android app still compiles
+5. **iOS framework link** (only on macOS hosts): `./gradlew :shared:linkDebugFrameworkIosSimulatorArm64` (from the repo root) — if not running on macOS, skip with a note: "iOS framework link skipped (not on macOS); CI will run it on `macos-14`"
 
 **Codegen note:** Room (KSP) and Compose Resources generate code on every build. If an issue is in generated code, the fix must go in the source (Room `@Entity`/`@Dao`, the `composeResources/` files), not the generated output.
 
-**Dependency / vulnerability check (informational):** this repo does NOT have an automated CVE/SAST scanner wired into Gradle. If the iteration's fixes introduced or removed dependencies in `mobile/gradle/libs.versions.toml`, print a one-line note: "⚠️ Dependency changes — verify any pending CVE bumps for the affected libraries." Continue regardless.
+**Dependency / vulnerability check (informational):** this repo does NOT have an automated CVE/SAST scanner wired into Gradle. If the iteration's fixes introduced or removed dependencies in `gradle/libs.versions.toml`, print a one-line note: "⚠️ Dependency changes — verify any pending CVE bumps for the affected libraries." Continue regardless.
 
 **If any verification step fails:**
 - Print the failing step's output

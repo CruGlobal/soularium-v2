@@ -20,14 +20,14 @@ Read these in order:
 
 ### Phase 0 — Project bootstrap (Tasks 1–4 ✅, Task 5 partial)
 
-- KMP project at `mobile/` with three modules: `:domain`, `:data`, `:composeApp`
+- KMP project at the repo root with three modules: `:domain`, `:data`, `:composeApp`
 - Gradle wrapper pinned at 8.10.2
-- `mobile/composeApp/` produces a working Android APK rendering "Soularium v2 — bootstrap OK"
-- iOS Xcode project at `mobile/iosApp/iosApp.xcodeproj` — fully wired; the iOS app builds and runs the Compose UI on the simulator. See "iOS Xcode integration" below.
+- `composeApp/` produces a working Android APK rendering "Soularium v2 — bootstrap OK"
+- iOS Xcode project at `iosApp/iosApp.xcodeproj` — fully wired; the iOS app builds and runs the Compose UI on the simulator. See "iOS Xcode integration" below.
 
 ### Phase 1 — Domain types (Tasks 6–9) ✅
 
-- `mobile/domain/src/commonMain/kotlin/org/cru/soularium/domain/`:
+- `domain/src/commonMain/kotlin/org/cru/soularium/domain/`:
   - `Ids.kt` (`SessionId`, `ConversationId`, `CardPickId` — value classes, UUID-v4 generation)
   - `SessionKind.kt`, `ContactInfo.kt`, `Session.kt`, `Conversation.kt`, `CardPick.kt`, `DomainError.kt`
   - `content/` — `Question.kt`, `CardImage.kt`, `Questions.kt` (5-question metadata with selection rules)
@@ -74,7 +74,7 @@ Built via parallel subagent waves with two-stage (spec + code-quality) review:
 
 ### Infrastructure note — ktlint
 
-`ktlintCheck` had never passed (the bundled `ktlint_official` ruleset flagged ~1000 violations and crashed on rule-disable). Fixed in `mobile/.editorconfig` (switched to `intellij_idea` code style) + `mobile/build.gradle.kts` (excludes generated sources). `ktlintCheck` is now green for all three modules — keep it that way.
+`ktlintCheck` had never passed (the bundled `ktlint_official` ruleset flagged ~1000 violations and crashed on rule-disable). Fixed in `.editorconfig` (switched to `intellij_idea` code style) + `build.gradle.kts` (excludes generated sources). `ktlintCheck` is now green for all three modules — keep it that way.
 
 ## Phase 8–11 status (updated 2026-05-21)
 
@@ -104,16 +104,12 @@ Built via parallel subagent waves with two-stage (spec + code-quality) review:
 
 ### Java + Gradle
 
-- Daniel uses **asdf 0.18** for version management. `.tool-versions` at repo root pins `java temurin-17.0.19+10`.
-- **`JAVA_HOME` is not automatically set by asdf shims for non-interactive shells.** Every Bash command that calls Gradle should prefix:
-  ```
-  export JAVA_HOME=~/.asdf/installs/java/temurin-17.0.19+10
-  ```
-- Gradle wrapper is at `mobile/gradlew`, version `8.10.2`. Don't run system `gradle` (currently 9.5.1) directly.
+- Daniel uses **asdf 0.18** for version management. `.tool-versions` at repo root pins `java temurin-17.0.19+10`. Daniel's shell auto-provides `JAVA_HOME` — don't add an explicit `export JAVA_HOME=...` prefix to Gradle commands.
+- Gradle wrapper is at `gradlew`, version `8.10.2`. Don't run system `gradle` (currently 9.5.1) directly.
 
 ### Local SDK / secrets
 
-- `mobile/local.properties` (gitignored) sets `sdk.dir=/Users/danielbisgrove/Library/Android/sdk`. Already set up.
+- `local.properties` (gitignored) sets `sdk.dir=/Users/danielbisgrove/Library/Android/sdk`. Already set up.
 - **Firebase config files are gitignored** (`google-services.json`, `GoogleService-Info.plist`). When Phase 8 (Firebase integration) lands, Daniel will need to drop the real files in. There's no working Firebase Analytics/Crashlytics output until then; the Android side of Task 41 should ship stubs that no-op until the file is present.
 
 ### Library variant gotcha
@@ -123,7 +119,7 @@ Built via parallel subagent waves with two-stage (spec + code-quality) review:
   androidx-lifecycle-viewmodel-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "androidx-lifecycle" }
   androidx-navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "androidx-navigation" }
   ```
-  Google's `androidx.navigation:navigation-compose` is Android-only and won't resolve for iOS targets. (Already correct in `mobile/gradle/libs.versions.toml`.)
+  Google's `androidx.navigation:navigation-compose` is Android-only and won't resolve for iOS targets. (Already correct in `gradle/libs.versions.toml`.)
 
 ### iOS Xcode integration — DONE ✅
 
@@ -144,7 +140,7 @@ The iOS app builds, launches, and runs the Compose UI on the simulator
 
 Build/run from the command line:
 ```
-xcodebuild -project mobile/iosApp/iosApp.xcodeproj -scheme iosApp \
+xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp \
   -configuration Debug -sdk iphonesimulator \
   -destination 'name=iPhone 17 Pro' build
 xcrun simctl install booted <path>/iosApp.app
@@ -163,21 +159,18 @@ The Room KMP generated code emits two `expect`/`actual` Beta warnings (`Soulariu
 ## Test/build commands worth remembering
 
 ```bash
-# JAVA_HOME setup (every shell)
-export JAVA_HOME=~/.asdf/installs/java/temurin-17.0.19+10
-
 # Fast feedback loop — Android-host unit tests
-cd mobile && ./gradlew :shared:testAndroidHostTest
+./gradlew :shared:testAndroidHostTest
 
 # Android APK build
-cd mobile && ./gradlew :androidApp:assembleDebug
-# → mobile/androidApp/build/outputs/apk/debug/androidApp-debug.apk
+./gradlew :androidApp:assembleDebug
+# → androidApp/build/outputs/apk/debug/androidApp-debug.apk
 
 # iOS framework build (no Xcode needed)
-cd mobile && ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64
+./gradlew :shared:linkDebugFrameworkIosSimulatorArm64
 
 # All shared targets compile-check
-cd mobile && ./gradlew :shared:compileDebugKotlinAndroid :shared:compileKotlinIosSimulatorArm64
+./gradlew :shared:compileDebugKotlinAndroid :shared:compileKotlinIosSimulatorArm64
 ```
 
 ## How the layers fit together

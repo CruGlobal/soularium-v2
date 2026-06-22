@@ -28,9 +28,6 @@ jobs:
   build_android:
     name: Build Android
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: mobile
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -47,9 +44,6 @@ jobs:
   build_ios:
     name: Build iOS
     runs-on: macos-26
-    defaults:
-      run:
-        working-directory: mobile
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -72,9 +66,6 @@ jobs:
   ktlint:
     name: Ktlint
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: mobile
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -92,14 +83,11 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: ktlint-results
-          path: "mobile/**/build/reports/ktlint/"
+          path: "**/build/reports/ktlint/"
 
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: mobile
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -117,14 +105,11 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: lint-results
-          path: "mobile/**/build/reports/lint-results-*.*"
+          path: "**/build/reports/lint-results-*.*"
 
   android_tests:
     name: Android Unit Tests
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: mobile
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -142,14 +127,11 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: android-unit-test-results
-          path: "mobile/**/build/reports/tests/"
+          path: "**/build/reports/tests/"
 
   ios_tests:
     name: iOS Unit Tests
     runs-on: macos-26
-    defaults:
-      run:
-        working-directory: mobile
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -173,4 +155,4 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: ios-unit-test-results
-          path: "mobile/**/build/reports/tests/"
+          path: "**/build/reports/tests/"

@@ -1,24 +1,32 @@
-name: Crowdin sync
+name: Crowdin Translation Download
 
 on:
   schedule:
     - cron: '0 6 * * 1' # every Monday 06:00 UTC
   workflow_dispatch:
 
-# Minimal scope: the job only reads sources and opens a translation PR.
 permissions:
   contents: write
   pull-requests: write
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  sync:
+  download:
+    name: Download Latest Translations from Crowdin
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: crowdin/github-action@v2
+      - name: Download Translations from Crowdin
+        uses: crowdin/github-action@v2
         with:
-          upload_sources: true
+          upload_sources: false
+          upload_translations: false
+          download_sources: false
           download_translations: true
+          skip_untranslated_strings: true
           create_pull_request: true
           localization_branch_name: chore/crowdin-translations
           commit_message: "chore(i18n): translations from Crowdin"
@@ -27,5 +35,4 @@ jobs:
           pull_request_base_branch_name: main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
           CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}

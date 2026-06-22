@@ -28,7 +28,7 @@ mobile/
                               Compose UI, ViewModels, navigation, Koin wiring.
   iosApp/      → Native iOS shell (SwiftUI) hosting the Compose framework.
   gradle/libs.versions.toml → Version catalog (single source of dependency versions).
-.github/workflows/ → ci.yml, crowdin.yml, release.yml, ai-review-auto-approve.yml
+.github/workflows/ → ci.yml, crowdin-upload.yml, crowdin-download.yml, release.yml, ai-review-auto-approve.yml
 docs/superpowers/  → design spec, implementation plan, HANDOFF.md
 ```
 
@@ -198,8 +198,10 @@ signatures. `commonMain` must contain no Android- or iOS-specific imports.
 - `ci.yml` — build + test on every PR and push to `main` (macos-14, JDK 17). Runs
   `ktlintCheck`, all module tests, the Android APK build, and the iOS framework link.
   No secrets required.
-- `crowdin.yml` — weekly translation sync; needs `CROWDIN_PROJECT_ID` and
-  `CROWDIN_PERSONAL_TOKEN` repository secrets (inert until set).
+- `crowdin-upload.yml` — pushes source strings to Crowdin on every push to `main`.
+- `crowdin-download.yml` — weekly pull of translations from Crowdin, opens a PR.
+  Both need the `CROWDIN_PERSONAL_TOKEN` repository secret (inert until set). The
+  Crowdin project ID is hardcoded in `crowdin.yml`.
 - `release.yml` — tag-triggered (`v*`); produces unsigned Android artifacts; iOS release
   is manual until signing/Fastlane is configured.
 - `ai-review-auto-approve.yml` — see Code Review below.

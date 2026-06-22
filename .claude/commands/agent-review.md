@@ -128,7 +128,7 @@ Start with a base score of 0, then add points.
 - `mobile/composeApp/src/iosMain/**`, `mobile/composeApp/src/androidMain/**` — platform-specific app wiring (`platformModule`, `AndroidSharer`/`IosSharer`, `getDatabaseBuilder`)
 - `mobile/composeApp/src/commonMain/kotlin/**/ui/nav/**` — `Routes` constants and `NavGraph` wiring (a broken route crashes navigation)
 - `.github/workflows/*` (not already counted) — CI/CD workflows
-- `.github/workflows/crowdin.yml` — i18n sync workflow (handles `CROWDIN_*` secrets)
+- `.github/workflows/crowdin-upload.yml`, `.github/workflows/crowdin-download.yml` — i18n sync workflows (handle `CROWDIN_*` secrets)
 
 **Medium-Risk File Patterns (+1 point each):**
 - `mobile/composeApp/src/commonMain/kotlin/**/ui/**` — screen composables, ViewModels, theme (excluding `ui/nav/**` which is High)
@@ -420,7 +420,7 @@ Instead of passing the entire diff to each agent, pass only the diff hunks relev
 
 Soularium is an **offline app with a minimal security surface**: no auth, no login, no tokens, no network API client. The only declared permission is `INTERNET`; the only network use is image loading via Coil and share-link URLs opened in a browser. If few security-relevant changes exist, **say so explicitly** — state "minimal security-relevant surface in this PR" rather than inventing theoretical issues. The genuinely relevant concerns are:
 
-- **CI/CD workflow integrity**: GitHub Actions workflow changes — verify permission scopes are minimal, secrets are not exposed in logs, trigger conditions cannot be manipulated to bypass review gates, and the `ai-review-auto-approve` workflow cannot be weakened to skip human review. `crowdin.yml` consumes `CROWDIN_PROJECT_ID` and `CROWDIN_PERSONAL_TOKEN` secrets — verify they are not echoed.
+- **CI/CD workflow integrity**: GitHub Actions workflow changes — verify permission scopes are minimal, secrets are not exposed in logs, trigger conditions cannot be manipulated to bypass review gates, and the `ai-review-auto-approve` workflow cannot be weakened to skip human review. `crowdin-upload.yml` and `crowdin-download.yml` consume the `CROWDIN_PERSONAL_TOKEN` secret — verify it is not echoed.
 - **Review process integrity**: changes to `.claude/commands/` or `.claude/rules/` review definitions — verify risk scoring is not weakened, severity thresholds are not lowered (especially the severity ≥ 7 dismissal floor), and review checklists are not stripped of critical checks.
 - **Room SQL injection**: any use of `@RawQuery` or hand-built SQL — must use bound arguments, never string interpolation. Plain `@Query` statements with `:param` placeholders are safe; flag any concatenated SQL.
 - **PII handling**: `scrubAnalyticsParams()` strips PII keys (name/email/phone/notes/card_id) before analytics. Verify any new analytics event passes through scrubbing, that PII does not leak into share-link URLs, and that no PII is written to logs or crash breadcrumbs.

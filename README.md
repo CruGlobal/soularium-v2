@@ -29,16 +29,17 @@ cd mobile
 GitHub Actions workflows live in `.github/workflows/`:
 
 - `ci.yml` — build + test on every PR and push to `main` (no secrets needed)
-- `crowdin.yml` — weekly translation sync with Crowdin
+- `crowdin-upload.yml` — pushes source strings to Crowdin on every push to `main`
+- `crowdin-download.yml` — weekly pull of translations from Crowdin, opens a PR
 
-The Crowdin workflow requires two repository secrets:
+The Crowdin workflows require one repository secret:
 
 | Secret | Description |
 | --- | --- |
-| `CROWDIN_PROJECT_ID` | Numeric ID of the Cru Crowdin project |
 | `CROWDIN_PERSONAL_TOKEN` | Crowdin personal access token with project read/write scope |
 
-Until those secrets are configured the Crowdin workflow is wired but inert.
+The Crowdin project ID is hardcoded in `crowdin.yml`. Until the token secret is
+configured the Crowdin workflows are wired but inert.
 
 ## Firebase
 

@@ -1,7 +1,6 @@
 package org.cru.soularium
 
 import androidx.compose.runtime.ExperimentalComposeApi
-import androidx.compose.ui.platform.AccessibilitySyncOptions
 import androidx.compose.ui.window.ComposeUIViewController
 import org.cru.soularium.di.initKoin
 
@@ -16,9 +15,9 @@ fun MainViewController() =
             // CADisableMinimumFrameDurationOnPhone key; the strict check is
             // disabled here. (ProMotion 120Hz opt-in is a later nicety.)
             enforceStrictPlistSanityCheck = false
-            // Always expose the Compose semantics tree to iOS accessibility so
-            // VoiceOver and UI-test automation can read the UI at any time.
-            accessibilitySyncOptions = AccessibilitySyncOptions.Always(debugLogger = null)
+            // Compose Multiplatform 1.11+ enables iOS accessibility (VoiceOver,
+            // UI-test automation) on the semantics tree by default; the
+            // `accessibilitySyncOptions` knob from earlier versions is gone.
         },
     ) {
         initKoin()

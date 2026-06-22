@@ -8,6 +8,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.savedstate.read
 import org.cru.soularium.domain.SessionId
 import org.cru.soularium.domain.SessionKind
 import org.cru.soularium.ui.conversation.ConversationHost
@@ -116,8 +117,8 @@ fun NavGraph(
                 navArgument(Routes.ARG_KIND) { type = NavType.StringType },
             ),
         ) { entry ->
-            val sessionId = entry.arguments?.getString(Routes.ARG_SESSION_ID).orEmpty()
-            val kind = entry.arguments?.getString(Routes.ARG_KIND)
+            val sessionId = entry.arguments?.read { getStringOrNull(Routes.ARG_SESSION_ID) }.orEmpty()
+            val kind = entry.arguments?.read { getStringOrNull(Routes.ARG_KIND) }
                 ?.let { runCatching { SessionKind.valueOf(it) }.getOrNull() }
                 ?: SessionKind.GROUP
             ConversationHost(

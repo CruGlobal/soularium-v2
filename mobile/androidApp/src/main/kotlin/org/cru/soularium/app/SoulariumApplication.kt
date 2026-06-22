@@ -1,4 +1,4 @@
-package org.cru.soularium
+package org.cru.soularium.app
 
 import android.app.Application
 import org.cru.soularium.data.db.initDataAndroid

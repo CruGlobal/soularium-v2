@@ -42,7 +42,7 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
       - name: Build
-        run: ./gradlew :composeApp:assembleDebug
+        run: ./gradlew :androidApp:assembleDebug
 
   build_ios:
     name: Build iOS
@@ -111,7 +111,7 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
       - name: Lint
-        run: ./gradlew :composeApp:lint
+        run: ./gradlew lint
       - name: Archive lint results
         if: always()
         uses: actions/upload-artifact@v7
@@ -136,7 +136,7 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
       - name: Run Android Unit Tests
-        run: ./gradlew :domain:jvmTest :data:testDebugUnitTest :composeApp:testDebugUnitTest
+        run: ./gradlew :domain:jvmTest :data:testAndroidHostTest :composeApp:testAndroidHostTest
       - name: Archive test results
         if: always()
         uses: actions/upload-artifact@v7

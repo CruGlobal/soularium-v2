@@ -23,18 +23,25 @@ from there.
 ```
 mobile/
   domain/      → :domain  — pure KMP (jvm + iOS). No Android/Compose deps.
-  data/        → :data    — KMP (Android lib + iOS). Room, DataStore, repository impls.
-  composeApp/  → :composeApp — KMP app (Android application + iOS framework).
-                              Compose UI, ViewModels, navigation, Koin wiring.
+  data/        → :data    — KMP library (Android via com.android.kotlin.multiplatform.library
+                            + iOS). Room, DataStore, repository impls.
+  composeApp/  → :composeApp — KMP library (Android via com.android.kotlin.multiplatform.library
+                              + iOS framework). Compose UI, ViewModels, navigation,
+                              Koin wiring, Android-specific actuals.
+  androidApp/  → :androidApp — Pure Android application (com.android.application). Hosts
+                              MainActivity + SoulariumApplication + AndroidManifest;
+                              depends on :composeApp.
   iosApp/      → Native iOS shell (SwiftUI) hosting the Compose framework.
   gradle/libs.versions.toml → Version catalog (single source of dependency versions).
-.github/workflows/ → ci.yml, crowdin-upload.yml, crowdin-download.yml, release.yml, ai-review-auto-approve.yml
+.github/workflows/ → build.yml, crowdin-upload.yml, crowdin-download.yml, ai-review-auto-approve.yml
 docs/superpowers/  → design spec, implementation plan, HANDOFF.md
 ```
 
-There is **no** `build-logic/`, no Gradle convention plugins, no `feature/`/`module/`/`ui/`
-modules, and no `androidApp/`. Each module's `build.gradle.kts` configures itself directly
-using `libs.versions.toml` aliases.
+There is **no** `build-logic/`, no Gradle convention plugins, and no `feature/`/`module/`/`ui/`
+modules. Each module's `build.gradle.kts` configures itself directly using
+`libs.versions.toml` aliases. AGP 9 forbids mixing the Kotlin Multiplatform plugin with
+`com.android.application` (or `com.android.library`) in the same Gradle subproject — that
+is why `:composeApp` is a KMP library and `:androidApp` is a separate Android-only shell.
 
 ## Build & Development Commands
 
@@ -42,7 +49,7 @@ All commands run from `mobile/`.
 
 ```bash
 # Build
-./gradlew :composeApp:assembleDebug                         # Android APK
+./gradlew :androidApp:assembleDebug                         # Android APK
 ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64   # iOS framework (no Xcode needed)
 
 # Tests
@@ -52,7 +59,7 @@ All commands run from `mobile/`.
 # Lint & formatting
 ./gradlew ktlintCheck    # check Kotlin formatting (all modules)
 ./gradlew ktlintFormat   # auto-fix formatting
-./gradlew lint           # Android lint (:composeApp)
+./gradlew lint           # Android lint (all modules)
 ```
 
 **Java requirement**: Temurin JDK 17 (pinned as `temurin-17.0.19+10` in `.tool-versions`).
@@ -64,10 +71,10 @@ With asdf, export `JAVA_HOME` before any Gradle call:
 
 | Concern | Choice |
 |---|---|
-| Language / UI | Kotlin 2.1.0, Compose Multiplatform 1.7.3, Material3 |
-| Build | Gradle (Kotlin DSL) 8.10.2, AGP 8.7.3, `libs.versions.toml` |
+| Language / UI | Kotlin 2.4.0, Compose Multiplatform 1.11.1, Material3 |
+| Build | Gradle (Kotlin DSL) 9.4.1, AGP 9.2.1, `libs.versions.toml` |
 | DI | Koin 4.0.0 |
-| Persistence | Room 2.7.0-alpha11 (KMP, via KSP) + DataStore Preferences |
+| Persistence | Room 2.8.4 (KMP, via KSP) + DataStore Preferences |
 | Navigation | Navigation Compose (JetBrains KMP variant) |
 | Async | kotlinx.coroutines 1.9.0 + Flow |
 | Images | Coil 3 |
@@ -85,17 +92,21 @@ With asdf, export `JAVA_HOME` before any Gradle call:
 ## Architecture: 3-Layer Hexagonal
 
 ```
-:composeApp  (Compose UI, ViewModels, navigation, Koin wiring)
+:androidApp  (Android-only shell: MainActivity, SoulariumApplication, manifest)
+     │  depends on
+     ▼
+:composeApp  (Compose UI, ViewModels, navigation, Koin wiring) — KMP library
      │  depends on
      ▼
 :domain  ◄── pure KMP: hexagonal "ports" + the pure session state machine
      ▲
      │  depends on
-:data  (Room, DataStore, repository implementations)
+:data  (Room, DataStore, repository implementations) — KMP library
 ```
 
-`:composeApp` depends on `:domain` and `:data`; `:data` depends on `:domain`; `:domain`
-depends on nothing in this repo. Package roots: `org.cru.soularium` (composeApp),
+`:androidApp` depends on `:composeApp`; `:composeApp` depends on `:domain` and `:data`;
+`:data` depends on `:domain`; `:domain` depends on nothing in this repo. Package roots:
+`org.cru.soularium.app` (androidApp), `org.cru.soularium` (composeApp),
 `org.cru.soularium.data`, `org.cru.soularium.domain`.
 
 ### `:domain` — pure KMP
@@ -232,8 +243,9 @@ author may dismiss severity < 7 findings.
 
 - Package structure: `org.cru.soularium.<area>` (e.g. `org.cru.soularium.ui.conversation`,
   `org.cru.soularium.domain.session`, `org.cru.soularium.data.db`).
-- Android: `minSdk 24`, `compileSdk`/`targetSdk 35`, JVM target 17, application id
-  `org.cru.soularium` (debug builds add a `.dev` suffix).
+- Android: `minSdk 24`, `compileSdk`/`targetSdk 36`, JVM target 17, application id
+  `org.cru.soularium` (debug builds add a `.dev` suffix). The application id and build
+  types live in `:androidApp` — `:composeApp` is a KMP library with no application id.
 - iOS: bundle id `org.cru.soularium`; the Compose framework is embedded via an Xcode
   run-script phase.
 - User-visible strings come from Compose Multiplatform resources

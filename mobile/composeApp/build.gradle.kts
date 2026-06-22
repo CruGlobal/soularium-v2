@@ -1,19 +1,29 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.serialization)
-    alias(libs.plugins.android.application)
+    alias(libs.plugins.android.kotlin.multiplatform.library)
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.ktlint)
 }
 
 kotlin {
-    androidTarget {
-        compilations.all {
-            kotlinOptions { jvmTarget = "17" }
+    android {
+        namespace = "org.cru.soularium"
+        compileSdk = 36
+        minSdk = 24
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
         }
+        withHostTest {}
     }
-    listOf(iosX64(), iosArm64(), iosSimulatorArm64()).forEach { iosTarget ->
+    // Compose Multiplatform 1.11.x no longer publishes iosX64 binaries for several
+    // artifacts (foundation, components-resources, components-ui-tooling-preview).
+    // Intel-Mac iOS simulators are EOL upstream, so :composeApp only targets the
+    // Apple-silicon simulator and device.
+    listOf(iosArm64(), iosSimulatorArm64()).forEach { iosTarget ->
         iosTarget.binaries.framework {
             baseName = "ComposeApp"
             isStatic = true
@@ -47,31 +57,6 @@ kotlin {
             implementation(libs.kotest.assertions)
             implementation(libs.turbine)
             implementation(libs.coroutines.test)
-        }
-    }
-}
-
-android {
-    namespace = "org.cru.soularium"
-    compileSdk = 35
-
-    defaultConfig {
-        applicationId = "org.cru.soularium"
-        minSdk = 24
-        targetSdk = 35
-        versionCode = 1
-        versionName = "2.0.0"
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    buildTypes {
-        debug { applicationIdSuffix = ".dev" }
-        release {
-            isMinifyEnabled = false
         }
     }
 }

@@ -1,0 +1,176 @@
+name: Build App
+
+on:
+  push:
+    branches: [ main, feature/*, release/* ]
+  pull_request:
+    branches: [ main, feature/*, release/* ]
+  workflow_dispatch:
+    inputs:
+      triggerRelease:
+        description: 'Trigger Release'
+        required: false
+        type: boolean
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  ORG_GRADLE_PROJECT_releaseBuild: ${{ github.event_name == 'workflow_dispatch' && inputs.triggerRelease && github.ref == 'refs/heads/main' }}
+  ORG_GRADLE_PROJECT_versionSuffix: >-
+    ${{
+      (github.event_name == 'pull_request' && format('PR{0}', github.event.pull_request.number)) ||
+      ''
+    }}
+
+jobs:
+  build_android:
+    name: Build Android
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+      - name: Setup Java JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: "temurin"
+          java-version-file: ".tool-versions"
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+      - name: Build
+        run: ./gradlew :composeApp:assembleDebug
+
+  build_ios:
+    name: Build iOS
+    runs-on: macos-26
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+      - name: Setup Java JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: "temurin"
+          java-version-file: ".tool-versions"
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+      - name: Cache Konan
+        uses: actions/cache@v5
+        with:
+          path: ~/.konan
+          key: ${{ runner.os }}-konan-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-konan-
+      - name: Build
+        run: ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
+
+  ktlint:
+    name: Ktlint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+      - name: Setup Java JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: "temurin"
+          java-version-file: ".tool-versions"
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+      - name: Ktlint
+        run: ./gradlew ktlintCheck
+      - name: Archive ktlint results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ktlint-results
+          path: "mobile/**/build/reports/ktlint/"
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+      - name: Setup Java JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: "temurin"
+          java-version-file: ".tool-versions"
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+      - name: Lint
+        run: ./gradlew :composeApp:lint
+      - name: Archive lint results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: lint-results
+          path: "mobile/**/build/reports/lint-results-*.*"
+
+  android_tests:
+    name: Android Unit Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+      - name: Setup Java JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: "temurin"
+          java-version-file: ".tool-versions"
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+      - name: Run Android Unit Tests
+        run: ./gradlew :domain:jvmTest :data:testDebugUnitTest :composeApp:testDebugUnitTest
+      - name: Archive test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-unit-test-results
+          path: "mobile/**/build/reports/tests/"
+
+  ios_tests:
+    name: iOS Unit Tests
+    runs-on: macos-26
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+      - name: Setup Java JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: "temurin"
+          java-version-file: ".tool-versions"
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+      - name: Cache Konan
+        uses: actions/cache@v5
+        with:
+          path: ~/.konan
+          key: ${{ runner.os }}-konan-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-konan-
+      - name: Run iOS Unit Tests
+        run: ./gradlew :domain:iosSimulatorArm64Test :data:iosSimulatorArm64Test :composeApp:iosSimulatorArm64Test
+      - name: Archive test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-unit-test-results
+          path: "mobile/**/build/reports/tests/"

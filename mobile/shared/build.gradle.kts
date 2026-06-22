@@ -6,10 +6,16 @@ plugins {
     alias(libs.plugins.android.kotlin.multiplatform.library)
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.room)
     alias(libs.plugins.ktlint)
 }
 
 kotlin {
+    @OptIn(org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi::class)
+    compilerOptions {
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
     android {
         namespace = "org.cru.soularium"
         compileSdk = 36
@@ -33,7 +39,6 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation(project(":domain"))
-            implementation(project(":data"))
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material3)
@@ -48,6 +53,12 @@ kotlin {
             implementation(libs.coil.compose)
             implementation(libs.markdown.renderer)
             implementation(libs.coroutines.core)
+            api(libs.room.runtime)
+            implementation(libs.sqlite.bundled)
+            implementation(libs.datastore.preferences.core)
+            implementation(libs.okio)
+            implementation(libs.kotlinx.datetime)
+            api(libs.kotlinx.serialization.json)
         }
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
@@ -63,4 +74,14 @@ kotlin {
 
 compose.resources {
     packageOfResClass = "org.cru.soularium.generated.resources"
+}
+
+room {
+    schemaDirectory("$projectDir/schemas")
+}
+
+dependencies {
+    add("kspAndroid", libs.room.compiler)
+    add("kspIosArm64", libs.room.compiler)
+    add("kspIosSimulatorArm64", libs.room.compiler)
 }

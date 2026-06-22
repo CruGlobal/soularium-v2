@@ -136,7 +136,7 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
       - name: Run Android Unit Tests
-        run: ./gradlew :domain:jvmTest :data:testAndroidHostTest :shared:testAndroidHostTest
+        run: ./gradlew :domain:jvmTest :shared:testAndroidHostTest
       - name: Archive test results
         if: always()
         uses: actions/upload-artifact@v7
@@ -167,7 +167,7 @@ jobs:
           key: ${{ runner.os }}-konan-${{ github.sha }}
           restore-keys: ${{ runner.os }}-konan-
       - name: Run iOS Unit Tests
-        run: ./gradlew :domain:iosSimulatorArm64Test :data:iosSimulatorArm64Test :shared:iosSimulatorArm64Test
+        run: ./gradlew :domain:iosSimulatorArm64Test :shared:iosSimulatorArm64Test
       - name: Archive test results
         if: always()
         uses: actions/upload-artifact@v7

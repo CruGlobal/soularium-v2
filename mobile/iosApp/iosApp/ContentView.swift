@@ -6,13 +6,13 @@
 //
 
 import SwiftUI
-import ComposeApp
+import Shared
 
 /// Bridges the Kotlin/Compose root view controller into SwiftUI.
 struct ComposeView: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> UIViewController {
         // MainViewControllerKt.MainViewController() is defined in
-        // composeApp/src/iosMain/.../MainViewController.kt — it starts Koin
+        // shared/src/iosMain/.../MainViewController.kt — it starts Koin
         // and renders App().
         MainViewControllerKt.MainViewController()
     }

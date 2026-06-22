@@ -25,12 +25,12 @@ mobile/
   domain/      → :domain  — pure KMP (jvm + iOS). No Android/Compose deps.
   data/        → :data    — KMP library (Android via com.android.kotlin.multiplatform.library
                             + iOS). Room, DataStore, repository impls.
-  composeApp/  → :composeApp — KMP library (Android via com.android.kotlin.multiplatform.library
+  shared/      → :shared — KMP library (Android via com.android.kotlin.multiplatform.library
                               + iOS framework). Compose UI, ViewModels, navigation,
                               Koin wiring, Android-specific actuals.
   androidApp/  → :androidApp — Pure Android application (com.android.application). Hosts
                               MainActivity + SoulariumApplication + AndroidManifest;
-                              depends on :composeApp.
+                              depends on :shared.
   iosApp/      → Native iOS shell (SwiftUI) hosting the Compose framework.
   gradle/libs.versions.toml → Version catalog (single source of dependency versions).
 .github/workflows/ → build.yml, crowdin-upload.yml, crowdin-download.yml, ai-review-auto-approve.yml
@@ -41,7 +41,7 @@ There is **no** `build-logic/`, no Gradle convention plugins, and no `feature/`/
 modules. Each module's `build.gradle.kts` configures itself directly using
 `libs.versions.toml` aliases. AGP 9 forbids mixing the Kotlin Multiplatform plugin with
 `com.android.application` (or `com.android.library`) in the same Gradle subproject — that
-is why `:composeApp` is a KMP library and `:androidApp` is a separate Android-only shell.
+is why `:shared` is a KMP library and `:androidApp` is a separate Android-only shell.
 
 ## Build & Development Commands
 
@@ -50,10 +50,10 @@ All commands run from `mobile/`.
 ```bash
 # Build
 ./gradlew :androidApp:assembleDebug                         # Android APK
-./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64   # iOS framework (no Xcode needed)
+./gradlew :shared:linkDebugFrameworkIosSimulatorArm64   # iOS framework (no Xcode needed)
 
 # Tests
-./gradlew :domain:allTests :data:allTests :composeApp:allTests  # all unit tests
+./gradlew :domain:allTests :data:allTests :shared:allTests  # all unit tests
 ./gradlew :domain:jvmTest                                       # fast domain-only JVM subset (~2s)
 
 # Lint & formatting
@@ -95,7 +95,7 @@ With asdf, export `JAVA_HOME` before any Gradle call:
 :androidApp  (Android-only shell: MainActivity, SoulariumApplication, manifest)
      │  depends on
      ▼
-:composeApp  (Compose UI, ViewModels, navigation, Koin wiring) — KMP library
+:shared  (Compose UI, ViewModels, navigation, Koin wiring) — KMP library
      │  depends on
      ▼
 :domain  ◄── pure KMP: hexagonal "ports" + the pure session state machine
@@ -104,9 +104,9 @@ With asdf, export `JAVA_HOME` before any Gradle call:
 :data  (Room, DataStore, repository implementations) — KMP library
 ```
 
-`:androidApp` depends on `:composeApp`; `:composeApp` depends on `:domain` and `:data`;
+`:androidApp` depends on `:shared`; `:shared` depends on `:domain` and `:data`;
 `:data` depends on `:domain`; `:domain` depends on nothing in this repo. Package roots:
-`org.cru.soularium.app` (androidApp), `org.cru.soularium` (composeApp),
+`org.cru.soularium.app` (androidApp), `org.cru.soularium` (shared),
 `org.cru.soularium.data`, `org.cru.soularium.domain`.
 
 ### `:domain` — pure KMP
@@ -148,7 +148,7 @@ With asdf, export `JAVA_HOME` before any Gradle call:
 - Repositories map Room entities ↔ domain models; the mapping must be total (no `!!` on
   optional columns).
 
-### `:composeApp` — UI
+### `:shared` — UI
 
 - **Navigation**: `Routes` (an `object` of string route constants) + `NavGraph.kt`
   wiring a `NavHost`. Cross-screen navigation goes through `Routes`.
@@ -166,7 +166,7 @@ With asdf, export `JAVA_HOME` before any Gradle call:
 
 ### Dependency Injection — Koin
 
-- `initKoin()` (in `composeApp/.../di/KoinInit.kt`) starts Koin with `appModule` +
+- `initKoin()` (in `shared/.../di/KoinInit.kt`) starts Koin with `appModule` +
   `platformModule`. It is idempotent (safe to call twice).
 - `appModule` (commonMain) registers `single { }` for the database, DAOs, and
   repositories, and `viewModel { }` for ViewModels. ViewModels that need a runtime
@@ -245,11 +245,11 @@ author may dismiss severity < 7 findings.
   `org.cru.soularium.domain.session`, `org.cru.soularium.data.db`).
 - Android: `minSdk 24`, `compileSdk`/`targetSdk 36`, JVM target 17, application id
   `org.cru.soularium` (debug builds add a `.dev` suffix). The application id and build
-  types live in `:androidApp` — `:composeApp` is a KMP library with no application id.
+  types live in `:androidApp` — `:shared` is a KMP library with no application id.
 - iOS: bundle id `org.cru.soularium`; the Compose framework is embedded via an Xcode
   run-script phase.
 - User-visible strings come from Compose Multiplatform resources
   (`stringResource(Res.string.*)`), never inline literals. Source strings live in
-  `mobile/composeApp/src/commonMain/composeResources/values/strings.xml`.
+  `mobile/shared/src/commonMain/composeResources/values/strings.xml`.
 - Firebase config files (`google-services.json`, `GoogleService-Info.plist`) and
   `local.properties` are gitignored — never commit them.

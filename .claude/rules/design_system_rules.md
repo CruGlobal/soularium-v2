@@ -3,8 +3,8 @@
 This document defines the design-system conventions for Soularium v2 so that UI work —
 whether translating a Figma frame or building a screen from the spec — stays consistent.
 
-The shared design tokens live in `:composeApp` under
-`composeApp/src/commonMain/kotlin/org/cru/soularium/ui/theme/` (`Theme.kt`, `Color.kt`,
+The shared design tokens live in `:shared` under
+`shared/src/commonMain/kotlin/org/cru/soularium/ui/theme/` (`Theme.kt`, `Color.kt`,
 `Typography.kt`) and are surfaced through Material3's `MaterialTheme.*` API. There is **no
 white-label layer** — Soularium v2 is a single Cru-branded app.
 
@@ -20,7 +20,7 @@ white-label layer** — Soularium v2 is a single Cru-branded app.
 | Theme entry point | `SoulariumTheme(content)` in `ui/theme/Theme.kt` |
 | Image loading | Coil 3 (`coil-compose`) for remote/large images; `painterResource` for bundled drawables |
 | Markdown | `multiplatform-markdown-renderer-m3` (for About / Resources copy) |
-| Resources | Compose Multiplatform resources under `composeApp/src/commonMain/composeResources/` |
+| Resources | Compose Multiplatform resources under `shared/src/commonMain/composeResources/` |
 
 Apply `SoulariumTheme { }` **once**, at the app root. Inside any `@Composable`, read
 tokens from `MaterialTheme.colorScheme.*`, `MaterialTheme.typography.*`, and
@@ -241,7 +241,7 @@ added/removed/reordered.
   Never inline user-facing English in a screen.
 - The generated resource accessor is `soularium.composeapp.generated.resources.Res`.
   Import `Res` plus the specific keys you use.
-- Source strings: `composeApp/src/commonMain/composeResources/values/strings.xml`.
+- Source strings: `shared/src/commonMain/composeResources/values/strings.xml`.
   Translations live in `values-es/`, `values-fr/`, `values-pl/`, `values-zh-rCN/` and are
   managed through Crowdin — do not hand-edit translated files.
 - Drawables (50 card images + thumbnails) live under `composeResources/drawable/`;

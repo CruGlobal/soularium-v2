@@ -1,0 +1,30 @@
+{
+  "_comment": "TEMPLATE — copy to mobile/shared/google-services.json and replace placeholder values with Cru's real Firebase Android app config. The real file is gitignored. See docs/superpowers/HANDOFF.md (Firebase) for wiring steps.",
+  "project_info": {
+    "project_number": "000000000000",
+    "project_id": "soularium-REPLACE-ME",
+    "storage_bucket": "soularium-REPLACE-ME.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+        "android_client_info": {
+          "package_name": "org.cru.soularium"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "REPLACE_WITH_REAL_ANDROID_API_KEY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

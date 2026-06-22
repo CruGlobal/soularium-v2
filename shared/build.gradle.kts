@@ -45,10 +45,11 @@ kotlin {
             implementation(compose.components.resources)
             implementation(compose.components.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodel.compose)
-            implementation(libs.androidx.navigation.compose)
+            implementation(libs.circuit.foundation)
+            implementation(libs.circuit.runtime.presenter)
+            implementation(libs.circuit.runtime.ui)
             implementation(libs.koin.core)
             implementation(libs.koin.compose)
-            implementation(libs.koin.compose.viewmodel)
             implementation(libs.coil.compose)
             implementation(libs.markdown.renderer)
             implementation(libs.coroutines.core)
@@ -64,6 +65,7 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
+            implementation(libs.circuit.test)
             implementation(libs.kotest.assertions)
             implementation(libs.turbine)
             implementation(libs.coroutines.test)

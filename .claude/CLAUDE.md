@@ -28,7 +28,7 @@ androidApp/    → :androidApp — Pure Android application (com.android.applica
                               depends on :shared.
 iosApp/        → Native iOS shell (SwiftUI) hosting the Compose framework.
 gradle/libs.versions.toml → Version catalog (single source of dependency versions).
-.github/workflows/ → build.yml, crowdin-upload.yml, crowdin-download.yml, ai-review-auto-approve.yml
+.github/workflows/ → build.yml, crowdin-upload.yml, crowdin-download.yml
 docs/superpowers/  → design spec, implementation plan, HANDOFF.md
 ```
 
@@ -58,21 +58,22 @@ All commands run from the repo root.
 ./gradlew lint           # Android lint (all modules)
 ```
 
-**Java requirement**: Temurin JDK 17 (pinned as `temurin-17.0.19+10` in `.tool-versions`).
-Use the repo's Gradle wrapper (`./gradlew`, 8.10.2) — not a system Gradle.
+**Java requirement**: JDK is pinned via `.tool-versions` (currently
+`temurin-25.0.3+9.0.LTS`). Use the repo's Gradle wrapper (`./gradlew`, 9.x) —
+not a system Gradle. Source/target bytecode is JVM 17.
 
 ## Technology Stack
 
 | Concern | Choice |
 |---|---|
 | Language / UI | Kotlin 2.4.0, Compose Multiplatform 1.11.1, Material3 |
-| Build | Gradle (Kotlin DSL) 9.4.1, AGP 9.2.1, `libs.versions.toml` |
+| Build | Gradle (Kotlin DSL) 9.x, AGP 9.2.1, `libs.versions.toml` |
 | DI | Koin 4.0.0 |
 | Persistence | Room 2.8.4 (KMP, via KSP) + DataStore Preferences |
 | Navigation | Navigation Compose (JetBrains KMP variant) |
-| Async | kotlinx.coroutines 1.9.0 + Flow |
+| Async | kotlinx.coroutines 1.11.0 + Flow |
 | Images | Coil 3 |
-| Serialization | kotlinx.serialization 1.7.3 |
+| Serialization | kotlinx.serialization 1.11.0 |
 | Testing | `kotlin.test` + Kotest assertions + Turbine + `kotlinx-coroutines-test` |
 | Lint | ktlint via `org.jlleitschuh.gradle.ktlint`, `intellij_idea` code style |
 | Crash / analytics | Firebase Crashlytics + Analytics (no-op until config files land) |
@@ -99,10 +100,7 @@ Use the repo's Gradle wrapper (`./gradlew`, 8.10.2) — not a system Gradle.
 Package roots: `org.cru.soularium.app` (androidApp), `org.cru.soularium` (shared, with
 sub-packages `domain`, `data`, `ui`, `di`, `platform`, `analytics`).
 
-The previous three-module split (`:domain`, `:data`, `:composeApp`) collapsed into
-`:shared` once it became clear that AGP 9 already forced `:androidApp` to be a separate
-Android-only shell — the inner-module boundaries were no longer pulling their weight.
-Layering is still enforced by package convention: code in `org.cru.soularium.domain`
+Layering is enforced by package convention: code in `org.cru.soularium.domain`
 must not import from `data`, `ui`, or platform packages, and `org.cru.soularium.data`
 must not import from `ui`.
 
@@ -203,26 +201,21 @@ signatures. `commonMain` must contain no Android- or iOS-specific imports.
 
 ## CI & Workflows
 
-- `ci.yml` — build + test on every PR and push to `main` (macos-14, JDK 17). Runs
-  `ktlintCheck`, all module tests, the Android APK build, and the iOS framework link.
-  No secrets required.
+- `build.yml` — build + test on every PR and push to `main`/`feature/*`/`release/*`.
+  Runs the Android APK build (ubuntu-latest), the iOS framework link
+  (`linkDebugFrameworkIosSimulatorArm64`, macos-26), `ktlintCheck`, Android `lint`,
+  Android host tests (`:shared:testAndroidHostTest`), and iOS simulator tests
+  (`:shared:iosSimulatorArm64Test`). JDK is read from `.tool-versions`. No secrets
+  required.
 - `crowdin-upload.yml` — pushes source strings to Crowdin on every push to `main`.
 - `crowdin-download.yml` — weekly pull of translations from Crowdin, opens a PR.
   Both need the `CROWDIN_PERSONAL_TOKEN` repository secret (inert until set). The
   Crowdin project ID is hardcoded in `crowdin.yml`.
-- `release.yml` — tag-triggered (`v*`); produces unsigned Android artifacts; iOS release
-  is manual until signing/Fastlane is configured.
-- `ai-review-auto-approve.yml` — see Code Review below.
 
 ## Code Review
 
 PRs may be reviewed by `/agent-review` (see `.claude/commands/agent-review.md`), a
-multi-agent AI review with smart agent selection, debate, and consensus.
-
-When `/agent-review` produces a CLEAN or APPROVED_WITH_SUGGESTIONS verdict on a LOW or
-MEDIUM-risk PR with **zero blockers and zero Important findings**, it dispatches
-`.github/workflows/ai-review-auto-approve.yml`, which posts an APPROVE review as
-`github-actions[bot]`. Branch protection still gates the merge on CI. Findings of
+multi-agent AI review with smart agent selection, debate, and consensus. Findings of
 severity ≥ 7 (the "Important" floor) cannot be dismissed via `/dismiss`; only the PR
 author may dismiss severity < 7 findings.
 

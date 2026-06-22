@@ -1,6 +1,12 @@
 # Soularium v2 — Session Handoff
 
-Last updated: 2026-05-21
+Last updated: 2026-06-22
+
+> **Note (2026-06-22):** the original three-module split (`:domain`, `:data`,
+> `:composeApp`) has been flattened into a single `:shared` KMP module that
+> `:androidApp` depends on. Older sections of this document still describe the
+> pre-flatten layout — see CLAUDE.md for the current architecture and use the
+> commands in "Test/build commands worth remembering" below.
 
 ## TL;DR for the next Claude
 
@@ -14,14 +20,14 @@ Read these in order:
 
 ### Phase 0 — Project bootstrap (Tasks 1–4 ✅, Task 5 partial)
 
-- KMP project at `mobile/` with three modules: `:domain`, `:data`, `:composeApp`
+- KMP project at the repo root with three modules: `:domain`, `:data`, `:composeApp`
 - Gradle wrapper pinned at 8.10.2
-- `mobile/composeApp/` produces a working Android APK rendering "Soularium v2 — bootstrap OK"
-- iOS Xcode project at `mobile/iosApp/iosApp.xcodeproj` — fully wired; the iOS app builds and runs the Compose UI on the simulator. See "iOS Xcode integration" below.
+- `composeApp/` produces a working Android APK rendering "Soularium v2 — bootstrap OK"
+- iOS Xcode project at `iosApp/iosApp.xcodeproj` — fully wired; the iOS app builds and runs the Compose UI on the simulator. See "iOS Xcode integration" below.
 
 ### Phase 1 — Domain types (Tasks 6–9) ✅
 
-- `mobile/domain/src/commonMain/kotlin/org/cru/soularium/domain/`:
+- `domain/src/commonMain/kotlin/org/cru/soularium/domain/`:
   - `Ids.kt` (`SessionId`, `ConversationId`, `CardPickId` — value classes, UUID-v4 generation)
   - `SessionKind.kt`, `ContactInfo.kt`, `Session.kt`, `Conversation.kt`, `CardPick.kt`, `DomainError.kt`
   - `content/` — `Question.kt`, `CardImage.kt`, `Questions.kt` (5-question metadata with selection rules)
@@ -68,7 +74,7 @@ Built via parallel subagent waves with two-stage (spec + code-quality) review:
 
 ### Infrastructure note — ktlint
 
-`ktlintCheck` had never passed (the bundled `ktlint_official` ruleset flagged ~1000 violations and crashed on rule-disable). Fixed in `mobile/.editorconfig` (switched to `intellij_idea` code style) + `mobile/build.gradle.kts` (excludes generated sources). `ktlintCheck` is now green for all three modules — keep it that way.
+`ktlintCheck` had never passed (the bundled `ktlint_official` ruleset flagged ~1000 violations and crashed on rule-disable). Fixed in `.editorconfig` (switched to `intellij_idea` code style) + `build.gradle.kts` (excludes generated sources). `ktlintCheck` is now green for all three modules — keep it that way.
 
 ## Phase 8–11 status (updated 2026-05-21)
 
@@ -83,7 +89,7 @@ Built via parallel subagent waves with two-stage (spec + code-quality) review:
 
 ### Blocked / deferred — needs Cru
 
-- **Tasks 41–42 — Firebase** Analytics + Crashlytics stay **no-op** (`NoOpAnalyticsTracker` / `NoOpCrashReporter` in `di/Placeholders.kt`). Shipped now: `analytics/scrubAnalyticsParams` (PII/card-detail key scrubbing, 5 unit tests) and `example.google-services.json` / `example.GoogleService-Info.plist` templates. **To finish when the real configs land:** drop `google-services.json` (in `composeApp/`) and `GoogleService-Info.plist` (in the iOS target) — both gitignored; apply the `google-services` + `firebase-crashlytics` Gradle plugins on the Android target; add the Firebase Analytics/Crashlytics SPM dependencies on iOS; implement `FirebaseAnalyticsTracker` / `FirebaseCrashReporter` (the Android tracker should call `scrubAnalyticsParams` before `logEvent`); and swap the Koin bindings in `PlatformModule.android.kt` / `.ios.kt`.
+- **Tasks 41–42 — Firebase** Analytics + Crashlytics stay **no-op** (`NoOpAnalyticsTracker` / `NoOpCrashReporter` in `di/Placeholders.kt`). Shipped now: `analytics/scrubAnalyticsParams` (PII/card-detail key scrubbing, 5 unit tests) and `example.google-services.json` / `example.GoogleService-Info.plist` templates. **To finish when the real configs land:** drop `google-services.json` (in `androidApp/`) and `GoogleService-Info.plist` (in the iOS target) — both gitignored; apply the `google-services` + `firebase-crashlytics` Gradle plugins on the Android target; add the Firebase Analytics/Crashlytics SPM dependencies on iOS; implement `FirebaseAnalyticsTracker` / `FirebaseCrashReporter` (the Android tracker should call `scrubAnalyticsParams` before `logEvent`); and swap the Koin bindings in `PlatformModule.android.kt` / `.ios.kt`.
 - **Task 50 — Manual device testing** Daniel: sideload the debug APK on real Android devices, run the iOS build on a real iPhone, verify the share sheets launch and runtime locale switching works, capture store screenshots. This also covers the manual TalkBack/VoiceOver pass from Task 48.
 - **Task 51 — Firebase App Distribution** Needs the Firebase configs (Task 41) plus a Fastlane `firebase_app_distribution` lane and an internal Cru tester group.
 
@@ -98,16 +104,12 @@ Built via parallel subagent waves with two-stage (spec + code-quality) review:
 
 ### Java + Gradle
 
-- Daniel uses **asdf 0.18** for version management. `.tool-versions` at repo root pins `java temurin-17.0.19+10`.
-- **`JAVA_HOME` is not automatically set by asdf shims for non-interactive shells.** Every Bash command that calls Gradle should prefix:
-  ```
-  export JAVA_HOME=~/.asdf/installs/java/temurin-17.0.19+10
-  ```
-- Gradle wrapper is at `mobile/gradlew`, version `8.10.2`. Don't run system `gradle` (currently 9.5.1) directly.
+- Daniel uses **asdf 0.18** for version management. `.tool-versions` at repo root pins `java temurin-17.0.19+10`. Daniel's shell auto-provides `JAVA_HOME` — don't add an explicit `export JAVA_HOME=...` prefix to Gradle commands.
+- Gradle wrapper is at `gradlew`, version `8.10.2`. Don't run system `gradle` (currently 9.5.1) directly.
 
 ### Local SDK / secrets
 
-- `mobile/local.properties` (gitignored) sets `sdk.dir=/Users/danielbisgrove/Library/Android/sdk`. Already set up.
+- `local.properties` (gitignored) sets `sdk.dir=/Users/danielbisgrove/Library/Android/sdk`. Already set up.
 - **Firebase config files are gitignored** (`google-services.json`, `GoogleService-Info.plist`). When Phase 8 (Firebase integration) lands, Daniel will need to drop the real files in. There's no working Firebase Analytics/Crashlytics output until then; the Android side of Task 41 should ship stubs that no-op until the file is present.
 
 ### Library variant gotcha
@@ -117,7 +119,7 @@ Built via parallel subagent waves with two-stage (spec + code-quality) review:
   androidx-lifecycle-viewmodel-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "androidx-lifecycle" }
   androidx-navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "androidx-navigation" }
   ```
-  Google's `androidx.navigation:navigation-compose` is Android-only and won't resolve for iOS targets. (Already correct in `mobile/gradle/libs.versions.toml`.)
+  Google's `androidx.navigation:navigation-compose` is Android-only and won't resolve for iOS targets. (Already correct in `gradle/libs.versions.toml`.)
 
 ### iOS Xcode integration — DONE ✅
 
@@ -127,9 +129,9 @@ The iOS app builds, launches, and runs the Compose UI on the simulator
 - **Bundle ID** is now `org.cru.soularium` (was `org.cru.soularium.iosApp`).
 - **Compose framework wiring** in `iosApp.xcodeproj/project.pbxproj`: a
   "Build Kotlin Framework" run-script phase runs
-  `:composeApp:embedAndSignAppleFrameworkForXcode` (it exports `JAVA_HOME`
+  `:shared:embedAndSignAppleFrameworkForXcode` (it exports `JAVA_HOME`
   for asdf); `FRAMEWORK_SEARCH_PATHS` + `OTHER_LDFLAGS` (`-framework
-  ComposeApp`) link it; `ENABLE_USER_SCRIPT_SANDBOXING = NO` lets the
+  Shared`) link it; `ENABLE_USER_SCRIPT_SANDBOXING = NO` lets the
   script run Gradle.
 - `ContentView.swift` hosts `MainViewControllerKt.MainViewController()`.
 - `MainViewController` sets `enforceStrictPlistSanityCheck = false`
@@ -138,7 +140,7 @@ The iOS app builds, launches, and runs the Compose UI on the simulator
 
 Build/run from the command line:
 ```
-xcodebuild -project mobile/iosApp/iosApp.xcodeproj -scheme iosApp \
+xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp \
   -configuration Debug -sdk iphonesimulator \
   -destination 'name=iPhone 17 Pro' build
 xcrun simctl install booted <path>/iosApp.app
@@ -157,36 +159,36 @@ The Room KMP generated code emits two `expect`/`actual` Beta warnings (`Soulariu
 ## Test/build commands worth remembering
 
 ```bash
-# JAVA_HOME setup (every shell)
-export JAVA_HOME=~/.asdf/installs/java/temurin-17.0.19+10
-
-# Domain JVM tests — the fast feedback loop, runs in ~2s
-cd mobile && ./gradlew :domain:jvmTest
+# Fast feedback loop — Android-host unit tests
+./gradlew :shared:testAndroidHostTest
 
 # Android APK build
-cd mobile && ./gradlew :composeApp:assembleDebug
-# → mobile/composeApp/build/outputs/apk/debug/composeApp-debug.apk
+./gradlew :androidApp:assembleDebug
+# → androidApp/build/outputs/apk/debug/androidApp-debug.apk
 
 # iOS framework build (no Xcode needed)
-cd mobile && ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
+./gradlew :shared:linkDebugFrameworkIosSimulatorArm64
 
-# All data targets compile-check
-cd mobile && ./gradlew :data:compileDebugKotlinAndroid :data:compileKotlinIosSimulatorArm64
+# All shared targets compile-check
+./gradlew :shared:compileDebugKotlinAndroid :shared:compileKotlinIosSimulatorArm64
 ```
 
 ## How the layers fit together
 
 ```
-:composeApp (KMP+CMP UI, ViewModels, navigation)
+:androidApp  (Android-only application shell)
         |
         v
-:domain (pure KMP) <— pure transitions, pure shareUrlFor, ports
-        ^
-        |
-:data (KMP)    Room + repository implementations + DataStore (later)
+:shared (KMP — Android + iOS)
+        ├── org.cru.soularium.domain  — pure transitions, pure shareUrlFor, ports
+        ├── org.cru.soularium.data    — Room + repository implementations + DataStore
+        └── org.cru.soularium.ui      — Compose UI, ViewModels, navigation
 ```
 
-`:composeApp` depends on both `:domain` (for state machine, types) and `:data` (for repository impls). `:data` depends on `:domain` (for entity/value types and port interfaces).
+The three concerns used to be separate Gradle modules (`:domain`, `:data`,
+`:composeApp`); they were flattened into `:shared` once `:androidApp` became
+the sole `com.android.application` shell. Layering is now enforced by package
+convention rather than by separate Gradle subprojects.
 
 ## Mental model for the next phase
 

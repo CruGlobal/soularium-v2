@@ -16,23 +16,18 @@ implementation plan, and `HANDOFF.md` (current state).
 
 ## Repository Layout
 
-The repository root contains `.github/`, `docs/`, `crowdin.yml`, `README.md`, and the
-`mobile/` directory. **The Gradle project lives in `mobile/`** — run all Gradle commands
-from there.
+**The Gradle project lives at the repo root** — run all Gradle commands from there.
 
 ```
-mobile/
-  domain/      → :domain  — pure KMP (jvm + iOS). No Android/Compose deps.
-  data/        → :data    — KMP library (Android via com.android.kotlin.multiplatform.library
-                            + iOS). Room, DataStore, repository impls.
-  composeApp/  → :composeApp — KMP library (Android via com.android.kotlin.multiplatform.library
-                              + iOS framework). Compose UI, ViewModels, navigation,
-                              Koin wiring, Android-specific actuals.
-  androidApp/  → :androidApp — Pure Android application (com.android.application). Hosts
+shared/        → :shared — KMP library (Android via com.android.kotlin.multiplatform.library
+                          + iOS framework). Domain models + session state machine, Room +
+                          DataStore persistence, Compose UI, ViewModels, navigation, Koin
+                          wiring, and Android/iOS actuals — all in one module.
+androidApp/    → :androidApp — Pure Android application (com.android.application). Hosts
                               MainActivity + SoulariumApplication + AndroidManifest;
-                              depends on :composeApp.
-  iosApp/      → Native iOS shell (SwiftUI) hosting the Compose framework.
-  gradle/libs.versions.toml → Version catalog (single source of dependency versions).
+                              depends on :shared.
+iosApp/        → Native iOS shell (SwiftUI) hosting the Compose framework.
+gradle/libs.versions.toml → Version catalog (single source of dependency versions).
 .github/workflows/ → build.yml, crowdin-upload.yml, crowdin-download.yml, ai-review-auto-approve.yml
 docs/superpowers/  → design spec, implementation plan, HANDOFF.md
 ```
@@ -41,20 +36,21 @@ There is **no** `build-logic/`, no Gradle convention plugins, and no `feature/`/
 modules. Each module's `build.gradle.kts` configures itself directly using
 `libs.versions.toml` aliases. AGP 9 forbids mixing the Kotlin Multiplatform plugin with
 `com.android.application` (or `com.android.library`) in the same Gradle subproject — that
-is why `:composeApp` is a KMP library and `:androidApp` is a separate Android-only shell.
+is why `:shared` is a KMP library (via `com.android.kotlin.multiplatform.library`) and
+`:androidApp` is a separate Android-only shell that depends on it.
 
 ## Build & Development Commands
 
-All commands run from `mobile/`.
+All commands run from the repo root.
 
 ```bash
 # Build
 ./gradlew :androidApp:assembleDebug                         # Android APK
-./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64   # iOS framework (no Xcode needed)
+./gradlew :shared:linkDebugFrameworkIosSimulatorArm64       # iOS framework (no Xcode needed)
 
 # Tests
-./gradlew :domain:allTests :data:allTests :composeApp:allTests  # all unit tests
-./gradlew :domain:jvmTest                                       # fast domain-only JVM subset (~2s)
+./gradlew :shared:allTests                # all unit tests (Android host + iOS simulator)
+./gradlew :shared:testAndroidHostTest     # fast Android-host JVM subset
 
 # Lint & formatting
 ./gradlew ktlintCheck    # check Kotlin formatting (all modules)
@@ -63,9 +59,7 @@ All commands run from `mobile/`.
 ```
 
 **Java requirement**: Temurin JDK 17 (pinned as `temurin-17.0.19+10` in `.tool-versions`).
-With asdf, export `JAVA_HOME` before any Gradle call:
-`export JAVA_HOME=~/.asdf/installs/java/temurin-17.0.19+10`. Use the repo's Gradle wrapper
-(`mobile/gradlew`, 8.10.2) — not a system Gradle.
+Use the repo's Gradle wrapper (`./gradlew`, 8.10.2) — not a system Gradle.
 
 ## Technology Stack
 
@@ -89,33 +83,36 @@ With asdf, export `JAVA_HOME` before any Gradle call:
 > (`org.jetbrains.androidx.*`), not Google's AndroidX artifacts. The catalog is already
 > correct — keep it that way.
 
-## Architecture: 3-Layer Hexagonal
+## Architecture: Hexagonal (single shared module)
 
 ```
 :androidApp  (Android-only shell: MainActivity, SoulariumApplication, manifest)
      │  depends on
      ▼
-:composeApp  (Compose UI, ViewModels, navigation, Koin wiring) — KMP library
-     │  depends on
-     ▼
-:domain  ◄── pure KMP: hexagonal "ports" + the pure session state machine
-     ▲
-     │  depends on
-:data  (Room, DataStore, repository implementations) — KMP library
+:shared      (KMP library — Android + iOS targets)
+              ├── org.cru.soularium.domain — pure models, ports, session state machine
+              ├── org.cru.soularium.data   — Room + DataStore + repository impls
+              └── org.cru.soularium.ui     — Compose UI, ViewModels, navigation, Koin
 ```
 
-`:androidApp` depends on `:composeApp`; `:composeApp` depends on `:domain` and `:data`;
-`:data` depends on `:domain`; `:domain` depends on nothing in this repo. Package roots:
-`org.cru.soularium.app` (androidApp), `org.cru.soularium` (composeApp),
-`org.cru.soularium.data`, `org.cru.soularium.domain`.
+`:androidApp` depends on `:shared`; `:shared` depends on nothing else in this repo.
+Package roots: `org.cru.soularium.app` (androidApp), `org.cru.soularium` (shared, with
+sub-packages `domain`, `data`, `ui`, `di`, `platform`, `analytics`).
 
-### `:domain` — pure KMP
+The previous three-module split (`:domain`, `:data`, `:composeApp`) collapsed into
+`:shared` once it became clear that AGP 9 already forced `:androidApp` to be a separate
+Android-only shell — the inner-module boundaries were no longer pulling their weight.
+Layering is still enforced by package convention: code in `org.cru.soularium.domain`
+must not import from `data`, `ui`, or platform packages, and `org.cru.soularium.data`
+must not import from `ui`.
 
-- **Ports** (`domain/.../ports/`): interfaces the rest of the app depends on —
+### Domain layer (`org.cru.soularium.domain`)
+
+- **Ports** (`domain/ports/`): interfaces the rest of the app depends on —
   `ContentRepository`, `SessionRepository`, `DeviceStateRepository`, `AnalyticsTracker`,
-  `CrashReporter`, `Sharer`. The interfaces live here; implementations live in `:data`
-  or in the platform Koin modules.
-- **Session state machine** (`domain/.../session/`): `SessionState` (sealed,
+  `CrashReporter`, `Sharer`. The interfaces live here; implementations live in
+  `org.cru.soularium.data` or in the platform Koin modules.
+- **Session state machine** (`domain/session/`): `SessionState` (sealed,
   `@Serializable`), `SessionEvent` (sealed), a **pure** `fun transition(state, event,
   ctx): TransitionResult`, and `Effect` (sealed). `transition()` performs no I/O — side
   effects are *returned as data* (`Effect`) for the ViewModel to execute. Keep it pure
@@ -126,9 +123,9 @@ With asdf, export `JAVA_HOME` before any Gradle call:
 - **Errors**: `DomainError` sealed interface. There is no `Result<T>` wrapper —
   transition errors surface via `TransitionResult.error`.
 
-`:domain` must not reference Compose, Android, or iOS APIs.
+Code under `org.cru.soularium.domain` must not reference Compose, Android, or iOS APIs.
 
-### `:data` — Room + DataStore
+### Data layer (`org.cru.soularium.data`)
 
 - `SoulariumDatabase` is `@Database(version = 1, exportSchema = true)` with
   `@ConstructedBy(SoulariumDatabaseConstructor::class)` and an
@@ -141,14 +138,14 @@ With asdf, export `JAVA_HOME` before any Gradle call:
 - **`SessionState` is persisted as a JSON snapshot string** (`state_snapshot_json`
   column). Renaming or removing a `@Serializable` field in the session-state hierarchy
   breaks already-persisted sessions — treat such changes as schema changes.
-- Exported Room schema JSON lives in `mobile/data/schemas/`. A `@Database` version bump
-  must ship a matching schema JSON and migration.
+- Exported Room schema JSON lives in `shared/schemas/`. A `@Database` version
+  bump must ship a matching schema JSON and migration.
 - Device flags (intro seen, ToS agreed, locale) persist via DataStore Preferences, not
   Room.
 - Repositories map Room entities ↔ domain models; the mapping must be total (no `!!` on
   optional columns).
 
-### `:composeApp` — UI
+### UI layer (`org.cru.soularium.ui`)
 
 - **Navigation**: `Routes` (an `object` of string route constants) + `NavGraph.kt`
   wiring a `NavHost`. Cross-screen navigation goes through `Routes`.
@@ -166,7 +163,7 @@ With asdf, export `JAVA_HOME` before any Gradle call:
 
 ### Dependency Injection — Koin
 
-- `initKoin()` (in `composeApp/.../di/KoinInit.kt`) starts Koin with `appModule` +
+- `initKoin()` (in `shared/.../di/KoinInit.kt`) starts Koin with `appModule` +
   `platformModule`. It is idempotent (safe to call twice).
 - `appModule` (commonMain) registers `single { }` for the database, DAOs, and
   repositories, and `viewModel { }` for ViewModels. ViewModels that need a runtime
@@ -232,24 +229,26 @@ author may dismiss severity < 7 findings.
 ## Code Style
 
 - Max line length: 120 characters.
-- ktlint with the `intellij_idea` code style (set in `mobile/.editorconfig`).
+- ktlint with the `intellij_idea` code style (set in `.editorconfig`).
 - `@Composable` functions are exempt from function-naming rules; other functions are
   camelCase.
 - Trailing commas are used and encouraged.
-- ktlint must not lint generated sources — `mobile/build.gradle.kts` already excludes
+- ktlint must not lint generated sources — the root `build.gradle.kts` already excludes
   anything under a `build/` directory.
 
 ## Key Conventions
 
 - Package structure: `org.cru.soularium.<area>` (e.g. `org.cru.soularium.ui.conversation`,
-  `org.cru.soularium.domain.session`, `org.cru.soularium.data.db`).
+  `org.cru.soularium.domain.session`, `org.cru.soularium.data.db`). The Compose-resources
+  `Res` accessor is generated at `org.cru.soularium.generated.resources` (configured via
+  `compose.resources.packageOfResClass` in `:shared`).
 - Android: `minSdk 24`, `compileSdk`/`targetSdk 36`, JVM target 17, application id
   `org.cru.soularium` (debug builds add a `.dev` suffix). The application id and build
-  types live in `:androidApp` — `:composeApp` is a KMP library with no application id.
+  types live in `:androidApp` — `:shared` is a KMP library with no application id.
 - iOS: bundle id `org.cru.soularium`; the Compose framework is embedded via an Xcode
   run-script phase.
 - User-visible strings come from Compose Multiplatform resources
   (`stringResource(Res.string.*)`), never inline literals. Source strings live in
-  `mobile/composeApp/src/commonMain/composeResources/values/strings.xml`.
+  `shared/src/commonMain/composeResources/values/strings.xml`.
 - Firebase config files (`google-services.json`, `GoogleService-Info.plist`) and
   `local.properties` are gitignored — never commit them.

@@ -13,15 +13,13 @@ Project docs live in `docs/superpowers/`:
 
 ## Building
 
-Requires JDK 17 (the repo pins `temurin-17.0.19+10` via `.tool-versions`; with
-asdf, `export JAVA_HOME=~/.asdf/installs/java/temurin-17.0.19+10` first).
+Requires JDK 17 (the repo pins `temurin-17.0.19+10` via `.tool-versions`).
 
 ```bash
-cd mobile
-./gradlew :composeApp:assembleDebug                          # Android APK
-./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64    # iOS framework
+./gradlew :androidApp:assembleDebug                          # Android APK
+./gradlew :shared:linkDebugFrameworkIosSimulatorArm64        # iOS framework
 ./gradlew ktlintCheck                                        # lint all modules
-./gradlew :domain:test :data:allTests :composeApp:allTests   # tests
+./gradlew :shared:allTests                                   # tests
 ```
 
 ## CI and GitHub secrets

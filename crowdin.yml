@@ -5,8 +5,8 @@ base_url: "https://api.crowdin.com"
 preserve_hierarchy: true
 
 files:
-  - source: "mobile/composeApp/src/commonMain/composeResources/values/strings.xml"
-    translation: "mobile/composeApp/src/commonMain/composeResources/values-%two_letters_code%/strings.xml"
+  - source: "shared/src/commonMain/composeResources/values/strings.xml"
+    translation: "shared/src/commonMain/composeResources/values-%two_letters_code%/strings.xml"
     languages_mapping:
       two_letters_code:
         zh-CN: zh-rCN

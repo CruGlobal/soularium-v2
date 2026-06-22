@@ -18,7 +18,7 @@ jobs:
     name: Upload Latest Source Strings to Crowdin
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Upload Strings to Crowdin
         uses: crowdin/github-action@v2
         with:

@@ -30,6 +30,10 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.slack.circuit.runtime.CircuitUiEvent
+import com.slack.circuit.runtime.CircuitUiState
+import com.slack.circuit.runtime.Navigator
+import com.slack.circuit.runtime.presenter.Presenter
 import org.cru.soularium.generated.resources.Res
 import org.cru.soularium.generated.resources.action_back
 import org.cru.soularium.generated.resources.resource_cru_header
@@ -48,7 +52,31 @@ import org.cru.soularium.generated.resources.resource_privacy_url
 import org.cru.soularium.generated.resources.resource_terms_header
 import org.cru.soularium.generated.resources.resource_terms_label
 import org.cru.soularium.generated.resources.resources_title
+import org.cru.soularium.ui.nav.TermsScreen
 import org.jetbrains.compose.resources.stringResource
+
+class ResourcesPresenter(
+    private val navigator: Navigator,
+) : Presenter<ResourcesPresenter.UiState> {
+
+    data class UiState(
+        val eventSink: (UiEvent) -> Unit,
+    ) : CircuitUiState
+
+    sealed interface UiEvent : CircuitUiEvent {
+        data object Back : UiEvent
+        data object OpenTerms : UiEvent
+    }
+
+    @Composable
+    override fun present(): UiState =
+        UiState { event ->
+            when (event) {
+                UiEvent.Back -> navigator.pop()
+                UiEvent.OpenTerms -> navigator.goTo(TermsScreen)
+            }
+        }
+}
 
 /**
  * Sealed type representing the action triggered when a resource row is tapped.
@@ -80,23 +108,15 @@ data class ResourceLink(
  * Resources screen — a [LazyColumn] of [ResourceLink] rows. Each row either
  * opens an external URI (web or mailto) via [LocalUriHandler] or triggers an
  * in-app callback.
- *
- * No ViewModel. No Koin. Plain callbacks only.
- *
- * @param onBack      Called when the user taps the top-app-bar back button.
- * @param onOpenTerms Called when the user taps the Terms of Use row.
- * @param modifier    Optional modifier forwarded to the root [Scaffold].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ResourcesScreen(
-    onBack: () -> Unit,
-    onOpenTerms: () -> Unit,
+fun ResourcesLayout(
+    state: ResourcesPresenter.UiState,
     modifier: Modifier = Modifier,
 ) {
     val uriHandler = LocalUriHandler.current
 
-    // Resolve all string resources here so ResourceLink data class stays pure.
     val mySoulariumHeader = stringResource(Res.string.resource_mysoularium_header)
     val mySoulariumLabel = stringResource(Res.string.resource_mysoularium_label)
     val mySoulariumUrl = stringResource(Res.string.resource_mysoularium_url)
@@ -126,7 +146,7 @@ fun ResourcesScreen(
         feedbackEmail,
         feedbackSubject,
         privacyUrl,
-        onOpenTerms,
+        state,
     ) {
         listOf(
             ResourceLink(
@@ -150,7 +170,9 @@ fun ResourcesScreen(
             ResourceLink(
                 header = termsHeader,
                 label = termsLabel,
-                action = ResourceAction.InAppAction(invoke = onOpenTerms),
+                action = ResourceAction.InAppAction(invoke = {
+                    state.eventSink(ResourcesPresenter.UiEvent.OpenTerms)
+                }),
             ),
             ResourceLink(
                 header = privacyHeader,
@@ -172,7 +194,7 @@ fun ResourcesScreen(
                 },
                 navigationIcon = {
                     IconButton(
-                        onClick = onBack,
+                        onClick = { state.eventSink(ResourcesPresenter.UiEvent.Back) },
                         modifier = Modifier.semantics { contentDescription = backLabel },
                     ) {
                         Icon(

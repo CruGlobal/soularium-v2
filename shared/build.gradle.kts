@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.ksp)
+    id("kotlin-parcelize")
     alias(libs.plugins.room)
     alias(libs.plugins.ktlint)
 }
@@ -22,6 +23,15 @@ kotlin {
         minSdk = 24
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_17)
+            // Teach kotlin-parcelize to recognize the multiplatform-safe
+            // @Parcelize annotation declared in commonMain (provided by
+            // gto-support-parcelize) so Circuit Screens declared there get
+            // parcelable codegen on Android.
+            freeCompilerArgs.addAll(
+                "-P",
+                "plugin:org.jetbrains.kotlin.parcelize:additionalAnnotation=" +
+                    "org.ccci.gto.android.common.parcelize.Parcelize",
+            )
         }
         withHostTest {}
     }
@@ -51,6 +61,7 @@ kotlin {
             implementation(libs.koin.core)
             implementation(libs.koin.compose)
             implementation(libs.coil.compose)
+            implementation(libs.gtoSupport.parcelize)
             implementation(libs.markdown.renderer)
             implementation(libs.coroutines.core)
             api(libs.room.runtime)

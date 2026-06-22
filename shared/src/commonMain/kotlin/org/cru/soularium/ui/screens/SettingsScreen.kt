@@ -23,10 +23,21 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import com.slack.circuit.runtime.CircuitUiEvent
+import com.slack.circuit.runtime.CircuitUiState
+import com.slack.circuit.runtime.Navigator
+import com.slack.circuit.runtime.presenter.Presenter
+import kotlinx.coroutines.launch
+import org.cru.soularium.domain.DeviceState
+import org.cru.soularium.domain.ports.DeviceStateRepository
 import org.cru.soularium.generated.resources.Res
 import org.cru.soularium.generated.resources.action_back
 import org.cru.soularium.generated.resources.locale_en
@@ -74,22 +85,44 @@ enum class AppLocale(
     }
 }
 
+class SettingsPresenter(
+    private val navigator: Navigator,
+    private val deviceStateRepo: DeviceStateRepository,
+) : Presenter<SettingsPresenter.UiState> {
+
+    data class UiState(
+        val selectedLocale: AppLocale,
+        val eventSink: (UiEvent) -> Unit,
+    ) : CircuitUiState
+
+    sealed interface UiEvent : CircuitUiEvent {
+        data object Back : UiEvent
+        data class SelectLocale(val locale: AppLocale) : UiEvent
+    }
+
+    @Composable
+    override fun present(): UiState {
+        val scope = rememberCoroutineScope()
+        val deviceState by remember { deviceStateRepo.deviceState }.collectAsState(DeviceState())
+        return UiState(
+            selectedLocale = AppLocale.fromCode(deviceState.locale),
+        ) { event ->
+            when (event) {
+                UiEvent.Back -> navigator.pop()
+                is UiEvent.SelectLocale -> scope.launch { deviceStateRepo.setLocale(event.locale.code) }
+            }
+        }
+    }
+}
+
 /**
  * Settings screen. Currently contains a single Language section that lets the
  * user select among the supported locales via a radio group.
- *
- * @param selectedLocale   the currently active locale (reflected in the UI).
- * @param onLocaleSelected called when the user taps a locale row; the caller is
- *                         responsible for storing the value.
- * @param onBack           called when the user taps the navigation back button.
- * @param modifier         optional [Modifier] applied to the root [Scaffold].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(
-    selectedLocale: AppLocale,
-    onLocaleSelected: (AppLocale) -> Unit,
-    onBack: () -> Unit,
+fun SettingsLayout(
+    state: SettingsPresenter.UiState,
     modifier: Modifier = Modifier,
 ) {
     val backLabel = stringResource(Res.string.action_back)
@@ -106,7 +139,7 @@ fun SettingsScreen(
                 },
                 navigationIcon = {
                     IconButton(
-                        onClick = onBack,
+                        onClick = { state.eventSink(SettingsPresenter.UiEvent.Back) },
                         modifier = Modifier.padding(4.dp),
                     ) {
                         Icon(
@@ -132,8 +165,8 @@ fun SettingsScreen(
                 .padding(innerPadding),
         ) {
             LanguageSection(
-                selectedLocale = selectedLocale,
-                onLocaleSelected = onLocaleSelected,
+                selectedLocale = state.selectedLocale,
+                onLocaleSelected = { state.eventSink(SettingsPresenter.UiEvent.SelectLocale(it)) },
             )
         }
     }
@@ -195,7 +228,6 @@ private fun LocaleRow(
     ) {
         RadioButton(
             selected = isSelected,
-            // onClick is null — interaction is handled by the row's selectable modifier
             onClick = null,
         )
         Text(

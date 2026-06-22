@@ -41,6 +41,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import com.slack.circuit.runtime.CircuitUiEvent
+import com.slack.circuit.runtime.CircuitUiState
+import com.slack.circuit.runtime.Navigator
+import com.slack.circuit.runtime.presenter.Presenter
 import org.cru.soularium.domain.content.Question
 import org.cru.soularium.domain.content.Questions
 import org.cru.soularium.generated.resources.Res
@@ -65,18 +69,35 @@ private const val TOTAL_CARDS = 50
 private const val TAB_IMAGES = 0
 private const val TAB_QUESTIONS = 1
 
+class CardsAndQuestionsPresenter(
+    private val navigator: Navigator,
+) : Presenter<CardsAndQuestionsPresenter.UiState> {
+
+    data class UiState(
+        val eventSink: (UiEvent) -> Unit,
+    ) : CircuitUiState
+
+    sealed interface UiEvent : CircuitUiEvent {
+        data object Back : UiEvent
+    }
+
+    @Composable
+    override fun present(): UiState =
+        UiState { event ->
+            when (event) {
+                UiEvent.Back -> navigator.pop()
+            }
+        }
+}
+
 /**
  * Reference screen showing all 50 Soularium card images in a grid and the 5
- * questions in a scrollable list. Tapping a card opens a full-screen viewer
- * that can be dismissed by tapping outside or pressing the close button.
- *
- * @param onBack   called when the user taps the navigation back button.
- * @param modifier optional [Modifier] applied to the root [Scaffold].
+ * questions in a scrollable list. Tapping a card opens a full-screen viewer.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CardsAndQuestionsScreen(
-    onBack: () -> Unit,
+fun CardsAndQuestionsLayout(
+    state: CardsAndQuestionsPresenter.UiState,
     modifier: Modifier = Modifier,
 ) {
     val backLabel = stringResource(Res.string.action_back)
@@ -95,7 +116,7 @@ fun CardsAndQuestionsScreen(
                 },
                 navigationIcon = {
                     IconButton(
-                        onClick = onBack,
+                        onClick = { state.eventSink(CardsAndQuestionsPresenter.UiEvent.Back) },
                         modifier = Modifier.padding(4.dp),
                     ) {
                         Icon(

@@ -20,6 +20,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "soularium"
 
-include(":domain")
 include(":shared")
 include(":androidApp")

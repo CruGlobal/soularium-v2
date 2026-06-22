@@ -17,6 +17,7 @@ kotlin {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_17)
         }
+        withHostTest {}
     }
     // Compose Multiplatform 1.11.x no longer publishes iosX64 binaries for several
     // artifacts (foundation, components-resources, components-ui-tooling-preview).

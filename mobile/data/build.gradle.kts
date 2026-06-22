@@ -21,6 +21,7 @@ kotlin {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_17)
         }
+        withHostTest {}
     }
     // iOS targets compile for KMP; no standalone framework output is needed —
     // :data is linked into :composeApp's framework, not shipped on its own.

@@ -25,6 +25,12 @@
         "org.jetbrains.kotlin.plugin.serialization{/,}**",
         "dev.zacsweers.metro{/,}**"
       ]
-    }
+    },
+    {
+      "matchPackageNames": [
+        "org.jetbrains.kotlinx:kotlinx-datetime{/,}**"
+      ],
+      "allowedVersions": "!/.*-0\\.6\\.x-compat/"
+    }    
   ]
 }

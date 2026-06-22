@@ -1,0 +1,30 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "dependencyDashboard": true,
+  "labels": [
+    "dependencies"
+  ],
+  "packageRules": [
+    {
+      "groupName": "Compose Multiplatform",
+      "matchPackageNames": [
+        "org.jetbrains.compose:{/,}**",
+        "org.jetbrains.compose.*:{/,}**"
+      ]
+    },
+    {
+      "groupName": "Kotlin and Metro",
+      "description": "Kotlin and Metro versions are tightly coupled.",
+      "matchPackageNames": [
+        "org.jetbrains.kotlin:kotlin{/,}**",
+        "org.jetbrains.kotlin.multiplatform{/,}**",
+        "org.jetbrains.kotlin.plugin.compose{/,}**",
+        "org.jetbrains.kotlin.plugin.serialization{/,}**",
+        "dev.zacsweers.metro{/,}**"
+      ]
+    }
+  ]
+}

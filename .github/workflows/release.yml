@@ -34,7 +34,7 @@ jobs:
             mobile/composeApp/build/outputs/bundle/release/*.aab
 
   ios:
-    runs-on: macos-14
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
       - name: iOS archive (placeholder)

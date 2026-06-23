@@ -43,6 +43,7 @@ kotest-assertions = { module = "io.kotest:kotest-assertions-core", version.ref =
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 ktlint-gradle = { module = "org.jlleitschuh.gradle:ktlint-gradle", version.ref = "ktlint" }
+ktlint-rules-compose = "io.nlopez.compose.rules:ktlint:0.6.2"
 markdown-renderer = { module = "com.mikepenz:multiplatform-markdown-renderer-m3", version.ref = "multiplatform-markdown-renderer" }
 okio = "com.squareup.okio:okio:3.17.0"
 robolectric = "org.robolectric:robolectric:4.16.1"
@@ -50,6 +51,9 @@ room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite" }
 turbine = "app.cash.turbine:turbine:1.2.1"
+
+[bundles]
+ktlint-rulesets = ["ktlint-rules-compose"]
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

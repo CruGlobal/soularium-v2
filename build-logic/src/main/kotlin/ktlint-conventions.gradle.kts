@@ -3,6 +3,8 @@ plugins {
 }
 
 ktlint {
+    dependencies.add("ktlintRuleset", versionCatalog.findBundle("ktlint-rulesets").get())
+
     // KSP (Room) and Compose Resources register generated sources as
     // Kotlin source dirs; ktlint must not lint machine-generated code.
     filter {

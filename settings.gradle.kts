@@ -25,5 +25,7 @@ dependencyResolutionManagement {
 
 rootProject.name = "soularium"
 
+includeBuild("build-logic")
+
 include(":shared")
 include(":androidApp")

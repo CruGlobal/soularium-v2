@@ -187,7 +187,9 @@ meaning. Do not hand-roll `ImageVector` paths.
 Soularium screens follow a consistent Circuit contract (see existing screens under
 `ui/screens/` and `ui/conversation/`):
 
-- Each screen is a `Presenter` + `Layout` pair living in the same file. The Layout is a
+- Each screen is a `Presenter` + `Layout` pair, split across two files in the same
+  package: `<Feature>Presenter.kt` (the Presenter class with nested `UiState` and
+  `UiEvent`) and `<Feature>Layout.kt` (the Layout composable). The Layout is a
   **public, stateless** `@Composable fun <Feature>Layout(state: <Feature>Presenter.UiState,
   modifier: Modifier = Modifier)` — it reads fields off `state` and emits intent via
   `state.eventSink(...)`. Layouts never take a Presenter or repository directly.

@@ -41,10 +41,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import com.slack.circuit.runtime.CircuitUiEvent
-import com.slack.circuit.runtime.CircuitUiState
-import com.slack.circuit.runtime.Navigator
-import com.slack.circuit.runtime.presenter.Presenter
 import org.cru.soularium.domain.content.Question
 import org.cru.soularium.domain.content.Questions
 import org.cru.soularium.generated.resources.Res
@@ -68,26 +64,6 @@ private const val CARD_GRID_COLUMNS = 3
 private const val TOTAL_CARDS = 50
 private const val TAB_IMAGES = 0
 private const val TAB_QUESTIONS = 1
-
-class CardsAndQuestionsPresenter(
-    private val navigator: Navigator,
-) : Presenter<CardsAndQuestionsPresenter.UiState> {
-
-    data class UiState(
-        val eventSink: (UiEvent) -> Unit,
-    ) : CircuitUiState
-
-    sealed interface UiEvent : CircuitUiEvent {
-        data object Back : UiEvent
-    }
-
-    @Composable
-    override fun present(): UiState = UiState { event ->
-        when (event) {
-            UiEvent.Back -> navigator.pop()
-        }
-    }
-}
 
 /**
  * Reference screen showing all 50 Soularium card images in a grid and the 5

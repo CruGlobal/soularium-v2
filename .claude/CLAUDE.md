@@ -151,9 +151,11 @@ Code under `org.cru.soularium.domain` must not reference Compose, Android, or iO
   `remember { mutableStateOf(...) }` + `LaunchedEffect`/`produceState` to derive state
   from repositories (collected via `collectAsState()`); user intent flows in through
   `state.eventSink(...)`. Cross-screen navigation is `navigator.goTo(SomeScreen(...))`;
-  back is `navigator.pop()`.
+  back is `navigator.pop()`. Each Presenter lives in its own file named
+  `<Feature>Presenter.kt`.
 - **Layouts** are public, stateless `@Composable` functions named `<Feature>Layout`,
-  paired one-to-one with a Presenter. The signature is
+  paired one-to-one with a Presenter and living in their own file named
+  `<Feature>Layout.kt`. The signature is
   `fun <Feature>Layout(state: <Feature>Presenter.UiState, modifier: Modifier = Modifier)`;
   `modifier` is the **last** parameter and is applied first on the root composable. The
   Layout reads fields off `state` and emits events via `state.eventSink(...)` — it owns

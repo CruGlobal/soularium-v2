@@ -61,7 +61,6 @@ kotlin {
             implementation(libs.koin.compose)
             implementation(libs.coil.compose)
             implementation(libs.gtoSupport.parcelize)
-            implementation(libs.markdown.renderer)
             implementation(libs.coroutines.core)
             api(libs.room.runtime)
             implementation(libs.sqlite.bundled)

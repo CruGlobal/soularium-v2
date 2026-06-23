@@ -18,7 +18,7 @@ kotlinx-datetime = "0.8.0"
 kotlinx-serialization = "1.11.0"
 ksp = "2.3.9"
 multiplatform-markdown-renderer = "0.27.0"
-okio = "3.9.1"
+okio = "3.17.0"
 room = "2.8.4"
 sqlite = "2.6.2"
 

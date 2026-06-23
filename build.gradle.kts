@@ -8,19 +8,11 @@ plugins {
     alias(libs.plugins.compose.compiler) apply false
     alias(libs.plugins.ksp) apply false
     alias(libs.plugins.room) apply false
-    alias(libs.plugins.ktlint) apply false
     alias(libs.plugins.google.services) apply false
     alias(libs.plugins.firebase.crashlytics) apply false
+    id("ktlint-conventions")
 }
 
-subprojects {
-    plugins.withId("org.jlleitschuh.gradle.ktlint") {
-        configure<org.jlleitschuh.gradle.ktlint.KtlintExtension> {
-            // KSP (Room) and Compose Resources register generated sources as
-            // Kotlin source dirs; ktlint must not lint machine-generated code.
-            filter {
-                exclude { it.file.path.contains("${java.io.File.separator}build${java.io.File.separator}") }
-            }
-        }
-    }
+tasks.named("ktlintCheck") {
+    dependsOn(gradle.includedBuild("build-logic").task(":ktlintCheck"))
 }

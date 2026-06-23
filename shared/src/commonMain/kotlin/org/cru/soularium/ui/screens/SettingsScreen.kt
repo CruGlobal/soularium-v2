@@ -166,7 +166,7 @@ fun SettingsLayout(
         ) {
             LanguageSection(
                 selectedLocale = state.selectedLocale,
-                onLocaleSelected = { state.eventSink(SettingsPresenter.UiEvent.SelectLocale(it)) },
+                onLocaleSelect = { state.eventSink(SettingsPresenter.UiEvent.SelectLocale(it)) },
             )
         }
     }
@@ -175,7 +175,7 @@ fun SettingsLayout(
 @Composable
 private fun LanguageSection(
     selectedLocale: AppLocale,
-    onLocaleSelected: (AppLocale) -> Unit,
+    onLocaleSelect: (AppLocale) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
@@ -196,7 +196,7 @@ private fun LanguageSection(
                 LocaleRow(
                     locale = locale,
                     isSelected = locale == selectedLocale,
-                    onSelect = { onLocaleSelected(locale) },
+                    onSelect = { onLocaleSelect(locale) },
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }

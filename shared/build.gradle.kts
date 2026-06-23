@@ -9,7 +9,7 @@ plugins {
     alias(libs.plugins.ksp)
     id("kotlin-parcelize")
     alias(libs.plugins.room)
-    alias(libs.plugins.ktlint)
+    id("ktlint-conventions")
 }
 
 kotlin {

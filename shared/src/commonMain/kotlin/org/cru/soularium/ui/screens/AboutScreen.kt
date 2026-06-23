@@ -21,6 +21,10 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.slack.circuit.runtime.CircuitUiEvent
+import com.slack.circuit.runtime.CircuitUiState
+import com.slack.circuit.runtime.Navigator
+import com.slack.circuit.runtime.presenter.Presenter
 import org.cru.soularium.generated.resources.Res
 import org.cru.soularium.generated.resources.about_50_5
 import org.cru.soularium.generated.resources.about_how_to_body
@@ -38,17 +42,35 @@ import org.cru.soularium.generated.resources.about_what_is_heading
 import org.cru.soularium.generated.resources.action_back
 import org.jetbrains.compose.resources.stringResource
 
+class AboutPresenter(
+    private val navigator: Navigator,
+) : Presenter<AboutPresenter.UiState> {
+
+    data class UiState(
+        val eventSink: (UiEvent) -> Unit,
+    ) : CircuitUiState
+
+    sealed interface UiEvent : CircuitUiEvent {
+        data object Back : UiEvent
+    }
+
+    @Composable
+    override fun present(): UiState =
+        UiState { event ->
+            when (event) {
+                UiEvent.Back -> navigator.pop()
+            }
+        }
+}
+
 /**
  * Informational screen describing Soularium — what it is, how to start a
- * conversation, and helpful tips. All content comes from structured string
- * resources; no markdown renderer needed.
- *
- * @param onBack called when the user taps the back arrow.
+ * conversation, and helpful tips.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AboutScreen(
-    onBack: () -> Unit,
+fun AboutLayout(
+    state: AboutPresenter.UiState,
     modifier: Modifier = Modifier,
 ) {
     val backLabel = stringResource(Res.string.action_back)
@@ -65,7 +87,7 @@ fun AboutScreen(
                 },
                 navigationIcon = {
                     IconButton(
-                        onClick = onBack,
+                        onClick = { state.eventSink(AboutPresenter.UiEvent.Back) },
                         modifier = Modifier.padding(4.dp),
                     ) {
                         Icon(
@@ -89,7 +111,6 @@ fun AboutScreen(
                 .padding(innerPadding)
                 .padding(horizontal = 24.dp, vertical = 16.dp),
         ) {
-            // ── What is Soularium? ──────────────────────────────────────────
             SectionHeading(text = stringResource(Res.string.about_what_is_heading))
             Spacer(modifier = Modifier.height(8.dp))
             SectionBody(text = stringResource(Res.string.about_what_is_body))
@@ -105,14 +126,12 @@ fun AboutScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // ── How to start a conversation ────────────────────────────────
             SectionHeading(text = stringResource(Res.string.about_how_to_heading))
             Spacer(modifier = Modifier.height(8.dp))
             SectionBody(text = stringResource(Res.string.about_how_to_body))
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // ── Helpful tips ───────────────────────────────────────────────
             SectionHeading(text = stringResource(Res.string.about_tips_heading))
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -130,7 +149,6 @@ fun AboutScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // ── Tagline ────────────────────────────────────────────────────
             Text(
                 text = stringResource(Res.string.about_sunlight),
                 style = MaterialTheme.typography.bodySmall,

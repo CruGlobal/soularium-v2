@@ -48,6 +48,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import com.slack.circuit.runtime.CircuitUiEvent
+import com.slack.circuit.runtime.CircuitUiState
+import com.slack.circuit.runtime.Navigator
+import com.slack.circuit.runtime.presenter.Presenter
+import org.cru.soularium.domain.SessionId
+import org.cru.soularium.domain.SessionKind
 import org.cru.soularium.generated.resources.Res
 import org.cru.soularium.generated.resources.app_tagline
 import org.cru.soularium.generated.resources.cd_menu_button
@@ -63,7 +69,48 @@ import org.cru.soularium.generated.resources.menu_my_soularium
 import org.cru.soularium.generated.resources.menu_past_conversations
 import org.cru.soularium.generated.resources.menu_resources
 import org.cru.soularium.generated.resources.menu_settings
+import org.cru.soularium.ui.nav.AboutScreen
+import org.cru.soularium.ui.nav.CardsAndQuestionsScreen
+import org.cru.soularium.ui.nav.ConversationScreen
+import org.cru.soularium.ui.nav.PastConversationsScreen
+import org.cru.soularium.ui.nav.ResourcesScreen
+import org.cru.soularium.ui.nav.SettingsScreen
 import org.jetbrains.compose.resources.stringResource
+
+class HomePresenter(
+    private val navigator: Navigator,
+) : Presenter<HomePresenter.UiState> {
+
+    data class UiState(
+        val eventSink: (UiEvent) -> Unit,
+    ) : CircuitUiState
+
+    sealed interface UiEvent : CircuitUiEvent {
+        data object StartGroupConversation : UiEvent
+        data object StartSoloConversation : UiEvent
+        data object OpenPastConversations : UiEvent
+        data object OpenAbout : UiEvent
+        data object OpenResources : UiEvent
+        data object OpenCardsAndQuestions : UiEvent
+        data object OpenSettings : UiEvent
+    }
+
+    @Composable
+    override fun present(): UiState =
+        UiState { event ->
+            when (event) {
+                UiEvent.StartGroupConversation ->
+                    navigator.goTo(ConversationScreen(SessionId.random(), SessionKind.GROUP))
+                UiEvent.StartSoloConversation ->
+                    navigator.goTo(ConversationScreen(SessionId.random(), SessionKind.SOLO))
+                UiEvent.OpenPastConversations -> navigator.goTo(PastConversationsScreen)
+                UiEvent.OpenAbout -> navigator.goTo(AboutScreen)
+                UiEvent.OpenResources -> navigator.goTo(ResourcesScreen)
+                UiEvent.OpenCardsAndQuestions -> navigator.goTo(CardsAndQuestionsScreen)
+                UiEvent.OpenSettings -> navigator.goTo(SettingsScreen)
+            }
+        }
+}
 
 /**
  * Home screen — entry point after onboarding/terms.
@@ -71,31 +118,11 @@ import org.jetbrains.compose.resources.stringResource
  * Displays the branded MySoularium hero, a primary "Start a Conversation" CTA,
  * a secondary "Create MySoularium" CTA, and a menu trigger icon in the top-right
  * corner. Tapping the icon opens [MenuBottomSheet].
- *
- * All navigation decisions are delegated to the provided callbacks.
- *
- * @param onStartConversation       called when the user taps "Start a Conversation".
- * @param onMySoularium             called when the user taps "Create MySoularium" or
- *                                  the MySoularium row in the menu.
- * @param onMenuPastConversations   called when the user taps Past Conversations in
- *                                  the menu.
- * @param onMenuAbout               called when the user taps About in the menu.
- * @param onMenuResources           called when the user taps Resources in the menu.
- * @param onMenuCardsAndQuestions   called when the user taps Images & Questions in
- *                                  the menu.
- * @param onMenuSettings            called when the user taps Settings in the menu.
- * @param modifier                  applied to the root [Surface].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(
-    onStartConversation: () -> Unit,
-    onMySoularium: () -> Unit,
-    onMenuPastConversations: () -> Unit,
-    onMenuAbout: () -> Unit,
-    onMenuResources: () -> Unit,
-    onMenuCardsAndQuestions: () -> Unit,
-    onMenuSettings: () -> Unit,
+fun HomeLayout(
+    state: HomePresenter.UiState,
     modifier: Modifier = Modifier,
 ) {
     var showMenu by remember { mutableStateOf(false) }
@@ -114,7 +141,6 @@ fun HomeScreen(
                 .statusBarsPadding()
                 .navigationBarsPadding(),
         ) {
-            // ── Top bar ──────────────────────────────────────────────────────
             Row(
                 modifier = Modifier.fillMaxWidth().padding(end = 8.dp),
                 horizontalArrangement = Arrangement.End,
@@ -134,7 +160,6 @@ fun HomeScreen(
                 }
             }
 
-            // ── Hero section ──────────────────────────────────────────────────
             Column(
                 modifier =
                 Modifier
@@ -144,7 +169,6 @@ fun HomeScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
             ) {
-                // "My Soularium" wordmark — two-word stacked display with primary accent
                 val heroTitle = stringResource(Res.string.home_hero_title)
                 val heroSubtitle = stringResource(Res.string.home_hero_subtitle)
                 val wordmark =
@@ -178,9 +202,8 @@ fun HomeScreen(
 
                 Spacer(modifier = Modifier.height(48.dp))
 
-                // ── CTAs ──────────────────────────────────────────────────────
                 Button(
-                    onClick = onStartConversation,
+                    onClick = { state.eventSink(HomePresenter.UiEvent.StartGroupConversation) },
                     modifier =
                     Modifier
                         .fillMaxWidth()
@@ -205,7 +228,7 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 OutlinedButton(
-                    onClick = onMySoularium,
+                    onClick = { state.eventSink(HomePresenter.UiEvent.StartSoloConversation) },
                     modifier =
                     Modifier
                         .fillMaxWidth()
@@ -226,44 +249,32 @@ fun HomeScreen(
             onDismiss = { showMenu = false },
             onMySoularium = {
                 showMenu = false
-                onMySoularium()
+                state.eventSink(HomePresenter.UiEvent.StartSoloConversation)
             },
             onPastConversations = {
                 showMenu = false
-                onMenuPastConversations()
+                state.eventSink(HomePresenter.UiEvent.OpenPastConversations)
             },
             onAbout = {
                 showMenu = false
-                onMenuAbout()
+                state.eventSink(HomePresenter.UiEvent.OpenAbout)
             },
             onResources = {
                 showMenu = false
-                onMenuResources()
+                state.eventSink(HomePresenter.UiEvent.OpenResources)
             },
             onCardsAndQuestions = {
                 showMenu = false
-                onMenuCardsAndQuestions()
+                state.eventSink(HomePresenter.UiEvent.OpenCardsAndQuestions)
             },
             onSettings = {
                 showMenu = false
-                onMenuSettings()
+                state.eventSink(HomePresenter.UiEvent.OpenSettings)
             },
         )
     }
 }
 
-/**
- * Modal bottom sheet navigation menu with rows for the main app destinations.
- *
- * @param onDismiss             called when the sheet is dismissed (back gesture or
- *                              the close row).
- * @param onMySoularium         called when the MySoularium row is tapped.
- * @param onPastConversations   called when the Past Conversations row is tapped.
- * @param onAbout               called when the About row is tapped.
- * @param onResources           called when the Resources row is tapped.
- * @param onCardsAndQuestions   called when the Images & Questions row is tapped.
- * @param onSettings            called when the Settings row is tapped.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MenuBottomSheet(

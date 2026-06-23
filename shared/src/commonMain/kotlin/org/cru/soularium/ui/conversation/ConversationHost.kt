@@ -13,16 +13,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import org.cru.soularium.domain.SessionId
-import org.cru.soularium.domain.SessionKind
+import org.cru.soularium.domain.ContactInfo
 import org.cru.soularium.domain.content.Question
 import org.cru.soularium.domain.content.Questions
 import org.cru.soularium.domain.session.QuestionActivity
@@ -36,82 +29,71 @@ import org.cru.soularium.generated.resources.conversation_exit_message
 import org.cru.soularium.generated.resources.conversation_exit_title
 import org.cru.soularium.platform.PlatformBackHandler
 import org.jetbrains.compose.resources.stringResource
-import org.koin.compose.viewmodel.koinViewModel
-import org.koin.core.parameter.parametersOf
 
 private const val TOTAL_QUESTIONS = 5
 
 /**
- * Single navigation destination that hosts the entire 5-question conversation
- * flow. It owns the [ConversationViewModel] and renders a subscreen derived
- * from [SessionState]; subscreens are never pushed onto the back stack.
+ * The conversation Layout composable: renders one of several subscreens based
+ * on the current [SessionState], plus the bookmark/discard exit dialog.
+ *
+ * Subscreens are stateless callback-driven composables; every callback is
+ * routed through [ConversationPresenter.UiEvent] via [state.eventSink].
  */
 @Composable
-fun ConversationHost(
-    sessionId: SessionId,
-    kind: SessionKind,
-    onExit: () -> Unit,
-    viewModel: ConversationViewModel = koinViewModel { parametersOf(sessionId) },
+fun ConversationLayout(
+    state: ConversationPresenter.UiState,
+    modifier: Modifier = Modifier,
 ) {
-    val state by viewModel.state.collectAsState()
-    val ui by viewModel.ui.collectAsState()
-    val summaries by viewModel.summaries.collectAsState()
-    var showExitDialog by remember { mutableStateOf(false) }
-
-    LaunchedEffect(sessionId) { viewModel.ensureStarted(kind) }
-
     // Intercept the platform back affordance so leaving mid-conversation is a
     // deliberate choice between bookmarking and discarding progress.
-    PlatformBackHandler(enabled = state != SessionState.Concluded) {
-        showExitDialog = true
+    PlatformBackHandler(enabled = state.sessionState != SessionState.Concluded) {
+        state.eventSink(ConversationPresenter.UiEvent.RequestExit)
     }
 
-    if (showExitDialog) {
+    if (state.showExitDialog) {
         ExitConversationDialog(
-            onBookmark = {
-                showExitDialog = false
-                viewModel.bookmarkAndExit(onExit)
-            },
-            onDiscard = {
-                showExitDialog = false
-                viewModel.discardAndExit(onExit)
-            },
-            onCancel = { showExitDialog = false },
+            onBookmark = { state.eventSink(ConversationPresenter.UiEvent.BookmarkAndExit) },
+            onDiscard = { state.eventSink(ConversationPresenter.UiEvent.DiscardAndExit) },
+            onCancel = { state.eventSink(ConversationPresenter.UiEvent.DismissExitDialog) },
         )
     }
 
     AnimatedContent(
-        targetState = state,
+        targetState = state.sessionState,
         transitionSpec = { fadeIn() togetherWith fadeOut() },
+        modifier = modifier,
     ) { current ->
+        val dispatch: (SessionEvent) -> Unit = { event ->
+            state.eventSink(ConversationPresenter.UiEvent.Dispatch(event))
+        }
         when (current) {
             SessionState.NotStarted -> ConversationLoading()
 
             SessionState.AddingParticipants ->
                 AddParticipantsScreen(
-                    participantNames = ui.participantNames,
-                    onAddParticipant = { viewModel.dispatch(SessionEvent.AddParticipant(it)) },
-                    onRemoveParticipant = { viewModel.dispatch(SessionEvent.RemoveParticipant(it)) },
-                    onConfirm = { viewModel.dispatch(SessionEvent.ConfirmParticipants) },
+                    participantNames = state.ui.participantNames,
+                    onAddParticipant = { dispatch(SessionEvent.AddParticipant(it)) },
+                    onRemoveParticipant = { dispatch(SessionEvent.RemoveParticipant(it)) },
+                    onConfirm = { dispatch(SessionEvent.ConfirmParticipants) },
                 )
 
             is SessionState.InQuestion -> {
                 val question = Questions.byNumber(current.questionNumber)
                 val participantName =
-                    ui.participantNames.getOrElse(current.activeParticipantIndex) { "" }
+                    state.ui.participantNames.getOrElse(current.activeParticipantIndex) { "" }
                 when (current.activity) {
                     QuestionActivity.ShowingPrompt ->
                         QuestionPromptScreen(
                             questionNumber = current.questionNumber,
                             totalQuestions = TOTAL_QUESTIONS,
                             participantName = participantName,
-                            isGroup = ui.participantNames.size > 1,
-                            onBegin = { viewModel.dispatch(SessionEvent.BeginSelection) },
+                            isGroup = state.ui.participantNames.size > 1,
+                            onBegin = { dispatch(SessionEvent.BeginSelection) },
                         )
 
                     QuestionActivity.ShowingInstructions ->
                         InstructionPanelScreen(
-                            onDismiss = { viewModel.dispatch(SessionEvent.DismissInstructions) },
+                            onDismiss = { dispatch(SessionEvent.DismissInstructions) },
                         )
 
                     QuestionActivity.SelectingRound1,
@@ -120,62 +102,61 @@ fun ConversationHost(
                         SelectionScreen(
                             questionNumber = current.questionNumber,
                             round = if (current.activity == QuestionActivity.SelectingRound2) 2 else 1,
-                            selectedCardIds = ui.draftPicks,
-                            isConfirmEnabled = isSelectionValid(question, current.activity, ui.draftPicks.size),
+                            selectedCardIds = state.ui.draftPicks,
+                            isConfirmEnabled = isSelectionValid(question, current.activity, state.ui.draftPicks.size),
                             onToggleCard = { cardId ->
-                                if (cardId in ui.draftPicks) {
-                                    viewModel.dispatch(SessionEvent.UnpickCard(cardId))
+                                if (cardId in state.ui.draftPicks) {
+                                    dispatch(SessionEvent.UnpickCard(cardId))
                                 } else {
-                                    viewModel.dispatch(SessionEvent.PickCard(cardId))
+                                    dispatch(SessionEvent.PickCard(cardId))
                                 }
                             },
-                            onConfirm = { viewModel.dispatch(SessionEvent.ConfirmSelection) },
+                            onConfirm = { dispatch(SessionEvent.ConfirmSelection) },
                         )
 
                     QuestionActivity.Finalizing ->
                         FinalizingScreen(
                             questionNumber = current.questionNumber,
-                            cardIds = ui.draftPicks,
-                            onConfirm = { viewModel.dispatch(SessionEvent.ConfirmFinal) },
-                            onChangeSelection = { viewModel.dispatch(SessionEvent.BeginSelection) },
+                            cardIds = state.ui.draftPicks,
+                            onConfirm = { dispatch(SessionEvent.ConfirmFinal) },
+                            onChangeSelection = { dispatch(SessionEvent.BeginSelection) },
                         )
 
                     QuestionActivity.Discussing ->
                         DiscussingScreen(
                             questionNumber = current.questionNumber,
                             participantName = participantName,
-                            cardIds = ui.draftPicks,
-                            onDone = { viewModel.dispatch(SessionEvent.EndDiscussion) },
+                            cardIds = state.ui.draftPicks,
+                            onDone = { dispatch(SessionEvent.EndDiscussion) },
                         )
                 }
             }
 
             SessionState.Summary ->
                 SummaryScreen(
-                    participants = summaries,
-                    onShare = { viewModel.shareSummary(it) },
+                    participants = state.summaries,
+                    onShare = { state.eventSink(ConversationPresenter.UiEvent.Share(it)) },
                     onAddContact = { index ->
-                        val name = ui.participantNames.getOrElse(index) { "" }
-                        viewModel.dispatch(
-                            SessionEvent.CollectContact(index, org.cru.soularium.domain.ContactInfo(name)),
+                        val name = state.ui.participantNames.getOrElse(index) { "" }
+                        state.eventSink(
+                            ConversationPresenter.UiEvent.CollectContact(index, ContactInfo(name)),
                         )
                     },
-                    onDone = { viewModel.dispatch(SessionEvent.Conclude) },
+                    onDone = { dispatch(SessionEvent.Conclude) },
                 )
 
             is SessionState.CollectingContact ->
                 ContactCollectionScreen(
-                    participantName = ui.participantNames.getOrElse(current.participantIndex) { "" },
+                    participantName = state.ui.participantNames.getOrElse(current.participantIndex) { "" },
                     onSave = {
-                        viewModel.dispatch(SessionEvent.CollectContact(current.participantIndex, it))
+                        state.eventSink(
+                            ConversationPresenter.UiEvent.CollectContact(current.participantIndex, it),
+                        )
                     },
-                    onSkip = { viewModel.dispatch(SessionEvent.SkipContact) },
+                    onSkip = { state.eventSink(ConversationPresenter.UiEvent.SkipContact) },
                 )
 
-            SessionState.Concluded -> {
-                LaunchedEffect(Unit) { onExit() }
-                ConversationLoading()
-            }
+            SessionState.Concluded -> ConversationLoading()
         }
     }
 }

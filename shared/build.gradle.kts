@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.ksp)
+    id("kotlin-parcelize")
     alias(libs.plugins.room)
     alias(libs.plugins.ktlint)
 }
@@ -22,6 +23,15 @@ kotlin {
         minSdk = 24
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_17)
+            // Teach kotlin-parcelize to recognize the multiplatform-safe
+            // @Parcelize annotation declared in commonMain (provided by
+            // gto-support-parcelize) so Circuit Screens declared there get
+            // parcelable codegen on Android.
+            freeCompilerArgs.addAll(
+                "-P",
+                "plugin:org.jetbrains.kotlin.parcelize:additionalAnnotation=" +
+                    "org.ccci.gto.android.common.parcelize.Parcelize",
+            )
         }
         withHostTest {}
     }
@@ -45,11 +55,13 @@ kotlin {
             implementation(compose.components.resources)
             implementation(compose.components.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodel.compose)
-            implementation(libs.androidx.navigation.compose)
+            implementation(libs.circuit.foundation)
+            implementation(libs.circuit.runtime.presenter)
+            implementation(libs.circuit.runtime.ui)
             implementation(libs.koin.core)
             implementation(libs.koin.compose)
-            implementation(libs.koin.compose.viewmodel)
             implementation(libs.coil.compose)
+            implementation(libs.gtoSupport.parcelize)
             implementation(libs.markdown.renderer)
             implementation(libs.coroutines.core)
             api(libs.room.runtime)
@@ -64,9 +76,20 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
+            implementation(libs.circuit.test)
+            implementation(libs.gtoSupport.androidx.test.junit)
             implementation(libs.kotest.assertions)
             implementation(libs.turbine)
             implementation(libs.coroutines.test)
+        }
+        // Circuit presenter tests run the Compose Runtime on the JVM host. The
+        // Compose Android artifact's error path touches android.util.Log, so we
+        // need Robolectric to provide real Android stubs.
+        named("androidHostTest").configure {
+            dependencies {
+                implementation(libs.androidx.test.junit)
+                implementation(libs.robolectric)
+            }
         }
     }
 }

@@ -385,4 +385,3 @@ private fun snapBackToPromptIfMidQuestion(state: SessionState): SessionState =
     } else {
         state
     }
-

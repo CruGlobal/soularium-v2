@@ -8,6 +8,9 @@ import com.slack.circuit.runtime.presenter.Presenter
 import com.slack.circuit.runtime.screen.Screen
 import com.slack.circuit.runtime.ui.Ui
 import com.slack.circuit.runtime.ui.ui
+import dev.zacsweers.metro.AppScope
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
 import org.cru.soularium.domain.ports.AnalyticsTracker
 import org.cru.soularium.domain.ports.CrashReporter
 import org.cru.soularium.domain.ports.DeviceStateRepository
@@ -32,6 +35,8 @@ import org.cru.soularium.ui.screens.SettingsPresenter
 import org.cru.soularium.ui.screens.TermsLayout
 import org.cru.soularium.ui.screens.TermsPresenter
 
+@Inject
+@SingleIn(AppScope::class)
 class SoulariumPresenterFactory(
     private val deviceStateRepo: DeviceStateRepository,
     private val sessionRepository: SessionRepository,

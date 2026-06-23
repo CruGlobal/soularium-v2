@@ -3,6 +3,10 @@ package org.cru.soularium.platform
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import dev.zacsweers.metro.AppScope
+import dev.zacsweers.metro.ContributesBinding
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
 import org.cru.soularium.domain.ports.ShareResult
 import org.cru.soularium.domain.ports.Sharer
 
@@ -15,6 +19,9 @@ import org.cru.soularium.domain.ports.Sharer
  * back whether the user completed the share, so a successful launch is
  * reported as [ShareResult.Succeeded].
  */
+@Inject
+@SingleIn(AppScope::class)
+@ContributesBinding(AppScope::class)
 class AndroidSharer(
     private val context: Context,
 ) : Sharer {

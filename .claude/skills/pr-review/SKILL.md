@@ -162,7 +162,7 @@ Cross-reference `.claude/rules/design_system_rules.md` while reviewing UI code.
 - [ ] Every `expect` declaration has an `actual` for **both** `androidMain` and `iosMain` with matching signatures
 - [ ] Android-specific APIs live in `androidMain`; iOS-specific in `iosMain`; `commonMain` stays platform-neutral
 - [ ] New platform seams (`Sharer`, `PlatformBackHandler`, database/datastore builders, etc.) follow the `expect val`/`expect fun` + per-platform `actual` pattern — not `if (Platform.isAndroid)` branching
-- [ ] `iosX64`/`iosArm64`/`iosSimulatorArm64` targets are all covered when adding iOS-specific code (no single-target actuals)
+- [ ] `iosArm64` and `iosSimulatorArm64` are both covered when adding iOS-specific code (no single-target actuals). `iosX64` is intentionally NOT a configured target (Compose Multiplatform 1.11.x stopped publishing its `iosX64` binaries) — flag any attempt to re-add it without a documented reason
 
 ### Dependency Injection — Koin
 

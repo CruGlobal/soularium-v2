@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.ksp)
     id("kotlin-parcelize")
+    alias(libs.plugins.metro)
     alias(libs.plugins.room)
     id("ktlint-conventions")
 }

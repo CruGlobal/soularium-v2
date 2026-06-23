@@ -1,16 +1,16 @@
 package org.cru.soularium.ui.conversation
 
-import kotlinx.coroutines.Dispatchers
+import app.cash.turbine.ReceiveTurbine
+import com.slack.circuit.test.FakeNavigator
+import com.slack.circuit.test.test
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
-import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.test.setMain
+import org.ccci.gto.support.androidx.test.junit.runners.AndroidJUnit4
+import org.ccci.gto.support.androidx.test.junit.runners.RunOnAndroidWith
 import org.cru.soularium.domain.CardPick
 import org.cru.soularium.domain.CardPickId
 import org.cru.soularium.domain.ContactInfo
@@ -28,271 +28,308 @@ import org.cru.soularium.domain.ports.Sharer
 import org.cru.soularium.domain.session.QuestionActivity
 import org.cru.soularium.domain.session.SessionEvent
 import org.cru.soularium.domain.session.SessionState
-import org.cru.soularium.ui.past.PastConversationsViewModel
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
+import org.cru.soularium.ui.nav.ConversationScreen
+import org.cru.soularium.ui.screens.PastConversationsPresenter
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * End-to-end smoke tests for the conversation flow (plan Task 49).
+ * End-to-end smoke tests for the conversation flow.
  *
- * These drive the real [ConversationViewModel] + state machine against a
+ * These drive the real [ConversationPresenter] + state machine against a
  * complete in-memory [SessionRepository], exercising a full session the way
- * [ConversationHost] would, without rendering Compose. They cover the four
- * plan scenarios: a solo run start-to-conclude, a three-person group run, a
- * bookmark-and-resume, and deleting a past conversation.
+ * the Layout would, without rendering Compose. They cover the four scenarios:
+ * a solo run start-to-conclude, a three-person group run, a bookmark-and-resume,
+ * and deleting a past conversation.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
+@RunOnAndroidWith(AndroidJUnit4::class)
 class ConversationFlowTest {
-    private val testDispatcher = UnconfinedTestDispatcher()
-
-    @BeforeTest
-    fun setUp() {
-        Dispatchers.setMain(testDispatcher)
-    }
-
-    @AfterTest
-    fun tearDown() {
-        Dispatchers.resetMain()
-    }
 
     @Test
-    fun `solo session completes from start through summary share and conclude`() =
-        runTest(testDispatcher) {
-            val repo = InMemorySessionRepository()
-            val sharer = RecordingSharer()
-            val sessionId = SessionId.random()
-            val vm = viewModel(sessionId, repo, sharer)
+    fun `solo session completes from start through summary share and conclude`() = runTest {
+        val repo = InMemorySessionRepository()
+        val sharer = RecordingSharer()
+        val sessionId = SessionId.random()
+        val screen = ConversationScreen(sessionId, SessionKind.SOLO)
+        val navigator = FakeNavigator(screen)
 
-            vm.ensureStarted(SessionKind.SOLO)
-            advanceUntilIdle()
-            assertEquals(SessionState.AddingParticipants, vm.state.value)
-
-            addParticipants(vm, "Jordan")
-            vm.dispatch(SessionEvent.ConfirmParticipants)
-            advanceUntilIdle()
+        presenter(navigator, screen, repo, sharer = sharer).test {
+            val added = awaitStable { it.sessionState == SessionState.AddingParticipants }
+            added.addParticipant("Jordan")
+            awaitStable { it.ui.participantNames == listOf("Jordan") }
+                .dispatch(SessionEvent.ConfirmParticipants)
 
             // Five questions, one participant each.
-            repeat(5) { playTurn(vm) }
-            assertEquals(SessionState.Summary, vm.state.value)
+            playAllTurns(turns = 5)
+            val summary = awaitStable { it.sessionState == SessionState.Summary && it.summaries.size == 1 }
+            assertEquals(9, summary.summaries.single().cardIds.size)
 
-            // Summary exposes the participant's nine final picks (3 + 3 + 1 + 1 + 1).
-            assertEquals(1, vm.summaries.value.size)
-            assertEquals(9, vm.summaries.value.single().cardIds.size)
-
-            vm.shareSummary(participantIndex = 0)
+            summary.eventSink(ConversationPresenter.UiEvent.Share(0))
             advanceUntilIdle()
-            assertTrue(sharer.shared.single().isNotEmpty(), "share text should be a non-empty URL")
 
-            vm.dispatch(SessionEvent.Conclude)
-            advanceUntilIdle()
-            assertEquals(SessionState.Concluded, vm.state.value)
+            summary.dispatch(SessionEvent.Conclude)
+            awaitStable { it.sessionState == SessionState.Concluded }
+            cancelAndIgnoreRemainingEvents()
         }
+        assertEquals(1, sharer.shared.size)
+        assertTrue(sharer.shared.single().isNotEmpty(), "share text should be a non-empty URL")
+    }
 
     @Test
-    fun `group session of three completes all five questions`() =
-        runTest(testDispatcher) {
-            val repo = InMemorySessionRepository()
-            val sessionId = SessionId.random()
-            val vm = viewModel(sessionId, repo)
+    fun `group session of three completes all five questions`() = runTest {
+        val repo = InMemorySessionRepository()
+        val sessionId = SessionId.random()
+        val screen = ConversationScreen(sessionId, SessionKind.GROUP)
+        val navigator = FakeNavigator(screen)
 
-            vm.ensureStarted(SessionKind.GROUP)
-            advanceUntilIdle()
-            addParticipants(vm, "Amara", "Ben", "Chen")
-            vm.dispatch(SessionEvent.ConfirmParticipants)
-            advanceUntilIdle()
+        presenter(navigator, screen, repo).test {
+            awaitStable { it.sessionState == SessionState.AddingParticipants }
+                .also { it.addParticipant("Amara") }
+            awaitStable { it.ui.participantNames == listOf("Amara") }
+                .also { it.addParticipant("Ben") }
+            awaitStable { it.ui.participantNames == listOf("Amara", "Ben") }
+                .also { it.addParticipant("Chen") }
+            awaitStable { it.ui.participantNames == listOf("Amara", "Ben", "Chen") }
+                .dispatch(SessionEvent.ConfirmParticipants)
 
-            // Question-major order: every participant answers a question before
-            // the next one begins — 5 questions x 3 participants = 15 turns.
-            repeat(5 * 3) { playTurn(vm) }
-
-            assertEquals(SessionState.Summary, vm.state.value)
-            assertEquals(3, vm.summaries.value.size)
-            vm.summaries.value.forEach { participant ->
+            // Question-major: every participant answers a question before the
+            // next one begins — 5 questions × 3 participants = 15 turns.
+            playAllTurns(turns = 5 * 3)
+            val summary = awaitStable { it.sessionState == SessionState.Summary && it.summaries.size == 3 }
+            summary.summaries.forEach { participant ->
                 assertEquals(9, participant.cardIds.size, "${participant.name} should have 9 final picks")
             }
+            cancelAndIgnoreRemainingEvents()
         }
+    }
 
     @Test
-    fun `bookmarked session resumes from persisted state and completes`() =
-        runTest(testDispatcher) {
-            val repo = InMemorySessionRepository()
-            val sessionId = SessionId.random()
+    fun `bookmarked session resumes from persisted state and completes`() = runTest {
+        val repo = InMemorySessionRepository()
+        val sessionId = SessionId.random()
+        val screen = ConversationScreen(sessionId, SessionKind.SOLO)
+        val navigator = FakeNavigator(screen)
 
-            // First sitting: play questions 1 and 2, then bookmark at question 3.
-            val first = viewModel(sessionId, repo)
-            first.ensureStarted(SessionKind.SOLO)
+        // First sitting: play questions 1 and 2, then bookmark at question 3.
+        presenter(navigator, screen, repo).test {
+            awaitStable { it.sessionState == SessionState.AddingParticipants }
+                .also { it.addParticipant("Riley") }
+            awaitStable { it.ui.participantNames == listOf("Riley") }
+                .dispatch(SessionEvent.ConfirmParticipants)
+            playAllTurns(turns = 2)
+            val atQ3 = awaitStable {
+                (it.sessionState as? SessionState.InQuestion)
+                    ?.let { q -> q.questionNumber == 3 && q.activity == QuestionActivity.ShowingPrompt } == true
+            }
+            atQ3.eventSink(ConversationPresenter.UiEvent.BookmarkAndExit)
             advanceUntilIdle()
-            addParticipants(first, "Riley")
-            first.dispatch(SessionEvent.ConfirmParticipants)
-            advanceUntilIdle()
-            playTurn(first)
-            playTurn(first)
-            assertEquals(
-                QuestionActivity.ShowingPrompt,
-                (first.state.value as SessionState.InQuestion).activity,
-            )
-            assertEquals(3, (first.state.value as SessionState.InQuestion).questionNumber)
-
-            var exited = false
-            first.bookmarkAndExit { exited = true }
-            advanceUntilIdle()
-            assertTrue(exited, "bookmarkAndExit should invoke its completion callback")
-            assertEquals(1, repo.bookmarkedSnapshot().size)
-
-            // Second sitting: a fresh ViewModel rehydrates the persisted state.
-            val resumed = viewModel(sessionId, repo)
-            resumed.ensureStarted(SessionKind.SOLO)
-            advanceUntilIdle()
-            assertEquals(
-                SessionState.InQuestion(3, 0, QuestionActivity.ShowingPrompt),
-                resumed.state.value,
-            )
-
-            // Finish questions 3, 4, 5.
-            repeat(3) { playTurn(resumed) }
-            assertEquals(SessionState.Summary, resumed.state.value)
-
-            resumed.dispatch(SessionEvent.Conclude)
-            advanceUntilIdle()
-            assertEquals(SessionState.Concluded, resumed.state.value)
+            cancelAndIgnoreRemainingEvents()
         }
+        assertEquals(1, repo.bookmarkedSnapshot().size)
+
+        // Second sitting: a fresh presenter rehydrates the persisted state.
+        val resumeNavigator = FakeNavigator(screen)
+        presenter(resumeNavigator, screen, repo).test {
+            val resumed = awaitStable {
+                it.sessionState == SessionState.InQuestion(3, 0, QuestionActivity.ShowingPrompt)
+            }
+            assertEquals(listOf("Riley"), resumed.ui.participantNames)
+            playAllTurns(turns = 3, startingFrom = resumed)
+            awaitStable { it.sessionState == SessionState.Summary }
+                .dispatch(SessionEvent.Conclude)
+            awaitStable { it.sessionState == SessionState.Concluded }
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 
     @Test
-    fun `bookmarked group session rehydrates participant names on resume`() =
-        runTest(testDispatcher) {
-            val repo = InMemorySessionRepository()
-            val sessionId = SessionId.random()
+    fun `bookmarked group session rehydrates participant names on resume`() = runTest {
+        val repo = InMemorySessionRepository()
+        val sessionId = SessionId.random()
+        val screen = ConversationScreen(sessionId, SessionKind.GROUP)
+        val navigator = FakeNavigator(screen)
 
-            val first = viewModel(sessionId, repo)
-            first.ensureStarted(SessionKind.GROUP)
-            advanceUntilIdle()
-            addParticipants(first, "Dana", "Eli")
-            first.dispatch(SessionEvent.ConfirmParticipants)
-            advanceUntilIdle()
+        presenter(navigator, screen, repo).test {
+            awaitStable { it.sessionState == SessionState.AddingParticipants }
+                .also { it.addParticipant("Dana") }
+            awaitStable { it.ui.participantNames == listOf("Dana") }
+                .also { it.addParticipant("Eli") }
+            awaitStable { it.ui.participantNames == listOf("Dana", "Eli") }
+                .dispatch(SessionEvent.ConfirmParticipants)
 
             // Both participants finish question 1; bookmark at the start of Q2.
-            playTurn(first)
-            playTurn(first)
-            assertEquals(
-                SessionState.InQuestion(2, 0, QuestionActivity.ShowingPrompt),
-                first.state.value,
-            )
-            first.bookmarkAndExit { }
+            playAllTurns(turns = 2)
+            val atQ2 = awaitStable {
+                it.sessionState == SessionState.InQuestion(2, 0, QuestionActivity.ShowingPrompt)
+            }
+            atQ2.eventSink(ConversationPresenter.UiEvent.BookmarkAndExit)
             advanceUntilIdle()
+            cancelAndIgnoreRemainingEvents()
+        }
 
-            // A fresh ViewModel must restore the participant list, otherwise
-            // group turn advancement breaks (every turn looks like the last).
-            val resumed = viewModel(sessionId, repo)
-            resumed.ensureStarted(SessionKind.GROUP)
-            advanceUntilIdle()
-            assertEquals(listOf("Dana", "Eli"), resumed.ui.value.participantNames)
+        // A fresh presenter must restore the participant list, otherwise
+        // group turn advancement breaks (every turn looks like the last).
+        val resumeNavigator = FakeNavigator(screen)
+        presenter(resumeNavigator, screen, repo).test {
+            val resumed = awaitStable {
+                it.sessionState == SessionState.InQuestion(2, 0, QuestionActivity.ShowingPrompt) &&
+                    it.ui.participantNames == listOf("Dana", "Eli")
+            }
+            assertEquals(listOf("Dana", "Eli"), resumed.ui.participantNames)
 
             // Questions 2-5, both participants each, reaching the summary.
-            repeat(4 * 2) { playTurn(resumed) }
-            assertEquals(SessionState.Summary, resumed.state.value)
-            assertEquals(2, resumed.summaries.value.size)
+            playAllTurns(turns = 4 * 2, startingFrom = resumed)
+            val summary = awaitStable { it.sessionState == SessionState.Summary && it.summaries.size == 2 }
+            assertEquals(2, summary.summaries.size)
+            cancelAndIgnoreRemainingEvents()
         }
+    }
 
     @Test
-    fun `deleting a past conversation removes it from the completed list`() =
-        runTest(testDispatcher) {
-            val repo = InMemorySessionRepository()
-            val sessionId = SessionId.random()
+    fun `deleting a past conversation removes it from the completed list`() = runTest {
+        val repo = InMemorySessionRepository()
+        val sessionId = SessionId.random()
+        val screen = ConversationScreen(sessionId, SessionKind.SOLO)
+        val navigator = FakeNavigator(screen)
 
-            // Run a full solo session so it lands in the completed list.
-            val vm = viewModel(sessionId, repo)
-            vm.ensureStarted(SessionKind.SOLO)
-            advanceUntilIdle()
-            addParticipants(vm, "Sam")
-            vm.dispatch(SessionEvent.ConfirmParticipants)
-            advanceUntilIdle()
-            repeat(5) { playTurn(vm) }
-            vm.dispatch(SessionEvent.Conclude)
-            advanceUntilIdle()
-
-            val past = PastConversationsViewModel(repo, SilentCrash)
-            advanceUntilIdle()
-            assertEquals(1, past.completed.value.size)
-            assertEquals(sessionId, past.completed.value.single().sessionId)
-
-            past.delete(sessionId)
-            advanceUntilIdle()
-            assertTrue(past.completed.value.isEmpty(), "deleted session should leave the completed list")
+        // Run a full solo session so it lands in the completed list.
+        presenter(navigator, screen, repo).test {
+            awaitStable { it.sessionState == SessionState.AddingParticipants }
+                .also { it.addParticipant("Sam") }
+            awaitStable { it.ui.participantNames == listOf("Sam") }
+                .dispatch(SessionEvent.ConfirmParticipants)
+            playAllTurns(turns = 5)
+            awaitStable { it.sessionState == SessionState.Summary }
+                .dispatch(SessionEvent.Conclude)
+            awaitStable { it.sessionState == SessionState.Concluded }
+            cancelAndIgnoreRemainingEvents()
         }
 
-    // ── Driving helpers ────────────────────────────────────────────────────
+        val pastScreen = org.cru.soularium.ui.nav.PastConversationsScreen
+        val pastNavigator = FakeNavigator(pastScreen)
+        val past = PastConversationsPresenter(pastNavigator, repo, SilentCrash)
+        past.test {
+            val withRow = awaitStable { it.completed.size == 1 }
+            assertEquals(sessionId, withRow.completed.single().sessionId)
+            withRow.eventSink(PastConversationsPresenter.UiEvent.Delete(sessionId))
+            val empty = awaitStable { it.completed.isEmpty() }
+            assertTrue(empty.completed.isEmpty(), "deleted session should leave the completed list")
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 
-    private fun viewModel(
-        sessionId: SessionId,
+    // ── Helpers ────────────────────────────────────────────────────────────
+
+    private fun presenter(
+        navigator: FakeNavigator,
+        screen: ConversationScreen,
         repo: SessionRepository,
         sharer: Sharer = RecordingSharer(),
-    ): ConversationViewModel =
-        ConversationViewModel(
-            sessionId = sessionId,
-            sessionRepository = repo,
-            analytics = SilentAnalytics,
-            crashReporter = SilentCrash,
-            sharer = sharer,
-        )
+    ): ConversationPresenter = ConversationPresenter(
+        navigator = navigator,
+        screen = screen,
+        sessionRepository = repo,
+        analytics = SilentAnalytics,
+        crashReporter = SilentCrash,
+        sharer = sharer,
+    )
+}
 
-    private fun TestScope.addParticipants(
-        vm: ConversationViewModel,
-        vararg names: String,
-    ) {
-        names.forEach { vm.dispatch(SessionEvent.AddParticipant(it)) }
-        advanceUntilIdle()
-    }
+private suspend fun <T> ReceiveTurbine<T>.awaitStable(predicate: (T) -> Boolean): T {
+    var item = awaitItem()
+    while (!predicate(item)) item = awaitItem()
+    return item
+}
 
-    /**
-     * Plays one participant's turn for the current question: begin selection,
-     * dismiss the one-time instruction panel if shown, pick the required cards
-     * across one or two rounds, finalize, and end the discussion.
-     */
-    private fun TestScope.playTurn(vm: ConversationViewModel) {
-        val question = Questions.byNumber((vm.state.value as SessionState.InQuestion).questionNumber)
+private fun ConversationPresenter.UiState.addParticipant(name: String) {
+    eventSink(ConversationPresenter.UiEvent.Dispatch(SessionEvent.AddParticipant(name)))
+}
 
-        vm.dispatch(SessionEvent.BeginSelection)
-        advanceUntilIdle()
-        if ((vm.state.value as SessionState.InQuestion).activity == QuestionActivity.ShowingInstructions) {
-            vm.dispatch(SessionEvent.DismissInstructions)
-            advanceUntilIdle()
-        }
-
-        // Round 1: a two-round question needs one more than the final count.
-        val round1Count =
-            if (question.selectionRounds == 2) question.requiredImageCount + 1 else question.requiredImageCount
-        pick(vm, round1Count)
-        vm.dispatch(SessionEvent.ConfirmSelection)
-        advanceUntilIdle()
-
-        // Round 2 (two-round questions only): narrow to exactly the final count.
-        if (question.selectionRounds == 2) {
-            pick(vm, question.requiredImageCount)
-            vm.dispatch(SessionEvent.ConfirmSelection)
-            advanceUntilIdle()
-        }
-
-        vm.dispatch(SessionEvent.ConfirmFinal)
-        advanceUntilIdle()
-        vm.dispatch(SessionEvent.EndDiscussion)
-        advanceUntilIdle()
-    }
-
-    private fun pick(
-        vm: ConversationViewModel,
-        count: Int,
-    ) {
-        repeat(count) { vm.dispatch(SessionEvent.PickCard(it + 1)) }
-    }
+private fun ConversationPresenter.UiState.dispatch(event: SessionEvent) {
+    eventSink(ConversationPresenter.UiEvent.Dispatch(event))
 }
 
 /**
- * In-memory [SessionRepository] that fully persists state, picks, and
- * contacts. Completed/bookmarked status is tracked with id sets rather than
- * by mutating the [Session] timestamp fields `endedAt`/`bookmarkedAt`.
+ * Plays [turns] consecutive turns (1 turn = 1 participant answering 1 question)
+ * starting from the current state. Drives a turn through the full flow:
+ * BeginSelection, optional DismissInstructions, round 1 (and round 2 for the
+ * first two questions), ConfirmFinal, and EndDiscussion.
+ *
+ * Pass [startingFrom] when the caller has already consumed the first
+ * ShowingPrompt emission (e.g. to assert on resume state).
+ */
+private suspend fun ReceiveTurbine<ConversationPresenter.UiState>.playAllTurns(
+    turns: Int,
+    startingFrom: ConversationPresenter.UiState? = null,
+) {
+    var firstPrompt: ConversationPresenter.UiState? = startingFrom
+    repeat(turns) {
+        val prompt = firstPrompt ?: awaitStable {
+            (it.sessionState as? SessionState.InQuestion)?.activity == QuestionActivity.ShowingPrompt
+        }
+        firstPrompt = null
+        val question = Questions.byNumber((prompt.sessionState as SessionState.InQuestion).questionNumber)
+        prompt.dispatch(SessionEvent.BeginSelection)
+
+        val afterBegin = awaitStable {
+            (it.sessionState as? SessionState.InQuestion)?.activity != QuestionActivity.ShowingPrompt
+        }
+        val landed = if ((afterBegin.sessionState as SessionState.InQuestion).activity ==
+            QuestionActivity.ShowingInstructions
+        ) {
+            afterBegin.dispatch(SessionEvent.DismissInstructions)
+            awaitStable {
+                (it.sessionState as? SessionState.InQuestion)?.activity == QuestionActivity.SelectingRound1
+            }
+        } else {
+            afterBegin
+        }
+
+        val round1Count = if (question.selectionRounds == 2) {
+            question.requiredImageCount + 1
+        } else {
+            question.requiredImageCount
+        }
+        landed.pick(round1Count)
+        val afterRound1 = awaitStable { it.ui.draftPicks.size == round1Count }
+        afterRound1.dispatch(SessionEvent.ConfirmSelection)
+
+        // afterConfirm is either SelectingRound2 (two-round Q) or Finalizing (one-round Q).
+        val afterConfirm = awaitStable {
+            (it.sessionState as? SessionState.InQuestion)?.activity != QuestionActivity.SelectingRound1
+        }
+        val readyForFinalize =
+            if ((afterConfirm.sessionState as SessionState.InQuestion).activity ==
+                QuestionActivity.SelectingRound2
+            ) {
+                afterConfirm.pick(question.requiredImageCount)
+                val r2 = awaitStable { it.ui.draftPicks.size == question.requiredImageCount }
+                r2.dispatch(SessionEvent.ConfirmSelection)
+                awaitStable {
+                    (it.sessionState as? SessionState.InQuestion)?.activity == QuestionActivity.Finalizing
+                }
+            } else {
+                // One-round question: afterConfirm is already Finalizing — no extra dispatch
+                // happened, so no new emission to await; reuse the captured state.
+                afterConfirm
+            }
+        readyForFinalize.dispatch(SessionEvent.ConfirmFinal)
+        awaitStable {
+            (it.sessionState as? SessionState.InQuestion)?.activity == QuestionActivity.Discussing
+        }.dispatch(SessionEvent.EndDiscussion)
+    }
+}
+
+private fun ConversationPresenter.UiState.pick(count: Int) {
+    repeat(count) { dispatch(SessionEvent.PickCard(it + 1)) }
+}
+
+/**
+ * In-memory [SessionRepository] that fully persists state, picks, and contacts.
+ * Completed/bookmarked status is tracked with id sets rather than by mutating
+ * the [Session] timestamp fields.
  */
 private class InMemorySessionRepository : SessionRepository {
     private val sessions = mutableMapOf<SessionId, Session>()
@@ -306,23 +343,16 @@ private class InMemorySessionRepository : SessionRepository {
 
     fun bookmarkedSnapshot(): List<Session> = bookmarked.value
 
-    override suspend fun createSession(
-        session: Session,
-        initialState: SessionState,
-    ): SessionId {
+    override suspend fun createSession(session: Session, initialState: SessionState): SessionId {
         sessions[session.id] = session
         states[session.id] = initialState
         return session.id
     }
 
     override suspend fun loadSession(id: SessionId): Session? = sessions[id]
-
     override suspend fun loadState(id: SessionId): SessionState? = states[id]
 
-    override suspend fun persistState(
-        id: SessionId,
-        state: SessionState,
-    ) {
+    override suspend fun persistState(id: SessionId, state: SessionState) {
         states[id] = state
         if (state == SessionState.Concluded) {
             completedIds += id
@@ -331,10 +361,7 @@ private class InMemorySessionRepository : SessionRepository {
         }
     }
 
-    override suspend fun setBookmarked(
-        id: SessionId,
-        bookmarked: Boolean,
-    ) {
+    override suspend fun setBookmarked(id: SessionId, bookmarked: Boolean) {
         if (bookmarked) bookmarkedIds += id else bookmarkedIds -= id
         refresh()
     }
@@ -344,28 +371,21 @@ private class InMemorySessionRepository : SessionRepository {
         refresh()
     }
 
-    override suspend fun upsertParticipants(
-        sessionId: SessionId,
-        names: List<String>,
-    ): List<ConversationId> {
+    override suspend fun upsertParticipants(sessionId: SessionId, names: List<String>): List<ConversationId> {
         val existing = conversations[sessionId].orEmpty()
-        val list =
-            names.mapIndexed { idx, name ->
-                Conversation(
-                    id = existing.getOrNull(idx)?.id ?: ConversationId.random(),
-                    sessionId = sessionId,
-                    displayOrder = idx,
-                    contact = ContactInfo(name),
-                )
-            }
+        val list = names.mapIndexed { idx, name ->
+            Conversation(
+                id = existing.getOrNull(idx)?.id ?: ConversationId.random(),
+                sessionId = sessionId,
+                displayOrder = idx,
+                contact = ContactInfo(name),
+            )
+        }
         conversations[sessionId] = list.toMutableList()
         return list.map { it.id }
     }
 
-    override suspend fun upsertContact(
-        conversationId: ConversationId,
-        info: ContactInfo,
-    ) {
+    override suspend fun upsertContact(conversationId: ConversationId, info: ContactInfo) {
         conversations.values.forEach { list ->
             val idx = list.indexOfFirst { it.id == conversationId }
             if (idx >= 0) list[idx] = list[idx].copy(contact = info)
@@ -381,22 +401,20 @@ private class InMemorySessionRepository : SessionRepository {
         val bucket = picks.getOrPut(conversationId) { mutableListOf() }
         bucket.removeAll { it.questionNumber == questionNumber }
         cardIds.forEachIndexed { order, cardId ->
-            bucket +=
-                CardPick(
-                    id = CardPickId.random(),
-                    conversationId = conversationId,
-                    questionNumber = questionNumber,
-                    cardId = cardId,
-                    pickOrder = order,
-                    isFinal = isFinal,
-                )
+            bucket += CardPick(
+                id = CardPickId.random(),
+                conversationId = conversationId,
+                questionNumber = questionNumber,
+                cardId = cardId,
+                pickOrder = order,
+                isFinal = isFinal,
+            )
         }
     }
 
     override suspend fun loadPicks(conversationId: ConversationId): List<CardPick> = picks[conversationId].orEmpty()
 
     override fun observeCompletedSessions(): Flow<List<Session>> = completed.asStateFlow()
-
     override fun observeBookmarkedSessions(): Flow<List<Session>> = bookmarked.asStateFlow()
 
     override suspend fun deleteSession(id: SessionId) {
@@ -408,7 +426,8 @@ private class InMemorySessionRepository : SessionRepository {
         refresh()
     }
 
-    override suspend fun loadConversations(sessionId: SessionId): List<Conversation> = conversations[sessionId].orEmpty()
+    override suspend fun loadConversations(sessionId: SessionId): List<Conversation> =
+        conversations[sessionId].orEmpty()
 
     private fun refresh() {
         completed.value = completedIds.mapNotNull { sessions[it] }
@@ -418,11 +437,7 @@ private class InMemorySessionRepository : SessionRepository {
 
 private class RecordingSharer : Sharer {
     val shared = mutableListOf<String>()
-
-    override suspend fun share(
-        text: String,
-        subject: String?,
-    ): ShareResult {
+    override suspend fun share(text: String, subject: String?): ShareResult {
         shared += text
         return ShareResult.Succeeded
     }
@@ -430,21 +445,10 @@ private class RecordingSharer : Sharer {
 
 private object SilentAnalytics : AnalyticsTracker {
     override fun screenView(screenName: String) = Unit
-
-    override fun event(
-        name: String,
-        params: Map<String, Any>,
-    ) = Unit
+    override fun event(name: String, params: Map<String, Any>) = Unit
 }
 
 private object SilentCrash : CrashReporter {
-    override fun recordNonFatal(
-        throwable: Throwable,
-        breadcrumb: String?,
-    ) = Unit
-
-    override fun setKey(
-        key: String,
-        value: String,
-    ) = Unit
+    override fun recordNonFatal(throwable: Throwable, breadcrumb: String?) = Unit
+    override fun setKey(key: String, value: String) = Unit
 }

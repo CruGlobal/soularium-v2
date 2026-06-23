@@ -41,7 +41,7 @@ fun App() {
     }
 }
 
-private fun resolveStartScreen(state: DeviceState): Screen =
+internal fun resolveStartScreen(state: DeviceState): Screen =
     when {
         !state.hasSeenIntro -> IntroScreen
         !state.agreedToTos -> TermsScreen

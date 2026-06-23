@@ -281,6 +281,14 @@ class ConversationPresenter(
         if (event is SessionEvent.DismissInstructions) {
             nextUi = nextUi.copy(instructionsShown = true)
         }
+        // Apply effect-driven ui changes synchronously so callers see the new
+        // participant list in the same emission as the state transition. Repo
+        // persistence still happens asynchronously below.
+        for (effect in result.effects) {
+            if (effect is Effect.PersistParticipants) {
+                nextUi = nextUi.copy(participantNames = effect.names)
+            }
+        }
         nextUi = resetDraftIfNeeded(previous = previousState, next = result.next, ui = nextUi)
 
         scope.launch {

@@ -77,9 +77,19 @@ kotlin {
         commonTest.dependencies {
             implementation(kotlin("test"))
             implementation(libs.circuit.test)
+            implementation(libs.gtoSupport.androidx.test.junit)
             implementation(libs.kotest.assertions)
             implementation(libs.turbine)
             implementation(libs.coroutines.test)
+        }
+        // Circuit presenter tests run the Compose Runtime on the JVM host. The
+        // Compose Android artifact's error path touches android.util.Log, so we
+        // need Robolectric to provide real Android stubs.
+        named("androidHostTest").configure {
+            dependencies {
+                implementation(libs.androidx.test.junit)
+                implementation(libs.robolectric)
+            }
         }
     }
 }

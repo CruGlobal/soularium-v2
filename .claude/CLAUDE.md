@@ -21,7 +21,7 @@ implementation plan, and `HANDOFF.md` (current state).
 ```
 shared/        → :shared — KMP library (Android via com.android.kotlin.multiplatform.library
                           + iOS framework). Domain models + session state machine, Room +
-                          DataStore persistence, Compose UI, ViewModels, navigation, Koin
+                          DataStore persistence, Compose UI, Circuit Presenters, navigation, Koin
                           wiring, and Android/iOS actuals — all in one module.
 androidApp/    → :androidApp — Pure Android application (com.android.application). Hosts
                               MainActivity + SoulariumApplication + AndroidManifest;
@@ -70,7 +70,7 @@ not a system Gradle. Source/target bytecode is JVM 17.
 | Build | Gradle (Kotlin DSL) 9.x, AGP 9.2.1, `libs.versions.toml` |
 | DI | Koin 4.0.0 |
 | Persistence | Room 2.8.4 (KMP, via KSP) + DataStore Preferences |
-| Navigation | Navigation Compose (JetBrains KMP variant) |
+| UI architecture / navigation | Circuit 0.34.0 (Presenter + UI, saveable back stack) |
 | Async | kotlinx.coroutines 1.11.0 + Flow |
 | Images | Coil 3 |
 | Serialization | kotlinx.serialization 1.11.0 |
@@ -78,11 +78,6 @@ not a system Gradle. Source/target bytecode is JVM 17.
 | Lint | ktlint via `org.jlleitschuh.gradle.ktlint`, `intellij_idea` code style |
 | Crash / analytics | Firebase Crashlytics + Analytics (no-op until config files land) |
 | i18n | Crowdin (en, es, fr, pl, zh-rCN) |
-
-> **KMP variant gotcha**: `androidx-navigation-compose` and
-> `androidx-lifecycle-viewmodel-compose` must be the JetBrains multiplatform variants
-> (`org.jetbrains.androidx.*`), not Google's AndroidX artifacts. The catalog is already
-> correct — keep it that way.
 
 ## Architecture: Hexagonal (single shared module)
 
@@ -93,7 +88,7 @@ not a system Gradle. Source/target bytecode is JVM 17.
 :shared      (KMP library — Android + iOS targets)
               ├── org.cru.soularium.domain — pure models, ports, session state machine
               ├── org.cru.soularium.data   — Room + DataStore + repository impls
-              └── org.cru.soularium.ui     — Compose UI, ViewModels, navigation, Koin
+              └── org.cru.soularium.ui     — Compose UI, Circuit Presenters, navigation, Koin
 ```
 
 `:androidApp` depends on `:shared`; `:shared` depends on nothing else in this repo.
@@ -113,7 +108,7 @@ must not import from `ui`.
 - **Session state machine** (`domain/session/`): `SessionState` (sealed,
   `@Serializable`), `SessionEvent` (sealed), a **pure** `fun transition(state, event,
   ctx): TransitionResult`, and `Effect` (sealed). `transition()` performs no I/O — side
-  effects are *returned as data* (`Effect`) for the ViewModel to execute. Keep it pure
+  effects are *returned as data* (`Effect`) for the Presenter to execute. Keep it pure
   and exhaustively tested.
 - **Models**: `Session`, `Conversation`, `CardPick`, `ContactInfo`, etc. — all
   `@Serializable`. IDs (`SessionId`, `ConversationId`, `CardPickId`) are
@@ -145,16 +140,26 @@ Code under `org.cru.soularium.domain` must not reference Compose, Android, or iO
 
 ### UI layer (`org.cru.soularium.ui`)
 
-- **Navigation**: `Routes` (an `object` of string route constants) + `NavGraph.kt`
-  wiring a `NavHost`. Cross-screen navigation goes through `Routes`.
-- **ViewModels** extend `androidx.lifecycle.ViewModel`. They expose UI state as
-  `StateFlow` (private `MutableStateFlow` backing field, public `.asStateFlow()`) and
-  receive user intent through public methods (e.g. `dispatch(event: SessionEvent)`).
-  Side effects run in `viewModelScope`.
-- **Screens** are public, stateless `@Composable` functions. Each takes its data as
-  parameters plus `on*` callback lambdas, and `modifier: Modifier = Modifier` as the
-  **last** parameter. Screens collect ViewModel state via `collectAsState()`; they hold
-  no business logic. Private sub-composables within a screen file are `private`.
+- **Navigation**: `NavGraph.kt` builds a Circuit saveable back stack rooted at a start
+  `Screen` and renders the active screen via `NavigableCircuitContent`. Screen
+  destinations are `@Parcelize` `data object`/`data class` types in `ui/nav/Screens.kt`,
+  wired to their Presenter+Layout pairs by `CircuitFactories.kt`. Cross-screen navigation
+  goes through `Navigator.goTo(SomeScreen(...))` from inside a Presenter.
+- **Presenters** implement Circuit's `Presenter<UiState>`. Each defines a nested
+  `data class UiState(... val eventSink: (UiEvent) -> Unit) : CircuitUiState` and a
+  `sealed interface UiEvent : CircuitUiEvent`. The `@Composable present()` body uses
+  `remember { mutableStateOf(...) }` + `LaunchedEffect`/`produceState` to derive state
+  from repositories (collected via `collectAsState()`); user intent flows in through
+  `state.eventSink(...)`. Cross-screen navigation is `navigator.goTo(SomeScreen(...))`;
+  back is `navigator.pop()`.
+- **Layouts** are public, stateless `@Composable` functions named `<Feature>Layout`,
+  paired one-to-one with a Presenter. The signature is
+  `fun <Feature>Layout(state: <Feature>Presenter.UiState, modifier: Modifier = Modifier)`;
+  `modifier` is the **last** parameter and is applied first on the root composable. The
+  Layout reads fields off `state` and emits events via `state.eventSink(...)` — it owns
+  no business logic. Private sub-composables within the file are `private`. Screen ↔
+  Presenter ↔ Layout wiring lives in `ui/nav/CircuitFactories.kt`
+  (`SoulariumPresenterFactory` + `SoulariumUiFactory`).
 - **Theme**: `SoulariumTheme { }` (a thin Material3 wrapper) is applied once at the app
   root. Light theme only (dark mode is a deliberate non-goal for v2). See
   `.claude/rules/design_system_rules.md`.
@@ -163,10 +168,13 @@ Code under `org.cru.soularium.domain` must not reference Compose, Android, or iO
 
 - `initKoin()` (in `shared/.../di/KoinInit.kt`) starts Koin with `appModule` +
   `platformModule`. It is idempotent (safe to call twice).
-- `appModule` (commonMain) registers `single { }` for the database, DAOs, and
-  repositories, and `viewModel { }` for ViewModels. ViewModels that need a runtime
-  argument use `viewModel { (arg) -> ... }` and are resolved with
-  `koinViewModel { parametersOf(arg) }`.
+- `appModule` (commonMain) registers `single { }` for the database, DAOs, repositories,
+  the `SoulariumPresenterFactory`, and the assembled `Circuit` instance. Presenters
+  themselves are not Koin-managed — they're constructed inside
+  `SoulariumPresenterFactory.create(...)` with their dependencies injected via factory
+  constructor args. To add a new screen, add a `Screen` to `ui/nav/Screens.kt` and wire
+  its Presenter+Layout into `CircuitFactories.kt`; only inject new dependencies into
+  `SoulariumPresenterFactory` if no existing factory arg covers them.
 - `platformModule` is `expect val platformModule: Module`. The Android actual provides
   `AndroidSharer` (+ no-op analytics/crash); the iOS actual provides `IosSharer`.
 - Add a new app-wide dependency to `appModule`; add a new platform-specific dependency
@@ -186,9 +194,13 @@ signatures. `commonMain` must contain no Android- or iOS-specific imports.
 - Frameworks: `kotlin.test` (`@Test`, `@BeforeTest`, `@AfterTest`), Kotest assertions
   (`kotest-assertions-core`), Turbine for `Flow` assertions, `kotlinx-coroutines-test`
   (`runTest`, `TestDispatcher`, `advanceUntilIdle`).
-- All tests live in `commonTest`. There is **no** Robolectric, no `@RunOnAndroidWith`,
-  no Android instrumentation, and no Compose-UI instrumented tests. Compose/UI logic is
-  verified through ViewModel and pure-function tests.
+- All tests live in `commonTest`. There is no Android instrumentation and no Compose-UI
+  instrumented tests. Presenters are exercised via Circuit's `circuit-test` library
+  (`FakeNavigator`, `presenter.test { awaitItem().eventSink(...) }`). Presenter tests are
+  annotated `@RunOnAndroidWith(AndroidJUnit4::class)` so the Android-host variant runs
+  them under Robolectric — required because the Compose Runtime's Android artifact
+  touches `android.util.Log` from its error path. The iOS-simulator variant runs the
+  same tests unannotated. Pure domain code (no Compose) has no such requirement.
 - Test doubles are plain in-memory classes defined in the test sources (e.g.
   `InMemorySessionRepository`, `FakeSessionRepository`, `RecordingSharer`). There are no
   `test-fixtures` modules.
@@ -197,7 +209,7 @@ signatures. `commonMain` must contain no Android- or iOS-specific imports.
 - Test functions use backtick-quoted descriptive names, e.g.
   `` `solo session completes from start through summary` ``.
 - The pure session state machine (`transition()`) and pure utilities (e.g. share-URL
-  generation) should have exhaustive tests; ViewModels should have behavior tests.
+  generation) should have exhaustive tests; Presenters should have behavior tests.
 
 ## CI & Workflows
 

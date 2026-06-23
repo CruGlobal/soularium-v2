@@ -185,18 +185,19 @@ meaning. Do not hand-roll `ImageVector` paths.
 
 ## 9. Layout & Screen Conventions
 
-Soularium screens follow a consistent contract (see existing screens under
+Soularium screens follow a consistent Circuit contract (see existing screens under
 `ui/screens/` and `ui/conversation/`):
 
-- A screen is a **public, stateless** `@Composable`. It takes its data as plain
-  parameters and user actions as `on*` callback lambdas — never a ViewModel directly
-  (the exception is `ConversationHost`, which resolves its ViewModel as a defaulted
-  parameter).
+- Each screen is a `Presenter` + `Layout` pair living in the same file. The Layout is a
+  **public, stateless** `@Composable fun <Feature>Layout(state: <Feature>Presenter.UiState,
+  modifier: Modifier = Modifier)` — it reads fields off `state` and emits intent via
+  `state.eventSink(...)`. Layouts never take a Presenter or repository directly.
 - `modifier: Modifier = Modifier` is always the **last** parameter, and is the first
-  thing applied to the screen's root composable.
-- State is hoisted into the ViewModel (`StateFlow`); the screen collects it with
-  `collectAsState()`. Layout-local `remember { mutableStateOf(...) }` is acceptable only
-  for transient view-only state (e.g. a text-field draft, an expanded/collapsed toggle).
+  thing applied to the layout's root composable.
+- State is derived inside the Presenter's `@Composable present()` body (`remember`,
+  `LaunchedEffect`, `collectAsState()` over repository flows) and exposed via the nested
+  `UiState`. Layout-local `remember { mutableStateOf(...) }` is acceptable only for
+  transient view-only state (e.g. a text-field draft, an expanded/collapsed toggle).
 - Private helper composables within a screen file are `private`.
 
 ### Modifier order
@@ -272,7 +273,7 @@ persistence failures (`DomainError.PersistenceFailed`) still need a user-facing 
 7. Layouts use Compose primitives (`Column`/`Row`/`Box`/`Lazy*`/`Scaffold`) — no XML
    views, no `AndroidView` in `commonMain`.
 8. `modifier` is the last parameter, applied first; every public composable forwards it.
-9. State is hoisted to the ViewModel; screens stay stateless.
+9. State is derived in the Presenter and exposed via `UiState`; Layouts stay stateless.
 10. Loading / error / empty states are first-class.
 11. **No dark-mode branching** — the app is light-only by design.
 12. Accessibility is required, not optional.

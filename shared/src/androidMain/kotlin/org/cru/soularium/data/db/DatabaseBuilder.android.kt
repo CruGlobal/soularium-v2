@@ -11,10 +11,9 @@ fun initDataAndroid(context: Context) {
 }
 
 /** The application context captured by [initDataAndroid], for module-internal use. */
-internal fun dataAndroidContext(): Context =
-    requireNotNull(appContext) {
-        "initDataAndroid(context) must be called before the data layer is used."
-    }
+internal fun dataAndroidContext(): Context = requireNotNull(appContext) {
+    "initDataAndroid(context) must be called before the data layer is used."
+}
 
 actual fun getDatabaseBuilder(): RoomDatabase.Builder<SoulariumDatabase> {
     val ctx = dataAndroidContext()

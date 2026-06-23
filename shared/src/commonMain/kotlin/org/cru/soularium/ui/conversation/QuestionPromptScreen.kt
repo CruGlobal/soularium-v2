@@ -142,11 +142,10 @@ fun QuestionPromptScreen(
 }
 
 /** Returns the [StringResource] for the prompt of the given 1-based [questionNumber]. */
-private fun questionPromptResource(questionNumber: Int): StringResource =
-    when (questionNumber) {
-        1 -> Res.string.q1_prompt
-        2 -> Res.string.q2_prompt
-        3 -> Res.string.q3_prompt
-        4 -> Res.string.q4_prompt
-        else -> Res.string.q5_prompt
-    }
+private fun questionPromptResource(questionNumber: Int): StringResource = when (questionNumber) {
+    1 -> Res.string.q1_prompt
+    2 -> Res.string.q2_prompt
+    3 -> Res.string.q3_prompt
+    4 -> Res.string.q4_prompt
+    else -> Res.string.q5_prompt
+}

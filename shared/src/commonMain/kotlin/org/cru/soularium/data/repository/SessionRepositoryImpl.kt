@@ -39,8 +39,7 @@ class SessionRepositoryImpl(
 
     override suspend fun loadSession(id: SessionId): Session? = sessionDao.byId(id.value)?.toDomain()
 
-    override suspend fun loadState(id: SessionId): SessionState? =
-        sessionDao.byId(id.value)?.let { json.decodeFromString<SessionState>(it.stateSnapshotJson) }
+    override suspend fun loadState(id: SessionId): SessionState? = sessionDao.byId(id.value)?.let { json.decodeFromString<SessionState>(it.stateSnapshotJson) }
 
     override suspend fun persistState(
         id: SessionId,
@@ -144,60 +143,53 @@ class SessionRepositoryImpl(
         cardPickDao.replaceRound(conversationId.value, questionNumber, isFinal, entities)
     }
 
-    override suspend fun loadPicks(conversationId: ConversationId): List<CardPick> =
-        cardPickDao.forConversation(conversationId.value).map { it.toDomain() }
+    override suspend fun loadPicks(conversationId: ConversationId): List<CardPick> = cardPickDao.forConversation(conversationId.value).map { it.toDomain() }
 
     override fun observeCompletedSessions(): Flow<List<Session>> = sessionDao.observeCompleted().map { list -> list.map { it.toDomain() } }
 
-    override fun observeBookmarkedSessions(): Flow<List<Session>> =
-        sessionDao.observeBookmarked().map { list -> list.map { it.toDomain() } }
+    override fun observeBookmarkedSessions(): Flow<List<Session>> = sessionDao.observeBookmarked().map { list -> list.map { it.toDomain() } }
 
     override suspend fun deleteSession(id: SessionId) {
         sessionDao.delete(id.value)
     }
 
-    override suspend fun loadConversations(sessionId: SessionId): List<Conversation> =
-        conversationDao.forSession(sessionId.value).map { it.toDomain() }
+    override suspend fun loadConversations(sessionId: SessionId): List<Conversation> = conversationDao.forSession(sessionId.value).map { it.toDomain() }
 
-    private fun Session.toEntity(state: SessionState) =
-        SessionEntity(
-            id = id.value,
-            kind = kind.name,
-            startedAt = startedAt.toEpochMilliseconds(),
-            endedAt = endedAt?.toEpochMilliseconds(),
-            bookmarkedAt = bookmarkedAt?.toEpochMilliseconds(),
-            stateSnapshotJson = json.encodeToString(state),
-            selectionInstructionsShown = selectionInstructionsShown,
-        )
+    private fun Session.toEntity(state: SessionState) = SessionEntity(
+        id = id.value,
+        kind = kind.name,
+        startedAt = startedAt.toEpochMilliseconds(),
+        endedAt = endedAt?.toEpochMilliseconds(),
+        bookmarkedAt = bookmarkedAt?.toEpochMilliseconds(),
+        stateSnapshotJson = json.encodeToString(state),
+        selectionInstructionsShown = selectionInstructionsShown,
+    )
 
-    private fun SessionEntity.toDomain() =
-        Session(
-            id = SessionId(id),
-            // Tolerate an unrecognised persisted kind (corruption / a value
-            // written by a newer build) rather than throwing and taking down
-            // the whole Past Conversations list.
-            kind = SessionKind.entries.firstOrNull { it.name == kind } ?: SessionKind.SOLO,
-            startedAt = Instant.fromEpochMilliseconds(startedAt),
-            endedAt = endedAt?.let(Instant::fromEpochMilliseconds),
-            bookmarkedAt = bookmarkedAt?.let(Instant::fromEpochMilliseconds),
-            selectionInstructionsShown = selectionInstructionsShown,
-        )
+    private fun SessionEntity.toDomain() = Session(
+        id = SessionId(id),
+        // Tolerate an unrecognised persisted kind (corruption / a value
+        // written by a newer build) rather than throwing and taking down
+        // the whole Past Conversations list.
+        kind = SessionKind.entries.firstOrNull { it.name == kind } ?: SessionKind.SOLO,
+        startedAt = Instant.fromEpochMilliseconds(startedAt),
+        endedAt = endedAt?.let(Instant::fromEpochMilliseconds),
+        bookmarkedAt = bookmarkedAt?.let(Instant::fromEpochMilliseconds),
+        selectionInstructionsShown = selectionInstructionsShown,
+    )
 
-    private fun ConversationEntity.toDomain() =
-        Conversation(
-            id = ConversationId(id),
-            sessionId = SessionId(sessionId),
-            displayOrder = displayOrder,
-            contact = ContactInfo(name, surname, email, phone, notes),
-        )
+    private fun ConversationEntity.toDomain() = Conversation(
+        id = ConversationId(id),
+        sessionId = SessionId(sessionId),
+        displayOrder = displayOrder,
+        contact = ContactInfo(name, surname, email, phone, notes),
+    )
 
-    private fun CardPickEntity.toDomain() =
-        CardPick(
-            id = CardPickId(id),
-            conversationId = ConversationId(conversationId),
-            questionNumber = questionNumber,
-            cardId = cardId,
-            pickOrder = pickOrder,
-            isFinal = isFinal,
-        )
+    private fun CardPickEntity.toDomain() = CardPick(
+        id = CardPickId(id),
+        conversationId = ConversationId(conversationId),
+        questionNumber = questionNumber,
+        cardId = cardId,
+        pickOrder = pickOrder,
+        isFinal = isFinal,
+    )
 }

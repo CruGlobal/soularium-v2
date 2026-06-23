@@ -8,8 +8,7 @@ import platform.Foundation.NSFileManager
 import platform.Foundation.NSUserDomainMask
 
 @OptIn(ExperimentalForeignApi::class)
-internal actual fun createDeviceStateDataStore(): DataStore<Preferences> =
-    preferenceDataStoreAt { documentDirectory() + "/" + DEVICE_STATE_FILE }
+internal actual fun createDeviceStateDataStore(): DataStore<Preferences> = preferenceDataStoreAt { documentDirectory() + "/" + DEVICE_STATE_FILE }
 
 @OptIn(ExperimentalForeignApi::class)
 private fun documentDirectory(): String {

@@ -82,12 +82,11 @@ class CardsAndQuestionsPresenter(
     }
 
     @Composable
-    override fun present(): UiState =
-        UiState { event ->
-            when (event) {
-                UiEvent.Back -> navigator.pop()
-            }
+    override fun present(): UiState = UiState { event ->
+        when (event) {
+            UiEvent.Back -> navigator.pop()
         }
+    }
 }
 
 /**
@@ -261,14 +260,13 @@ private fun QuestionItem(
 }
 
 @Composable
-private fun questionPromptRes(questionNumber: Int): StringResource =
-    when (questionNumber) {
-        1 -> Res.string.q1_prompt
-        2 -> Res.string.q2_prompt
-        3 -> Res.string.q3_prompt
-        4 -> Res.string.q4_prompt
-        else -> Res.string.q5_prompt
-    }
+private fun questionPromptRes(questionNumber: Int): StringResource = when (questionNumber) {
+    1 -> Res.string.q1_prompt
+    2 -> Res.string.q2_prompt
+    3 -> Res.string.q3_prompt
+    4 -> Res.string.q4_prompt
+    else -> Res.string.q5_prompt
+}
 
 @Composable
 private fun CardFullScreenViewer(

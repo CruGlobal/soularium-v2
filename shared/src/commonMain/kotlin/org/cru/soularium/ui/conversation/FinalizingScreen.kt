@@ -192,11 +192,10 @@ fun FinalizingScreen(
 }
 
 /** Returns the [StringResource] for the finalizing prompt of the given 1-based [questionNumber]. */
-private fun questionFinalizingResource(questionNumber: Int): StringResource =
-    when (questionNumber) {
-        1 -> Res.string.q1_finalizing
-        2 -> Res.string.q2_finalizing
-        3 -> Res.string.q3_finalizing
-        4 -> Res.string.q4_finalizing
-        else -> Res.string.q5_finalizing
-    }
+private fun questionFinalizingResource(questionNumber: Int): StringResource = when (questionNumber) {
+    1 -> Res.string.q1_finalizing
+    2 -> Res.string.q2_finalizing
+    3 -> Res.string.q3_finalizing
+    4 -> Res.string.q4_finalizing
+    else -> Res.string.q5_finalizing
+}

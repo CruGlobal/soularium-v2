@@ -170,17 +170,16 @@ private fun isSelectionValid(
     question: Question,
     activity: QuestionActivity,
     count: Int,
-): Boolean =
-    when (activity) {
-        QuestionActivity.SelectingRound1 ->
-            if (question.selectionRounds == 2) {
-                count >= question.requiredImageCount + 1
-            } else {
-                count == question.requiredImageCount
-            }
-        QuestionActivity.SelectingRound2 -> count == question.requiredImageCount
-        else -> false
-    }
+): Boolean = when (activity) {
+    QuestionActivity.SelectingRound1 ->
+        if (question.selectionRounds == 2) {
+            count >= question.requiredImageCount + 1
+        } else {
+            count == question.requiredImageCount
+        }
+    QuestionActivity.SelectingRound2 -> count == question.requiredImageCount
+    else -> false
+}
 
 /**
  * Confirmation shown when the user backs out of an in-progress conversation:

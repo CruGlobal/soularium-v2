@@ -301,11 +301,10 @@ private fun SelectableCardItem(
     }
 }
 
-private fun questionSelectionRes(questionNumber: Int): StringResource =
-    when (questionNumber) {
-        1 -> Res.string.q1_selection
-        2 -> Res.string.q2_selection
-        3 -> Res.string.q3_selection
-        4 -> Res.string.q4_selection
-        else -> Res.string.q5_selection
-    }
+private fun questionSelectionRes(questionNumber: Int): StringResource = when (questionNumber) {
+    1 -> Res.string.q1_selection
+    2 -> Res.string.q2_selection
+    3 -> Res.string.q3_selection
+    4 -> Res.string.q4_selection
+    else -> Res.string.q5_selection
+}

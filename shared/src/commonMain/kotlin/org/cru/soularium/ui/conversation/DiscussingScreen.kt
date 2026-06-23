@@ -216,11 +216,10 @@ private fun MultiCardPager(
 }
 
 /** Returns the [StringResource] for the discussion prompt of the given 1-based [questionNumber]. */
-private fun questionDiscussionResource(questionNumber: Int): StringResource =
-    when (questionNumber) {
-        1 -> Res.string.q1_discussion
-        2 -> Res.string.q2_discussion
-        3 -> Res.string.q3_discussion
-        4 -> Res.string.q4_discussion
-        else -> Res.string.q5_discussion
-    }
+private fun questionDiscussionResource(questionNumber: Int): StringResource = when (questionNumber) {
+    1 -> Res.string.q1_discussion
+    2 -> Res.string.q2_discussion
+    3 -> Res.string.q3_discussion
+    4 -> Res.string.q4_discussion
+    else -> Res.string.q5_discussion
+}

@@ -55,12 +55,11 @@ class AboutPresenter(
     }
 
     @Composable
-    override fun present(): UiState =
-        UiState { event ->
-            when (event) {
-                UiEvent.Back -> navigator.pop()
-            }
+    override fun present(): UiState = UiState { event ->
+        when (event) {
+            UiEvent.Back -> navigator.pop()
         }
+    }
 }
 
 /**

@@ -38,7 +38,6 @@ data class ConversationScreen(
     val sessionId: SessionId get() = SessionId(sessionIdValue)
 
     companion object {
-        operator fun invoke(sessionId: SessionId, kind: SessionKind): ConversationScreen =
-            ConversationScreen(sessionId.value, kind)
+        operator fun invoke(sessionId: SessionId, kind: SessionKind): ConversationScreen = ConversationScreen(sessionId.value, kind)
     }
 }

@@ -46,5 +46,4 @@ internal class DeviceStateRepositoryImpl(
 }
 
 /** Creates the device-state repository backed by the platform DataStore. */
-fun createDeviceStateRepository(): DeviceStateRepository =
-    DeviceStateRepositoryImpl(createDeviceStateDataStore())
+fun createDeviceStateRepository(): DeviceStateRepository = DeviceStateRepositoryImpl(createDeviceStateDataStore())

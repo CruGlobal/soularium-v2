@@ -15,8 +15,7 @@ private val SENSITIVE_KEY_TOKENS = listOf("name", "email", "phone", "notes", "ca
  * implementation before forwarding params to `FirebaseAnalytics.logEvent`
  * (wired once Firebase config files land — see Tasks 41–42).
  */
-fun scrubAnalyticsParams(params: Map<String, Any>): Map<String, Any> =
-    params.filterKeys { key ->
-        val lower = key.lowercase()
-        SENSITIVE_KEY_TOKENS.none { token -> lower.contains(token) }
-    }
+fun scrubAnalyticsParams(params: Map<String, Any>): Map<String, Any> = params.filterKeys { key ->
+    val lower = key.lowercase()
+    SENSITIVE_KEY_TOKENS.none { token -> lower.contains(token) }
+}

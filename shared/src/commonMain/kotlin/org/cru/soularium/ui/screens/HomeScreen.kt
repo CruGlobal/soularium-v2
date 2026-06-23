@@ -96,20 +96,19 @@ class HomePresenter(
     }
 
     @Composable
-    override fun present(): UiState =
-        UiState { event ->
-            when (event) {
-                UiEvent.StartGroupConversation ->
-                    navigator.goTo(ConversationScreen(SessionId.random(), SessionKind.GROUP))
-                UiEvent.StartSoloConversation ->
-                    navigator.goTo(ConversationScreen(SessionId.random(), SessionKind.SOLO))
-                UiEvent.OpenPastConversations -> navigator.goTo(PastConversationsScreen)
-                UiEvent.OpenAbout -> navigator.goTo(AboutScreen)
-                UiEvent.OpenResources -> navigator.goTo(ResourcesScreen)
-                UiEvent.OpenCardsAndQuestions -> navigator.goTo(CardsAndQuestionsScreen)
-                UiEvent.OpenSettings -> navigator.goTo(SettingsScreen)
-            }
+    override fun present(): UiState = UiState { event ->
+        when (event) {
+            UiEvent.StartGroupConversation ->
+                navigator.goTo(ConversationScreen(SessionId.random(), SessionKind.GROUP))
+            UiEvent.StartSoloConversation ->
+                navigator.goTo(ConversationScreen(SessionId.random(), SessionKind.SOLO))
+            UiEvent.OpenPastConversations -> navigator.goTo(PastConversationsScreen)
+            UiEvent.OpenAbout -> navigator.goTo(AboutScreen)
+            UiEvent.OpenResources -> navigator.goTo(ResourcesScreen)
+            UiEvent.OpenCardsAndQuestions -> navigator.goTo(CardsAndQuestionsScreen)
+            UiEvent.OpenSettings -> navigator.goTo(SettingsScreen)
         }
+    }
 }
 
 /**

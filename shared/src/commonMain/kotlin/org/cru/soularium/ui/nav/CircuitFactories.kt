@@ -43,56 +43,54 @@ class SoulariumPresenterFactory(
         screen: Screen,
         navigator: Navigator,
         context: CircuitContext,
-    ): Presenter<*>? =
-        when (screen) {
-            IntroScreen -> IntroPresenter(navigator, deviceStateRepo)
-            TermsScreen -> TermsPresenter(navigator, deviceStateRepo)
-            HomeScreen -> HomePresenter(navigator)
-            PastConversationsScreen ->
-                PastConversationsPresenter(navigator, sessionRepository, crashReporter)
-            AboutScreen -> AboutPresenter(navigator)
-            ResourcesScreen -> ResourcesPresenter(navigator)
-            CardsAndQuestionsScreen -> CardsAndQuestionsPresenter(navigator)
-            SettingsScreen -> SettingsPresenter(navigator, deviceStateRepo)
-            is ConversationScreen ->
-                ConversationPresenter(
-                    navigator = navigator,
-                    screen = screen,
-                    sessionRepository = sessionRepository,
-                    analytics = analytics,
-                    crashReporter = crashReporter,
-                    sharer = sharer,
-                )
-            else -> null
-        }
+    ): Presenter<*>? = when (screen) {
+        IntroScreen -> IntroPresenter(navigator, deviceStateRepo)
+        TermsScreen -> TermsPresenter(navigator, deviceStateRepo)
+        HomeScreen -> HomePresenter(navigator)
+        PastConversationsScreen ->
+            PastConversationsPresenter(navigator, sessionRepository, crashReporter)
+        AboutScreen -> AboutPresenter(navigator)
+        ResourcesScreen -> ResourcesPresenter(navigator)
+        CardsAndQuestionsScreen -> CardsAndQuestionsPresenter(navigator)
+        SettingsScreen -> SettingsPresenter(navigator, deviceStateRepo)
+        is ConversationScreen ->
+            ConversationPresenter(
+                navigator = navigator,
+                screen = screen,
+                sessionRepository = sessionRepository,
+                analytics = analytics,
+                crashReporter = crashReporter,
+                sharer = sharer,
+            )
+        else -> null
+    }
 }
 
 object SoulariumUiFactory : Ui.Factory {
     override fun create(
         screen: Screen,
         context: CircuitContext,
-    ): Ui<*>? =
-        when (screen) {
-            IntroScreen -> uiOf<IntroPresenter.UiState> { state, modifier -> IntroLayout(state, modifier) }
-            TermsScreen -> uiOf<TermsPresenter.UiState> { state, modifier -> TermsLayout(state, modifier) }
-            HomeScreen -> uiOf<HomePresenter.UiState> { state, modifier -> HomeLayout(state, modifier) }
-            PastConversationsScreen ->
-                uiOf<PastConversationsPresenter.UiState> { state, modifier ->
-                    PastConversationsLayout(state, modifier)
-                }
-            AboutScreen -> uiOf<AboutPresenter.UiState> { state, modifier -> AboutLayout(state, modifier) }
-            ResourcesScreen ->
-                uiOf<ResourcesPresenter.UiState> { state, modifier -> ResourcesLayout(state, modifier) }
-            CardsAndQuestionsScreen ->
-                uiOf<CardsAndQuestionsPresenter.UiState> { state, modifier ->
-                    CardsAndQuestionsLayout(state, modifier)
-                }
-            SettingsScreen ->
-                uiOf<SettingsPresenter.UiState> { state, modifier -> SettingsLayout(state, modifier) }
-            is ConversationScreen ->
-                uiOf<ConversationPresenter.UiState> { state, modifier -> ConversationLayout(state, modifier) }
-            else -> null
-        }
+    ): Ui<*>? = when (screen) {
+        IntroScreen -> uiOf<IntroPresenter.UiState> { state, modifier -> IntroLayout(state, modifier) }
+        TermsScreen -> uiOf<TermsPresenter.UiState> { state, modifier -> TermsLayout(state, modifier) }
+        HomeScreen -> uiOf<HomePresenter.UiState> { state, modifier -> HomeLayout(state, modifier) }
+        PastConversationsScreen ->
+            uiOf<PastConversationsPresenter.UiState> { state, modifier ->
+                PastConversationsLayout(state, modifier)
+            }
+        AboutScreen -> uiOf<AboutPresenter.UiState> { state, modifier -> AboutLayout(state, modifier) }
+        ResourcesScreen ->
+            uiOf<ResourcesPresenter.UiState> { state, modifier -> ResourcesLayout(state, modifier) }
+        CardsAndQuestionsScreen ->
+            uiOf<CardsAndQuestionsPresenter.UiState> { state, modifier ->
+                CardsAndQuestionsLayout(state, modifier)
+            }
+        SettingsScreen ->
+            uiOf<SettingsPresenter.UiState> { state, modifier -> SettingsLayout(state, modifier) }
+        is ConversationScreen ->
+            uiOf<ConversationPresenter.UiState> { state, modifier -> ConversationLayout(state, modifier) }
+        else -> null
+    }
 }
 
 /** Helper that captures a [CircuitUiState] type parameter for a Ui body. */

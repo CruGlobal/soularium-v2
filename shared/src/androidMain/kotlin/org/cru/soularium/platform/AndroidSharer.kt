@@ -21,21 +21,20 @@ class AndroidSharer(
     override suspend fun share(
         text: String,
         subject: String?,
-    ): ShareResult =
-        try {
-            val sendIntent =
-                Intent(Intent.ACTION_SEND).apply {
-                    type = "text/plain"
-                    putExtra(Intent.EXTRA_TEXT, text)
-                    if (subject != null) putExtra(Intent.EXTRA_SUBJECT, subject)
-                }
-            val chooser =
-                Intent.createChooser(sendIntent, subject).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-            context.startActivity(chooser)
-            ShareResult.Succeeded
-        } catch (_: ActivityNotFoundException) {
-            ShareResult.NoAppAvailable
-        }
+    ): ShareResult = try {
+        val sendIntent =
+            Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_TEXT, text)
+                if (subject != null) putExtra(Intent.EXTRA_SUBJECT, subject)
+            }
+        val chooser =
+            Intent.createChooser(sendIntent, subject).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+        context.startActivity(chooser)
+        ShareResult.Succeeded
+    } catch (_: ActivityNotFoundException) {
+        ShareResult.NoAppAvailable
+    }
 }

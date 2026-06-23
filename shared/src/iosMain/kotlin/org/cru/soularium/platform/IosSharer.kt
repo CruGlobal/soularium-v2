@@ -23,27 +23,26 @@ class IosSharer : Sharer {
     override suspend fun share(
         text: String,
         subject: String?,
-    ): ShareResult =
-        withContext(Dispatchers.Main) {
-            val presenter = topmostViewController()
-            if (presenter == null) {
-                ShareResult.NoAppAvailable
-            } else {
-                suspendCancellableCoroutine<ShareResult> { continuation ->
-                    val controller =
-                        UIActivityViewController(
-                            activityItems = listOf(text),
-                            applicationActivities = null,
-                        )
-                    controller.setCompletionWithItemsHandler { _, completed, _, _ ->
-                        continuation.resume(
-                            if (completed) ShareResult.Succeeded else ShareResult.Cancelled,
-                        )
-                    }
-                    presenter.presentViewController(controller, animated = true, completion = null)
+    ): ShareResult = withContext(Dispatchers.Main) {
+        val presenter = topmostViewController()
+        if (presenter == null) {
+            ShareResult.NoAppAvailable
+        } else {
+            suspendCancellableCoroutine<ShareResult> { continuation ->
+                val controller =
+                    UIActivityViewController(
+                        activityItems = listOf(text),
+                        applicationActivities = null,
+                    )
+                controller.setCompletionWithItemsHandler { _, completed, _, _ ->
+                    continuation.resume(
+                        if (completed) ShareResult.Succeeded else ShareResult.Cancelled,
+                    )
                 }
+                presenter.presentViewController(controller, animated = true, completion = null)
             }
         }
+    }
 }
 
 /** Walks the presented-controller chain from the key window's root. */

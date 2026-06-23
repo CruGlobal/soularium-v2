@@ -69,13 +69,12 @@ class ResourcesPresenter(
     }
 
     @Composable
-    override fun present(): UiState =
-        UiState { event ->
-            when (event) {
-                UiEvent.Back -> navigator.pop()
-                UiEvent.OpenTerms -> navigator.goTo(TermsScreen)
-            }
+    override fun present(): UiState = UiState { event ->
+        when (event) {
+            UiEvent.Back -> navigator.pop()
+            UiEvent.OpenTerms -> navigator.goTo(TermsScreen)
         }
+    }
 }
 
 /**
@@ -278,12 +277,11 @@ private fun ResourceRow(
  * Minimal percent-encoding for mailto query parameter values.
  * Encodes space, +, &, =, ?, # which would otherwise break mailto URI parsing.
  */
-private fun encodeMailtoParam(value: String): String =
-    value
-        .replace("%", "%25")
-        .replace("+", "%2B")
-        .replace("&", "%26")
-        .replace("=", "%3D")
-        .replace("?", "%3F")
-        .replace("#", "%23")
-        .replace(" ", "%20")
+private fun encodeMailtoParam(value: String): String = value
+    .replace("%", "%25")
+    .replace("+", "%2B")
+    .replace("&", "%26")
+    .replace("=", "%3D")
+    .replace("?", "%3F")
+    .replace("#", "%23")
+    .replace(" ", "%20")

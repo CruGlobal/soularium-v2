@@ -15,8 +15,7 @@ object AndroidAppContext {
         context = value.applicationContext
     }
 
-    fun get(): Context =
-        requireNotNull(context) {
-            "AndroidAppContext.set(context) must be called before get()."
-        }
+    fun get(): Context = requireNotNull(context) {
+        "AndroidAppContext.set(context) must be called before get()."
+    }
 }

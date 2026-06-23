@@ -41,9 +41,8 @@ fun App() {
     }
 }
 
-internal fun resolveStartScreen(state: DeviceState): Screen =
-    when {
-        !state.hasSeenIntro -> IntroScreen
-        !state.agreedToTos -> TermsScreen
-        else -> HomeScreen
-    }
+internal fun resolveStartScreen(state: DeviceState): Screen = when {
+    !state.hasSeenIntro -> IntroScreen
+    !state.agreedToTos -> TermsScreen
+    else -> HomeScreen
+}

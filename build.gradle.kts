@@ -10,8 +10,9 @@ plugins {
     alias(libs.plugins.room) apply false
     alias(libs.plugins.google.services) apply false
     alias(libs.plugins.firebase.crashlytics) apply false
+    id("ktlint-conventions")
 }
 
-tasks.register("ktlintCheck") {
+tasks.named("ktlintCheck") {
     dependsOn(gradle.includedBuild("build-logic").task(":ktlintCheck"))
 }

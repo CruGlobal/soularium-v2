@@ -10,8 +10,8 @@ import androidx.compose.ui.Modifier
 
 /** Brief loading screen shown while persisted device state is read at launch. */
 @Composable
-fun SplashScreen() {
-    Surface(modifier = Modifier.fillMaxSize()) {
+fun SplashScreen(modifier: Modifier = Modifier) {
+    Surface(modifier = modifier.fillMaxSize()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }

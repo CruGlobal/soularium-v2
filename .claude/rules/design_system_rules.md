@@ -19,7 +19,6 @@ white-label layer** — Soularium v2 is a single Cru-branded app.
 | Iconography | `compose-material-icons-extended` (`androidx.compose.material.icons.Icons.*`) |
 | Theme entry point | `SoulariumTheme(content)` in `ui/theme/Theme.kt` |
 | Image loading | Coil 3 (`coil-compose`) for remote/large images; `painterResource` for bundled drawables |
-| Markdown | `multiplatform-markdown-renderer-m3` (for About / Resources copy) |
 | Resources | Compose Multiplatform resources under `shared/src/commonMain/composeResources/` |
 
 Apply `SoulariumTheme { }` **once**, at the app root. Inside any `@Composable`, read

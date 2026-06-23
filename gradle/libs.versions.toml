@@ -16,7 +16,6 @@ kotlinx-datetime = "0.8.0"
 kotlinx-serialization = "1.11.0"
 ksp = "2.3.9"
 ktlint = "14.2.0"
-multiplatform-markdown-renderer = "0.27.0"
 room = "2.8.4"
 sqlite = "2.6.2"
 
@@ -44,7 +43,6 @@ kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 ktlint-gradle = { module = "org.jlleitschuh.gradle:ktlint-gradle", version.ref = "ktlint" }
 ktlint-rules-compose = "io.nlopez.compose.rules:ktlint:0.6.2"
-markdown-renderer = { module = "com.mikepenz:multiplatform-markdown-renderer-m3", version.ref = "multiplatform-markdown-renderer" }
 okio = "com.squareup.okio:okio:3.17.0"
 robolectric = "org.robolectric:robolectric:4.16.1"
 room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }

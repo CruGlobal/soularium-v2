@@ -21,6 +21,8 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.slack.circuit.codegen.annotations.CircuitInject
+import dev.zacsweers.metro.AppScope
 import org.cru.soularium.generated.resources.Res
 import org.cru.soularium.generated.resources.about_50_5
 import org.cru.soularium.generated.resources.about_how_to_body
@@ -36,6 +38,7 @@ import org.cru.soularium.generated.resources.about_title
 import org.cru.soularium.generated.resources.about_what_is_body
 import org.cru.soularium.generated.resources.about_what_is_heading
 import org.cru.soularium.generated.resources.action_back
+import org.cru.soularium.ui.nav.AboutScreen
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -43,6 +46,7 @@ import org.jetbrains.compose.resources.stringResource
  * conversation, and helpful tips.
  */
 @OptIn(ExperimentalMaterial3Api::class)
+@CircuitInject(AboutScreen::class, AppScope::class)
 @Composable
 fun AboutLayout(
     state: AboutPresenter.UiState,

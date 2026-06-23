@@ -29,6 +29,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.slack.circuit.codegen.annotations.CircuitInject
+import dev.zacsweers.metro.AppScope
 import kotlinx.coroutines.launch
 import org.cru.soularium.generated.resources.Res
 import org.cru.soularium.generated.resources.action_lets_begin
@@ -38,6 +40,7 @@ import org.cru.soularium.generated.resources.intro_page1_title
 import org.cru.soularium.generated.resources.intro_page2_body
 import org.cru.soularium.generated.resources.intro_page2_title
 import org.cru.soularium.generated.resources.intro_ready_prompt
+import org.cru.soularium.ui.nav.IntroScreen
 import org.jetbrains.compose.resources.stringResource
 
 private const val PAGE_COUNT = 2
@@ -51,6 +54,7 @@ private const val PAGE_HOW_IT_WORKS = 1
  * Page 1 — how-it-works + ready prompt (intro_page2_title / intro_page2_body
  *           / intro_ready_prompt).
  */
+@CircuitInject(IntroScreen::class, AppScope::class)
 @Composable
 fun IntroLayout(
     state: IntroPresenter.UiState,

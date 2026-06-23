@@ -15,6 +15,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.slack.circuit.codegen.annotations.CircuitInject
+import dev.zacsweers.metro.AppScope
 import org.cru.soularium.domain.ContactInfo
 import org.cru.soularium.domain.content.Question
 import org.cru.soularium.domain.content.Questions
@@ -28,6 +30,7 @@ import org.cru.soularium.generated.resources.conversation_exit_discard
 import org.cru.soularium.generated.resources.conversation_exit_message
 import org.cru.soularium.generated.resources.conversation_exit_title
 import org.cru.soularium.platform.PlatformBackHandler
+import org.cru.soularium.ui.nav.ConversationScreen
 import org.jetbrains.compose.resources.stringResource
 
 private const val TOTAL_QUESTIONS = 5
@@ -39,6 +42,7 @@ private const val TOTAL_QUESTIONS = 5
  * Subscreens are stateless callback-driven composables; every callback is
  * routed through [ConversationPresenter.UiEvent] via [state.eventSink].
  */
+@CircuitInject(ConversationScreen::class, AppScope::class)
 @Composable
 fun ConversationLayout(
     state: ConversationPresenter.UiState,

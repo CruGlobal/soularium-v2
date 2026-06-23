@@ -41,6 +41,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import com.slack.circuit.codegen.annotations.CircuitInject
+import dev.zacsweers.metro.AppScope
 import org.cru.soularium.domain.content.Question
 import org.cru.soularium.domain.content.Questions
 import org.cru.soularium.generated.resources.Res
@@ -56,6 +58,7 @@ import org.cru.soularium.generated.resources.q3_prompt
 import org.cru.soularium.generated.resources.q4_prompt
 import org.cru.soularium.generated.resources.q5_prompt
 import org.cru.soularium.ui.content.CardImages
+import org.cru.soularium.ui.nav.CardsAndQuestionsScreen
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -70,6 +73,7 @@ private const val TAB_QUESTIONS = 1
  * questions in a scrollable list. Tapping a card opens a full-screen viewer.
  */
 @OptIn(ExperimentalMaterial3Api::class)
+@CircuitInject(CardsAndQuestionsScreen::class, AppScope::class)
 @Composable
 fun CardsAndQuestionsLayout(
     state: CardsAndQuestionsPresenter.UiState,

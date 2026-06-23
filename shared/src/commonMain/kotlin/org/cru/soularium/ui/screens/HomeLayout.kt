@@ -48,6 +48,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import com.slack.circuit.codegen.annotations.CircuitInject
+import dev.zacsweers.metro.AppScope
 import org.cru.soularium.generated.resources.Res
 import org.cru.soularium.generated.resources.app_tagline
 import org.cru.soularium.generated.resources.cd_menu_button
@@ -63,6 +65,7 @@ import org.cru.soularium.generated.resources.menu_my_soularium
 import org.cru.soularium.generated.resources.menu_past_conversations
 import org.cru.soularium.generated.resources.menu_resources
 import org.cru.soularium.generated.resources.menu_settings
+import org.cru.soularium.ui.nav.HomeScreen
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -73,6 +76,7 @@ import org.jetbrains.compose.resources.stringResource
  * corner. Tapping the icon opens [MenuBottomSheet].
  */
 @OptIn(ExperimentalMaterial3Api::class)
+@CircuitInject(HomeScreen::class, AppScope::class)
 @Composable
 fun HomeLayout(
     state: HomePresenter.UiState,

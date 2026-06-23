@@ -5,10 +5,15 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import com.slack.circuit.codegen.annotations.CircuitInject
 import com.slack.circuit.runtime.CircuitUiEvent
 import com.slack.circuit.runtime.CircuitUiState
 import com.slack.circuit.runtime.Navigator
 import com.slack.circuit.runtime.presenter.Presenter
+import dev.zacsweers.metro.AppScope
+import dev.zacsweers.metro.Assisted
+import dev.zacsweers.metro.AssistedFactory
+import dev.zacsweers.metro.AssistedInject
 import kotlinx.coroutines.launch
 import org.cru.soularium.domain.DeviceState
 import org.cru.soularium.domain.ports.DeviceStateRepository
@@ -18,6 +23,7 @@ import org.cru.soularium.generated.resources.locale_es
 import org.cru.soularium.generated.resources.locale_fr
 import org.cru.soularium.generated.resources.locale_pl
 import org.cru.soularium.generated.resources.locale_zh_hans
+import org.cru.soularium.ui.nav.SettingsScreen
 import org.jetbrains.compose.resources.StringResource
 
 /**
@@ -55,8 +61,9 @@ enum class AppLocale(
     }
 }
 
+@AssistedInject
 class SettingsPresenter(
-    private val navigator: Navigator,
+    @Assisted private val navigator: Navigator,
     private val deviceStateRepo: DeviceStateRepository,
 ) : Presenter<SettingsPresenter.UiState> {
 
@@ -82,5 +89,11 @@ class SettingsPresenter(
                 is UiEvent.SelectLocale -> scope.launch { deviceStateRepo.setLocale(event.locale.code) }
             }
         }
+    }
+
+    @CircuitInject(SettingsScreen::class, AppScope::class)
+    @AssistedFactory
+    fun interface Factory {
+        fun create(navigator: Navigator): SettingsPresenter
     }
 }

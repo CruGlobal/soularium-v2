@@ -6,10 +6,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import com.slack.circuit.codegen.annotations.CircuitInject
 import com.slack.circuit.runtime.CircuitUiEvent
 import com.slack.circuit.runtime.CircuitUiState
 import com.slack.circuit.runtime.Navigator
 import com.slack.circuit.runtime.presenter.Presenter
+import dev.zacsweers.metro.AppScope
+import dev.zacsweers.metro.Assisted
+import dev.zacsweers.metro.AssistedFactory
+import dev.zacsweers.metro.AssistedInject
 import kotlinx.coroutines.launch
 import org.cru.soularium.domain.Session
 import org.cru.soularium.domain.SessionId
@@ -18,6 +23,7 @@ import org.cru.soularium.domain.ports.CrashReporter
 import org.cru.soularium.domain.ports.SessionRepository
 import org.cru.soularium.domain.startedAtLocalDate
 import org.cru.soularium.ui.nav.ConversationScreen
+import org.cru.soularium.ui.nav.PastConversationsScreen
 
 /**
  * Flat, UI-ready representation of a single past session row.
@@ -29,8 +35,9 @@ data class PastConversationItem(
     val participantNames: List<String>,
 )
 
+@AssistedInject
 class PastConversationsPresenter(
-    private val navigator: Navigator,
+    @Assisted private val navigator: Navigator,
     private val repository: SessionRepository,
     private val crashReporter: CrashReporter,
 ) : Presenter<PastConversationsPresenter.UiState> {
@@ -94,5 +101,11 @@ class PastConversationsPresenter(
             formattedDate = startedAtLocalDate(),
             participantNames = names,
         )
+    }
+
+    @CircuitInject(PastConversationsScreen::class, AppScope::class)
+    @AssistedFactory
+    fun interface Factory {
+        fun create(navigator: Navigator): PastConversationsPresenter
     }
 }

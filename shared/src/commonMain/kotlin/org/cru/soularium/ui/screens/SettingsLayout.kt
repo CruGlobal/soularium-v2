@@ -27,10 +27,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import com.slack.circuit.codegen.annotations.CircuitInject
+import dev.zacsweers.metro.AppScope
 import org.cru.soularium.generated.resources.Res
 import org.cru.soularium.generated.resources.action_back
 import org.cru.soularium.generated.resources.settings_language
 import org.cru.soularium.generated.resources.settings_title
+import org.cru.soularium.ui.nav.SettingsScreen
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -38,6 +41,7 @@ import org.jetbrains.compose.resources.stringResource
  * user select among the supported locales via a radio group.
  */
 @OptIn(ExperimentalMaterial3Api::class)
+@CircuitInject(SettingsScreen::class, AppScope::class)
 @Composable
 fun SettingsLayout(
     state: SettingsPresenter.UiState,

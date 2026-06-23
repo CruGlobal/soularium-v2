@@ -22,18 +22,22 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.slack.circuit.codegen.annotations.CircuitInject
+import dev.zacsweers.metro.AppScope
 import org.cru.soularium.generated.resources.Res
 import org.cru.soularium.generated.resources.action_agree
 import org.cru.soularium.generated.resources.action_back
 import org.cru.soularium.generated.resources.terms_confirm_prompt
 import org.cru.soularium.generated.resources.terms_review_note
 import org.cru.soularium.generated.resources.terms_title
+import org.cru.soularium.ui.nav.TermsScreen
 import org.jetbrains.compose.resources.stringResource
 
 /**
  * Terms of Use gate shown after the intro flow. Displays the terms summary and
  * requires the user to tap Agree before accessing Home.
  */
+@CircuitInject(TermsScreen::class, AppScope::class)
 @Composable
 fun TermsLayout(
     state: TermsPresenter.UiState,

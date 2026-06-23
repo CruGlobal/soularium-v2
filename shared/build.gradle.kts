@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.ksp)
     id("kotlin-parcelize")
+    alias(libs.plugins.metro)
     alias(libs.plugins.room)
     id("ktlint-conventions")
 }
@@ -57,8 +58,6 @@ kotlin {
             implementation(libs.circuit.foundation)
             implementation(libs.circuit.runtime.presenter)
             implementation(libs.circuit.runtime.ui)
-            implementation(libs.koin.core)
-            implementation(libs.koin.compose)
             implementation(libs.coil.compose)
             implementation(libs.gtoSupport.parcelize)
             implementation(libs.coroutines.core)

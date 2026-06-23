@@ -98,7 +98,7 @@ The project enforces layering by package convention inside the single `:shared` 
 
 - [ ] Models are `@Serializable` (kotlinx.serialization) — required for state-snapshot persistence and share-link generation
 - [ ] ID wrappers (`SessionId`, `ConversationId`, etc.) are `@Serializable @JvmInline value class` over UUID strings
-- [ ] Ports (`ContentRepository`, `SessionRepository`, `DeviceStateRepository`, `AnalyticsTracker`, `CrashReporter`, `Sharer`) are defined as interfaces in `domain/ports/` — implementations live in `data` or in platform Koin modules
+- [ ] Ports (`ContentRepository`, `SessionRepository`, `DeviceStateRepository`, `AnalyticsTracker`, `CrashReporter`, `Sharer`) are defined as interfaces in `domain/ports/` — cross-platform implementations live in `data`; platform-specific implementations live in `androidMain`/`iosMain` (e.g. `AndroidSharer`, `IosSharer`) and are bound via `@ContributesBinding(AppScope::class)`
 - [ ] `transition(state, event, ctx)` in `domain/session/` is **pure** — no I/O, no suspending calls, no `Dispatchers.*`. Side effects are returned as `Effect` data for the Presenter to execute
 - [ ] New `SessionEvent` variants are added to the sealed hierarchy and handled exhaustively in `transition()` (no `else ->` swallowing)
 - [ ] Errors surface via `TransitionResult.error` (`DomainError` sealed interface) — no `Result<T>` wrapper, no thrown exceptions for control flow
@@ -136,7 +136,7 @@ The project enforces layering by package convention inside the single `:shared` 
 
 **Screen & wiring**
 - [ ] New `Screen` destinations are `@Parcelize` `data object`/`data class` types in `ui/nav/Screens.kt`
-- [ ] Presenter + Layout wired through `SoulariumPresenterFactory` / `SoulariumUiFactory` in `ui/nav/CircuitFactories.kt` — Presenters are not Koin singletons themselves
+- [ ] Presenter + Layout wired through `SoulariumPresenterFactory` / `SoulariumUiFactory` in `ui/nav/CircuitFactories.kt` — Presenters are not graph accessors themselves; the factory is `@Inject`ed by Metro with their shared deps and constructs each Presenter directly (the Circuit `@CircuitInject` codegen migration is the planned successor — see `CircuitBindings.kt`)
 - [ ] Loading / error / empty states are first-class on every screen that loads data (the app is offline-first, but `DomainError.PersistenceFailed` still needs a path)
 
 ### Compose / Design System
@@ -164,19 +164,24 @@ Cross-reference `.claude/rules/design_system_rules.md` while reviewing UI code.
 - [ ] New platform seams (`Sharer`, `PlatformBackHandler`, database/datastore builders, etc.) follow the `expect val`/`expect fun` + per-platform `actual` pattern — not `if (Platform.isAndroid)` branching
 - [ ] `iosArm64` and `iosSimulatorArm64` are both covered when adding iOS-specific code (no single-target actuals). `iosX64` is intentionally NOT a configured target (Compose Multiplatform 1.11.x stopped publishing its `iosX64` binaries) — flag any attempt to re-add it without a documented reason
 
-### Dependency Injection — Koin
+### Dependency Injection — Metro
 
-- [ ] App-wide dependencies registered in `appModule` (commonMain) — singletons via `single { }`, factories via `factory { }`
-- [ ] Platform-specific implementations registered in the `androidMain`/`iosMain` `platformModule` actuals (e.g. `AndroidSharer`, `IosSharer`)
-- [ ] New screens add a `Screen` to `ui/nav/Screens.kt` and wire the Presenter+Layout into `CircuitFactories.kt`; only new dependencies that no existing `SoulariumPresenterFactory` arg covers should be added to its constructor
-- [ ] `initKoin()` remains idempotent — no side effects that break on a second call
-- [ ] No use of Hilt, Dagger, Metro, or Anvil annotations — DI is Koin-only
+DI is compile-time via [Metro](https://github.com/ZacSweers/metro). The graph is `org.cru.soularium.di.SoulariumAppGraph` (a `@DependencyGraph(AppScope::class)` interface) and bindings come from three sources: `@Inject`-annotated impl classes that self-contribute via `@ContributesBinding`, `@BindingContainer @ContributesTo(AppScope::class)` interfaces with `@Provides` for non-injectable types (`DataBindings`, `CircuitBindings`), and an `expect class PlatformBindings @BindingContainer` passed via `@Includes` on the graph factory.
+
+- [ ] New impl classes use `@Inject` (constructor or class) and bind to their port via `@ContributesBinding(AppScope::class)`; app-lifetime singletons are scoped with `@SingleIn(AppScope::class)`
+- [ ] Non-constructor-injectable types (Room database/DAOs, factory-built domain services like `createDeviceStateRepository()`) go through `@Provides` inside a `@BindingContainer @ContributesTo(AppScope::class)` interface — see `DataBindings.kt`
+- [ ] Platform-specific bindings live in `expect class PlatformBindings` actuals. Android actual takes `(context: Context)` and provides it as `@Provides @SingleIn(AppScope::class) internal val context`; iOS actual is empty (Sharer/AnalyticsTracker/CrashReporter impls are common with `@ContributesBinding`)
+- [ ] Set multibindings (`Set<Presenter.Factory>`, `Set<Ui.Factory>`) declared with `@Multibinds(allowEmpty = true)` in `CircuitBindings`; new factories contributed via `@Provides @IntoSet` or `@ContributesIntoSet(AppScope::class)`
+- [ ] New graph accessors on `SoulariumAppGraph` are added ONLY when the consumer is the Compose root (`App.kt` is the only call site today) — everything else takes deps via `@Inject` constructor params, not via the graph
+- [ ] New screens add a `Screen` to `ui/nav/Screens.kt` and wire the Presenter+Layout into `CircuitFactories.kt`; only inject new dependencies into `SoulariumPresenterFactory`'s constructor if no existing arg covers them
+- [ ] `createSoulariumAppGraph(PlatformBindings(...))` is called once per entry point — `SoulariumApplication.onCreate()` on Android, `MainViewController()` on iOS — and the graph is passed into `App(graph)` rather than rebuilt per recomposition
+- [ ] No use of Koin, Hilt, Dagger, or Anvil annotations — DI is Metro-only
 
 ### Module Build Files
 
 - [ ] `:shared` stays a KMP library via `com.android.kotlin.multiplatform.library` — do NOT introduce `com.android.application` or `com.android.library` into `:shared` (AGP 9 forbids mixing with the KMP plugin)
 - [ ] `:androidApp` stays a pure `com.android.application` shell — does NOT apply the Kotlin Multiplatform plugin
-- [ ] No `build-logic/` module, no convention plugins — each module's `build.gradle.kts` configures itself using `libs.versions.toml` aliases. Flag attempts to add convention plugins as a **❌ Must Fix** (architecture decision)
+- [ ] Cross-module Gradle conventions live in `build-logic/src/main/kotlin/*-conventions.gradle.kts` and are applied via `id("<name>-conventions")` (currently `ktlint-conventions`). Module-specific config stays in each module's `build.gradle.kts` using `libs.versions.toml` aliases. Convention plugins must be reusable across modules — flag a new convention plugin used by only one module as a **❌ Must Fix**
 - [ ] All dependency coordinates use `libs.*` aliases from `gradle/libs.versions.toml` — no inline `"group:artifact:version"` strings
 - [ ] New dependencies add entries to `libs.versions.toml` and follow existing naming
 - [ ] `minSdk 24`, `compileSdk 36`, `targetSdk 36`, JVM target 17 — version bumps need explicit justification

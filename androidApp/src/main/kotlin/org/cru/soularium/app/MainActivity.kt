@@ -8,6 +8,7 @@ import org.cru.soularium.App
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { App() }
+        val graph = (application as SoulariumApplication).appGraph
+        setContent { App(graph) }
     }
 }

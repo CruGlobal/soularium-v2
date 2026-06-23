@@ -2,14 +2,17 @@ package org.cru.soularium.app
 
 import android.app.Application
 import org.cru.soularium.data.db.initDataAndroid
-import org.cru.soularium.di.initKoin
-import org.cru.soularium.platform.AndroidAppContext
+import org.cru.soularium.di.PlatformBindings
+import org.cru.soularium.di.SoulariumAppGraph
+import org.cru.soularium.di.createSoulariumAppGraph
 
 class SoulariumApplication : Application() {
+    lateinit var appGraph: SoulariumAppGraph
+        private set
+
     override fun onCreate() {
         super.onCreate()
-        AndroidAppContext.set(this)
         initDataAndroid(this)
-        initKoin()
+        appGraph = createSoulariumAppGraph(PlatformBindings(this))
     }
 }

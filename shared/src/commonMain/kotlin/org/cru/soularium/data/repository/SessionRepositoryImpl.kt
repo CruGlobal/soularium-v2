@@ -1,5 +1,9 @@
 package org.cru.soularium.data.repository
 
+import dev.zacsweers.metro.AppScope
+import dev.zacsweers.metro.ContributesBinding
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.encodeToString
@@ -23,12 +27,16 @@ import org.cru.soularium.domain.session.SessionState
 import kotlin.time.Clock
 import kotlin.time.Instant
 
+@Inject
+@SingleIn(AppScope::class)
+@ContributesBinding(AppScope::class)
 class SessionRepositoryImpl(
     private val sessionDao: SessionDao,
     private val conversationDao: ConversationDao,
     private val cardPickDao: CardPickDao,
-    private val json: Json = Json { ignoreUnknownKeys = true },
 ) : SessionRepository {
+    private val json: Json = Json { ignoreUnknownKeys = true }
+
     override suspend fun createSession(
         session: Session,
         initialState: SessionState,

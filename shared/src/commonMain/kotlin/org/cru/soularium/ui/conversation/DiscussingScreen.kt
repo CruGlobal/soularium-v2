@@ -56,7 +56,7 @@ private const val CARD_ASPECT_RATIO = 3f / 2f
  * button fires [onDone].
  *
  * This is a stateless composable — trivial pager state is held locally.
- * No ViewModel, no Koin, no navigation logic.
+ * No ViewModel, no DI, no navigation logic.
  *
  * @param questionNumber   1-based question index (1..5); controls which
  *                         discussion prompt is shown.

@@ -1,5 +1,9 @@
 package org.cru.soularium.platform
 
+import dev.zacsweers.metro.AppScope
+import dev.zacsweers.metro.ContributesBinding
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -19,6 +23,9 @@ import kotlin.coroutines.resume
  * window/controller is available the share is reported as
  * [ShareResult.NoAppAvailable].
  */
+@Inject
+@SingleIn(AppScope::class)
+@ContributesBinding(AppScope::class)
 class IosSharer : Sharer {
     override suspend fun share(
         text: String,

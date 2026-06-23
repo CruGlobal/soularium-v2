@@ -69,7 +69,7 @@ data class ParticipantSummary(
  * shown directly without a tab bar.
  *
  * This composable is stateless except for the locally-remembered selected tab.
- * No ViewModel, no Koin, no navigation. All actions are delegated to callers.
+ * No ViewModel, no DI, no navigation. All actions are delegated to callers.
  *
  * @param participants  one entry per participant, in order.
  * @param onShare       called with [ParticipantSummary.participantIndex] when the

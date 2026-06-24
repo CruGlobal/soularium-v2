@@ -58,12 +58,6 @@ class ConversationPresenter(
     private val sharer: Sharer,
 ) : Presenter<ConversationPresenter.UiState> {
 
-    @CircuitInject(ConversationScreen::class, AppScope::class)
-    @AssistedFactory
-    fun interface Factory {
-        fun create(screen: ConversationScreen, navigator: Navigator): ConversationPresenter
-    }
-
     data class UiState(
         val sessionState: SessionState,
         val ui: ConversationUiContext,
@@ -380,6 +374,12 @@ class ConversationPresenter(
                     analytics.event(effect.event, effect.params)
             }
         }
+    }
+
+    @CircuitInject(ConversationScreen::class, AppScope::class)
+    @AssistedFactory
+    fun interface Factory {
+        fun create(navigator: Navigator, screen: ConversationScreen): ConversationPresenter
     }
 }
 

@@ -1,7 +1,6 @@
 package org.cru.soularium.app
 
 import android.app.Application
-import org.cru.soularium.data.db.initDataAndroid
 import org.cru.soularium.di.PlatformBindings
 import org.cru.soularium.di.SoulariumAppGraph
 import org.cru.soularium.di.createSoulariumAppGraph
@@ -12,7 +11,6 @@ class SoulariumApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        initDataAndroid(this)
         appGraph = createSoulariumAppGraph(PlatformBindings(this))
     }
 }

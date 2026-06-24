@@ -5,7 +5,7 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 
 /**
  * Builds an in-memory [SoulariumDatabase] for tests, with foreign-key
- * enforcement enabled exactly as the production [createDatabase] configures it.
+ * enforcement enabled exactly as the production graph configures it.
  */
 fun inMemorySoulariumDatabase(): SoulariumDatabase = Room.inMemoryDatabaseBuilder<SoulariumDatabase>()
     .setDriver(BundledSQLiteDriver())

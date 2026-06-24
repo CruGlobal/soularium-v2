@@ -41,10 +41,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import com.slack.circuit.runtime.CircuitUiEvent
-import com.slack.circuit.runtime.CircuitUiState
-import com.slack.circuit.runtime.Navigator
-import com.slack.circuit.runtime.presenter.Presenter
+import com.slack.circuit.codegen.annotations.CircuitInject
+import dev.zacsweers.metro.AppScope
 import org.cru.soularium.domain.content.Question
 import org.cru.soularium.domain.content.Questions
 import org.cru.soularium.generated.resources.Res
@@ -60,6 +58,7 @@ import org.cru.soularium.generated.resources.q3_prompt
 import org.cru.soularium.generated.resources.q4_prompt
 import org.cru.soularium.generated.resources.q5_prompt
 import org.cru.soularium.ui.content.CardImages
+import org.cru.soularium.ui.nav.CardsAndQuestionsScreen
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -69,31 +68,12 @@ private const val TOTAL_CARDS = 50
 private const val TAB_IMAGES = 0
 private const val TAB_QUESTIONS = 1
 
-class CardsAndQuestionsPresenter(
-    private val navigator: Navigator,
-) : Presenter<CardsAndQuestionsPresenter.UiState> {
-
-    data class UiState(
-        val eventSink: (UiEvent) -> Unit,
-    ) : CircuitUiState
-
-    sealed interface UiEvent : CircuitUiEvent {
-        data object Back : UiEvent
-    }
-
-    @Composable
-    override fun present(): UiState = UiState { event ->
-        when (event) {
-            UiEvent.Back -> navigator.pop()
-        }
-    }
-}
-
 /**
  * Reference screen showing all 50 Soularium card images in a grid and the 5
  * questions in a scrollable list. Tapping a card opens a full-screen viewer.
  */
 @OptIn(ExperimentalMaterial3Api::class)
+@CircuitInject(CardsAndQuestionsScreen::class, AppScope::class)
 @Composable
 fun CardsAndQuestionsLayout(
     state: CardsAndQuestionsPresenter.UiState,

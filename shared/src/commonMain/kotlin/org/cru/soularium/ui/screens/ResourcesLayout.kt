@@ -30,10 +30,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import com.slack.circuit.runtime.CircuitUiEvent
-import com.slack.circuit.runtime.CircuitUiState
-import com.slack.circuit.runtime.Navigator
-import com.slack.circuit.runtime.presenter.Presenter
+import com.slack.circuit.codegen.annotations.CircuitInject
+import dev.zacsweers.metro.AppScope
 import org.cru.soularium.generated.resources.Res
 import org.cru.soularium.generated.resources.action_back
 import org.cru.soularium.generated.resources.resource_cru_header
@@ -52,30 +50,8 @@ import org.cru.soularium.generated.resources.resource_privacy_url
 import org.cru.soularium.generated.resources.resource_terms_header
 import org.cru.soularium.generated.resources.resource_terms_label
 import org.cru.soularium.generated.resources.resources_title
-import org.cru.soularium.ui.nav.TermsScreen
+import org.cru.soularium.ui.nav.ResourcesScreen
 import org.jetbrains.compose.resources.stringResource
-
-class ResourcesPresenter(
-    private val navigator: Navigator,
-) : Presenter<ResourcesPresenter.UiState> {
-
-    data class UiState(
-        val eventSink: (UiEvent) -> Unit,
-    ) : CircuitUiState
-
-    sealed interface UiEvent : CircuitUiEvent {
-        data object Back : UiEvent
-        data object OpenTerms : UiEvent
-    }
-
-    @Composable
-    override fun present(): UiState = UiState { event ->
-        when (event) {
-            UiEvent.Back -> navigator.pop()
-            UiEvent.OpenTerms -> navigator.goTo(TermsScreen)
-        }
-    }
-}
 
 /**
  * Sealed type representing the action triggered when a resource row is tapped.
@@ -109,6 +85,7 @@ data class ResourceLink(
  * in-app callback.
  */
 @OptIn(ExperimentalMaterial3Api::class)
+@CircuitInject(ResourcesScreen::class, AppScope::class)
 @Composable
 fun ResourcesLayout(
     state: ResourcesPresenter.UiState,

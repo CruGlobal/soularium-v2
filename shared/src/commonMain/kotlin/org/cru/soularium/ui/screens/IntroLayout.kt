@@ -29,12 +29,9 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.slack.circuit.runtime.CircuitUiEvent
-import com.slack.circuit.runtime.CircuitUiState
-import com.slack.circuit.runtime.Navigator
-import com.slack.circuit.runtime.presenter.Presenter
+import com.slack.circuit.codegen.annotations.CircuitInject
+import dev.zacsweers.metro.AppScope
 import kotlinx.coroutines.launch
-import org.cru.soularium.domain.ports.DeviceStateRepository
 import org.cru.soularium.generated.resources.Res
 import org.cru.soularium.generated.resources.action_lets_begin
 import org.cru.soularium.generated.resources.action_next
@@ -43,39 +40,12 @@ import org.cru.soularium.generated.resources.intro_page1_title
 import org.cru.soularium.generated.resources.intro_page2_body
 import org.cru.soularium.generated.resources.intro_page2_title
 import org.cru.soularium.generated.resources.intro_ready_prompt
-import org.cru.soularium.ui.nav.TermsScreen
+import org.cru.soularium.ui.nav.IntroScreen
 import org.jetbrains.compose.resources.stringResource
 
 private const val PAGE_COUNT = 2
 private const val PAGE_CONCEPT = 0
 private const val PAGE_HOW_IT_WORKS = 1
-
-class IntroPresenter(
-    private val navigator: Navigator,
-    private val deviceStateRepo: DeviceStateRepository,
-) : Presenter<IntroPresenter.UiState> {
-
-    data class UiState(
-        val eventSink: (UiEvent) -> Unit,
-    ) : CircuitUiState
-
-    sealed interface UiEvent : CircuitUiEvent {
-        data object Continue : UiEvent
-    }
-
-    @Composable
-    override fun present(): UiState {
-        val scope = rememberCoroutineScope()
-        return UiState { event ->
-            when (event) {
-                UiEvent.Continue -> {
-                    scope.launch { deviceStateRepo.markIntroSeen() }
-                    navigator.goTo(TermsScreen)
-                }
-            }
-        }
-    }
-}
 
 /**
  * First-launch onboarding screen. A 2-page horizontally swipeable pager.
@@ -84,6 +54,7 @@ class IntroPresenter(
  * Page 1 — how-it-works + ready prompt (intro_page2_title / intro_page2_body
  *           / intro_ready_prompt).
  */
+@CircuitInject(IntroScreen::class, AppScope::class)
 @Composable
 fun IntroLayout(
     state: IntroPresenter.UiState,

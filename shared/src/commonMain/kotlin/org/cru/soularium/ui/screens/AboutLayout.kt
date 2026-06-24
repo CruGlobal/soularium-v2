@@ -21,10 +21,8 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.slack.circuit.runtime.CircuitUiEvent
-import com.slack.circuit.runtime.CircuitUiState
-import com.slack.circuit.runtime.Navigator
-import com.slack.circuit.runtime.presenter.Presenter
+import com.slack.circuit.codegen.annotations.CircuitInject
+import dev.zacsweers.metro.AppScope
 import org.cru.soularium.generated.resources.Res
 import org.cru.soularium.generated.resources.about_50_5
 import org.cru.soularium.generated.resources.about_how_to_body
@@ -40,33 +38,15 @@ import org.cru.soularium.generated.resources.about_title
 import org.cru.soularium.generated.resources.about_what_is_body
 import org.cru.soularium.generated.resources.about_what_is_heading
 import org.cru.soularium.generated.resources.action_back
+import org.cru.soularium.ui.nav.AboutScreen
 import org.jetbrains.compose.resources.stringResource
-
-class AboutPresenter(
-    private val navigator: Navigator,
-) : Presenter<AboutPresenter.UiState> {
-
-    data class UiState(
-        val eventSink: (UiEvent) -> Unit,
-    ) : CircuitUiState
-
-    sealed interface UiEvent : CircuitUiEvent {
-        data object Back : UiEvent
-    }
-
-    @Composable
-    override fun present(): UiState = UiState { event ->
-        when (event) {
-            UiEvent.Back -> navigator.pop()
-        }
-    }
-}
 
 /**
  * Informational screen describing Soularium — what it is, how to start a
  * conversation, and helpful tips.
  */
 @OptIn(ExperimentalMaterial3Api::class)
+@CircuitInject(AboutScreen::class, AppScope::class)
 @Composable
 fun AboutLayout(
     state: AboutPresenter.UiState,

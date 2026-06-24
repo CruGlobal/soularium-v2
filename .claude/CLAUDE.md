@@ -142,47 +142,66 @@ Code under `org.cru.soularium.domain` must not reference Compose, Android, or iO
 
 - **Navigation**: `NavGraph.kt` builds a Circuit saveable back stack rooted at a start
   `Screen` and renders the active screen via `NavigableCircuitContent`. Screen
-  destinations are `@Parcelize` `data object`/`data class` types in `ui/nav/Screens.kt`,
-  wired to their Presenter+Layout pairs by `CircuitFactories.kt`. Cross-screen navigation
-  goes through `Navigator.goTo(SomeScreen(...))` from inside a Presenter.
+  destinations are `@Parcelize` `data object`/`data class` types in `ui/nav/Screens.kt`.
+  Presenters and Layouts are wired to their Screen by `@CircuitInject(SomeScreen::class,
+  AppScope::class)` — Metro generates the matching `Presenter.Factory` /
+  `Ui.Factory` at compile time (enabled by `metro { enableCircuitCodegen.set(true) }` in
+  `:shared`'s build script) and contributes them to multibindings consumed by
+  `CircuitBindings.providesCircuit`. There is no hand-written switch table.
+  Cross-screen navigation goes through `Navigator.goTo(SomeScreen(...))` from inside a
+  Presenter.
 - **Presenters** implement Circuit's `Presenter<UiState>`. Each defines a nested
   `data class UiState(... val eventSink: (UiEvent) -> Unit) : CircuitUiState` and a
   `sealed interface UiEvent : CircuitUiEvent`. The `@Composable present()` body uses
   `remember { mutableStateOf(...) }` + `LaunchedEffect`/`produceState` to derive state
   from repositories (collected via `collectAsState()`); user intent flows in through
   `state.eventSink(...)`. Cross-screen navigation is `navigator.goTo(SomeScreen(...))`;
-  back is `navigator.pop()`.
+  back is `navigator.pop()`. Each Presenter lives in its own file named
+  `<Feature>Presenter.kt`. Presenters are `@AssistedInject` classes with `@Assisted`
+  `Navigator` (and `@Assisted` `Screen` when the screen instance carries arguments);
+  remaining constructor parameters are normal injected dependencies from the graph.
+  A nested `@CircuitInject(<Feature>Screen::class, AppScope::class) @AssistedFactory
+  fun interface Factory { fun create(navigator: Navigator): <Feature>Presenter }`
+  drives codegen. Direct construction (e.g. from tests) is still allowed.
 - **Layouts** are public, stateless `@Composable` functions named `<Feature>Layout`,
-  paired one-to-one with a Presenter. The signature is
+  paired one-to-one with a Presenter and living in their own file named
+  `<Feature>Layout.kt`. The signature is
   `fun <Feature>Layout(state: <Feature>Presenter.UiState, modifier: Modifier = Modifier)`;
   `modifier` is the **last** parameter and is applied first on the root composable. The
   Layout reads fields off `state` and emits events via `state.eventSink(...)` — it owns
-  no business logic. Private sub-composables within the file are `private`. Screen ↔
-  Presenter ↔ Layout wiring lives in `ui/nav/CircuitFactories.kt`
-  (`SoulariumPresenterFactory` + `SoulariumUiFactory`).
+  no business logic. Private sub-composables within the file are `private`. The Layout
+  carries `@CircuitInject(<Feature>Screen::class, AppScope::class)` directly on its
+  `@Composable` declaration so Metro generates the matching `Ui.Factory`.
 - **Theme**: `SoulariumTheme { }` (a thin Material3 wrapper) is applied once at the app
   root. Light theme only (dark mode is a deliberate non-goal for v2). See
   `.claude/rules/design_system_rules.md`.
 
-### Dependency Injection — Koin
+### Dependency Injection — Metro
 
-- `initKoin()` (in `shared/.../di/KoinInit.kt`) starts Koin with `appModule` +
-  `platformModule`. It is idempotent (safe to call twice).
-- `appModule` (commonMain) registers `single { }` for the database, DAOs, repositories,
-  the `SoulariumPresenterFactory`, and the assembled `Circuit` instance. Presenters
-  themselves are not Koin-managed — they're constructed inside
-  `SoulariumPresenterFactory.create(...)` with their dependencies injected via factory
-  constructor args. To add a new screen, add a `Screen` to `ui/nav/Screens.kt` and wire
-  its Presenter+Layout into `CircuitFactories.kt`; only inject new dependencies into
-  `SoulariumPresenterFactory` if no existing factory arg covers them.
-- `platformModule` is `expect val platformModule: Module`. The Android actual provides
-  `AndroidSharer` (+ no-op analytics/crash); the iOS actual provides `IosSharer`.
-- Add a new app-wide dependency to `appModule`; add a new platform-specific dependency
-  to the matching `platformModule` actual.
+- The graph is `SoulariumAppGraph` (in `shared/.../di/SoulariumAppGraph.kt`), a
+  `@DependencyGraph(AppScope::class)` interface created via
+  `createSoulariumAppGraph(platformBindings)`. The Android shell builds it once in
+  `SoulariumApplication`; iOS builds it in `MainViewController.kt`.
+- App-wide bindings live in `@BindingContainer @ContributesTo(AppScope::class)`
+  interfaces (`DataBindings` for the database/DAOs/`DeviceStateRepository`,
+  `CircuitBindings` for the assembled `Circuit`, `Placeholders` for the no-op
+  analytics/crash). Repository implementations (`SessionRepositoryImpl`,
+  `ContentRepositoryImpl`) are `@Inject @ContributesBinding(AppScope::class)` so they're
+  picked up automatically. Add new app-wide types by giving the implementation
+  `@Inject` + `@ContributesBinding(AppScope::class)`, or by adding a `@Provides` to one
+  of the binding containers.
+- `PlatformBindings` is `expect class PlatformBindings` with Android/iOS actuals.
+  The Android actual exposes the `Context` and pulls in `AndroidSharer`; the iOS actual
+  pulls in `IosSharer`. Both `Sharer` impls are `@Inject @ContributesBinding(AppScope::class)`.
+- **Adding a screen**: add a `Screen` to `ui/nav/Screens.kt`, then create
+  `<Feature>Presenter.kt` and `<Feature>Layout.kt` annotated with `@CircuitInject(...)`
+  (see above). Metro generates the matching `Presenter.Factory` + `Ui.Factory` and
+  contributes them to the multibindings consumed by `CircuitBindings.providesCircuit`
+  — no factory registration is required.
 
 ### Platform abstraction — expect/actual
 
-KMP platform seams use `expect`/`actual`: `platformModule`, `Sharer`
+KMP platform seams use `expect`/`actual`: `PlatformBindings`, `Sharer`
 (`AndroidSharer` → `Intent.ACTION_SEND`; `IosSharer` → `UIActivityViewController`),
 `PlatformBackHandler` (Android → `BackHandler`; iOS → no-op), `getDatabaseBuilder()`,
 `createDeviceStateDataStore()`, `SoulariumDatabaseConstructor`. Every `expect`

@@ -7,10 +7,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import com.slack.circuit.codegen.annotations.CircuitInject
 import com.slack.circuit.runtime.CircuitUiEvent
 import com.slack.circuit.runtime.CircuitUiState
 import com.slack.circuit.runtime.Navigator
 import com.slack.circuit.runtime.presenter.Presenter
+import dev.zacsweers.metro.AppScope
+import dev.zacsweers.metro.Assisted
+import dev.zacsweers.metro.AssistedFactory
+import dev.zacsweers.metro.AssistedInject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -43,9 +48,10 @@ data class ConversationUiContext(
     val instructionsShown: Boolean = false,
 )
 
+@AssistedInject
 class ConversationPresenter(
-    private val navigator: Navigator,
-    private val screen: ConversationScreen,
+    @Assisted private val navigator: Navigator,
+    @Assisted private val screen: ConversationScreen,
     private val sessionRepository: SessionRepository,
     private val analytics: AnalyticsTracker,
     private val crashReporter: CrashReporter,
@@ -368,6 +374,12 @@ class ConversationPresenter(
                     analytics.event(effect.event, effect.params)
             }
         }
+    }
+
+    @CircuitInject(ConversationScreen::class, AppScope::class)
+    @AssistedFactory
+    fun interface Factory {
+        fun create(navigator: Navigator, screen: ConversationScreen): ConversationPresenter
     }
 }
 

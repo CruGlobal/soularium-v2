@@ -55,6 +55,7 @@ kotlin {
             implementation(compose.materialIconsExtended)
             implementation(compose.components.resources)
             implementation(compose.components.uiToolingPreview)
+            api(libs.circuit.codegen.annotations)
             implementation(libs.circuit.foundation)
             implementation(libs.circuit.runtime.presenter)
             implementation(libs.circuit.runtime.ui)
@@ -93,6 +94,10 @@ kotlin {
 
 compose.resources {
     packageOfResClass = "org.cru.soularium.generated.resources"
+}
+
+metro {
+    enableCircuitCodegen.set(true)
 }
 
 room {

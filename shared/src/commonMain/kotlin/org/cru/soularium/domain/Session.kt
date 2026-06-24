@@ -1,8 +1,8 @@
 package org.cru.soularium.domain
 
-import kotlinx.serialization.Serializable
 import kotlin.time.Clock
 import kotlin.time.Instant
+import kotlinx.serialization.Serializable
 
 @Serializable
 data class Session(

@@ -1,8 +1,8 @@
 package org.cru.soularium.domain
 
-import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
 import kotlin.uuid.Uuid
+import kotlinx.serialization.Serializable
 
 @Serializable
 @JvmInline

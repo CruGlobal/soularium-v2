@@ -1,12 +1,12 @@
 package org.cru.soularium.domain.session
 
-import org.cru.soularium.domain.ContactInfo
-import org.cru.soularium.domain.SessionKind
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import org.cru.soularium.domain.ContactInfo
+import org.cru.soularium.domain.SessionKind
 
 class TransitionTest {
     private fun ctx(

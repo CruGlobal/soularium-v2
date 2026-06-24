@@ -4,6 +4,8 @@ import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
+import kotlin.time.Clock
+import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.encodeToString
@@ -24,8 +26,6 @@ import org.cru.soularium.domain.SessionId
 import org.cru.soularium.domain.SessionKind
 import org.cru.soularium.domain.ports.SessionRepository
 import org.cru.soularium.domain.session.SessionState
-import kotlin.time.Clock
-import kotlin.time.Instant
 
 @Inject
 @SingleIn(AppScope::class)

@@ -8,5 +8,8 @@ import kotlinx.datetime.toLocalDateTime
  */
 fun Session.startedAtLocalDate(): String {
     val local = startedAt.toLocalDateTime(TimeZone.currentSystemDefault()).date
-    return "${local.year}-${local.monthNumber.toString().padStart(2, '0')}-${local.dayOfMonth.toString().padStart(2, '0')}"
+    return "${local.year}-${local.monthNumber.toString().padStart(
+        2,
+        '0',
+    )}-${local.dayOfMonth.toString().padStart(2, '0')}"
 }

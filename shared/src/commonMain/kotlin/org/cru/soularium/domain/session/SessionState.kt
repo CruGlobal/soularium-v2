@@ -24,11 +24,8 @@ sealed interface SessionState {
 
     @Serializable
     @SerialName("in_question")
-    data class InQuestion(
-        val questionNumber: Int,
-        val activeParticipantIndex: Int,
-        val activity: QuestionActivity,
-    ) : SessionState
+    data class InQuestion(val questionNumber: Int, val activeParticipantIndex: Int, val activity: QuestionActivity) :
+        SessionState
 
     @Serializable
     @SerialName("summary")

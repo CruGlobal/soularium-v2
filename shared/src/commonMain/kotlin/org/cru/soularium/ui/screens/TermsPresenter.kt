@@ -17,14 +17,10 @@ import org.cru.soularium.ui.nav.HomeScreen
 import org.cru.soularium.ui.nav.TermsScreen
 
 @AssistedInject
-class TermsPresenter(
-    @Assisted private val navigator: Navigator,
-    private val deviceStateRepo: DeviceStateRepository,
-) : Presenter<TermsPresenter.UiState> {
+class TermsPresenter(@Assisted private val navigator: Navigator, private val deviceStateRepo: DeviceStateRepository) :
+    Presenter<TermsPresenter.UiState> {
 
-    data class UiState(
-        val eventSink: (UiEvent) -> Unit,
-    ) : CircuitUiState
+    data class UiState(val eventSink: (UiEvent) -> Unit) : CircuitUiState
 
     sealed interface UiEvent : CircuitUiEvent {
         data object Agree : UiEvent

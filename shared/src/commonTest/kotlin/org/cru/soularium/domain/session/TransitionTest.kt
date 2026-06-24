@@ -45,7 +45,8 @@ class TransitionTest {
 
     @Test
     fun `RemoveParticipant drops by index`() {
-        val r = transition(SessionState.AddingParticipants, SessionEvent.RemoveParticipant(0), ctx(listOf("Alice", "Bob")))
+        val r =
+            transition(SessionState.AddingParticipants, SessionEvent.RemoveParticipant(0), ctx(listOf("Alice", "Bob")))
         val persist = r.effects.filterIsInstance<Effect.PersistParticipants>().single()
         assertEquals(listOf("Bob"), persist.names)
     }

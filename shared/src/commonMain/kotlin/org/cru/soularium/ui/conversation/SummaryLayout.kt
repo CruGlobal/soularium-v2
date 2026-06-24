@@ -55,11 +55,7 @@ import org.jetbrains.compose.resources.stringResource
  * @param cardIds the participant's up-to-9 final image picks
  *   (Q1: 3 cards, Q2: 3 cards, Q3–Q5: 1 card each).
  */
-data class ParticipantSummary(
-    val participantIndex: Int,
-    val name: String,
-    val cardIds: List<Int>,
-)
+data class ParticipantSummary(val participantIndex: Int, val name: String, val cardIds: List<Int>)
 
 /**
  * End-of-conversation summary ("Life in Pictures") screen.
@@ -263,10 +259,7 @@ private fun ParticipantSummaryContent(
  * Empty slots (fewer than 9 picks) are skipped; the grid simply has fewer rows.
  */
 @Composable
-private fun CardMosaic(
-    cardIds: List<Int>,
-    modifier: Modifier = Modifier,
-) {
+private fun CardMosaic(cardIds: List<Int>, modifier: Modifier = Modifier) {
     val slots = cardIds.take(9)
     val rows = (slots.size + 2) / 3
 

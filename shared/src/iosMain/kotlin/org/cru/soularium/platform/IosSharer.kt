@@ -27,10 +27,7 @@ import kotlin.coroutines.resume
 @SingleIn(AppScope::class)
 @ContributesBinding(AppScope::class)
 class IosSharer : Sharer {
-    override suspend fun share(
-        text: String,
-        subject: String?,
-    ): ShareResult = withContext(Dispatchers.Main) {
+    override suspend fun share(text: String, subject: String?): ShareResult = withContext(Dispatchers.Main) {
         val presenter = topmostViewController()
         if (presenter == null) {
             ShareResult.NoAppAvailable

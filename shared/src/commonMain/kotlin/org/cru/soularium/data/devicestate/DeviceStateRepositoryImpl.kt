@@ -11,9 +11,7 @@ import org.cru.soularium.domain.DeviceState
 import org.cru.soularium.domain.ports.DeviceStateRepository
 
 /** [DeviceStateRepository] backed by a preferences [DataStore]. */
-internal class DeviceStateRepositoryImpl(
-    private val dataStore: DataStore<Preferences>,
-) : DeviceStateRepository {
+internal class DeviceStateRepositoryImpl(private val dataStore: DataStore<Preferences>) : DeviceStateRepository {
     override val deviceState: Flow<DeviceState> =
         dataStore.data.map { prefs ->
             DeviceState(

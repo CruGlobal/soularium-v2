@@ -43,10 +43,7 @@ import org.jetbrains.compose.resources.stringResource
 @OptIn(ExperimentalMaterial3Api::class)
 @CircuitInject(SettingsScreen::class, AppScope::class)
 @Composable
-fun SettingsLayout(
-    state: SettingsPresenter.UiState,
-    modifier: Modifier = Modifier,
-) {
+fun SettingsLayout(state: SettingsPresenter.UiState, modifier: Modifier = Modifier) {
     val backLabel = stringResource(Res.string.action_back)
 
     Scaffold(
@@ -127,12 +124,7 @@ private fun LanguageSection(
 }
 
 @Composable
-private fun LocaleRow(
-    locale: AppLocale,
-    isSelected: Boolean,
-    onSelect: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+private fun LocaleRow(locale: AppLocale, isSelected: Boolean, onSelect: () -> Unit, modifier: Modifier = Modifier) {
     val label = stringResource(locale.labelRes)
 
     Row(

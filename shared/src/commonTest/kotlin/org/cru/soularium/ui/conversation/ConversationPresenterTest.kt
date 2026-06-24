@@ -223,13 +223,16 @@ private class FakeSessionRepository : SessionRepository {
 
     override suspend fun loadPicks(conversationId: ConversationId): List<CardPick> = emptyList()
 
-    override fun observeCompletedSessions(): Flow<List<Session>> = MutableStateFlow<List<Session>>(emptyList()).asStateFlow()
+    override fun observeCompletedSessions(): Flow<List<Session>> =
+        MutableStateFlow<List<Session>>(emptyList()).asStateFlow()
 
-    override fun observeBookmarkedSessions(): Flow<List<Session>> = MutableStateFlow<List<Session>>(emptyList()).asStateFlow()
+    override fun observeBookmarkedSessions(): Flow<List<Session>> =
+        MutableStateFlow<List<Session>>(emptyList()).asStateFlow()
 
     override suspend fun deleteSession(id: SessionId) = Unit
 
-    override suspend fun loadConversations(sessionId: SessionId): List<Conversation> = preloadedConversations[sessionId].orEmpty()
+    override suspend fun loadConversations(sessionId: SessionId): List<Conversation> =
+        preloadedConversations[sessionId].orEmpty()
 }
 
 private class RecordingAnalytics : AnalyticsTracker {

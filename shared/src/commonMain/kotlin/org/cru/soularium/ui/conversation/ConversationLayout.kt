@@ -44,10 +44,7 @@ private const val TOTAL_QUESTIONS = 5
  */
 @CircuitInject(ConversationScreen::class, AppScope::class)
 @Composable
-fun ConversationLayout(
-    state: ConversationPresenter.UiState,
-    modifier: Modifier = Modifier,
-) {
+fun ConversationLayout(state: ConversationPresenter.UiState, modifier: Modifier = Modifier) {
     // Intercept the platform back affordance so leaving mid-conversation is a
     // deliberate choice between bookmarking and discarding progress.
     PlatformBackHandler(enabled = state.sessionState != SessionState.Concluded) {
@@ -170,11 +167,7 @@ fun ConversationLayout(
  * two-round question needs a wide set, every other round needs exactly the
  * required count.
  */
-private fun isSelectionValid(
-    question: Question,
-    activity: QuestionActivity,
-    count: Int,
-): Boolean = when (activity) {
+private fun isSelectionValid(question: Question, activity: QuestionActivity, count: Int): Boolean = when (activity) {
     QuestionActivity.SelectingRound1 ->
         if (question.selectionRounds == 2) {
             count >= question.requiredImageCount + 1
@@ -190,11 +183,7 @@ private fun isSelectionValid(
  * bookmark it for later, discard the progress, or stay.
  */
 @Composable
-private fun ExitConversationDialog(
-    onBookmark: () -> Unit,
-    onDiscard: () -> Unit,
-    onCancel: () -> Unit,
-) {
+private fun ExitConversationDialog(onBookmark: () -> Unit, onDiscard: () -> Unit, onCancel: () -> Unit) {
     AlertDialog(
         onDismissRequest = onCancel,
         title = { Text(stringResource(Res.string.conversation_exit_title)) },

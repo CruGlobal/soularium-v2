@@ -19,12 +19,7 @@ class ShareUrlTest {
             contact = ContactInfo(name = "John"),
         )
 
-    private fun pick(
-        q: Int,
-        card: Int,
-        order: Int,
-        isFinal: Boolean = true,
-    ) = CardPick(
+    private fun pick(q: Int, card: Int, order: Int, isFinal: Boolean = true) = CardPick(
         id = CardPickId("p-$q-$card"),
         conversationId = ConversationId("c-1"),
         questionNumber = q,

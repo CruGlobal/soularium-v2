@@ -35,9 +35,7 @@ import org.jetbrains.compose.resources.StringResource
  * locale-override API (CMP 1.8+); until then the picker records the
  * preference and reflects it in the UI.
  */
-enum class AppLocale(
-    val code: String,
-) {
+enum class AppLocale(val code: String) {
     EN("en"),
     ES("es"),
     FR("fr"),
@@ -67,10 +65,7 @@ class SettingsPresenter(
     private val deviceStateRepo: DeviceStateRepository,
 ) : Presenter<SettingsPresenter.UiState> {
 
-    data class UiState(
-        val selectedLocale: AppLocale,
-        val eventSink: (UiEvent) -> Unit,
-    ) : CircuitUiState
+    data class UiState(val selectedLocale: AppLocale, val eventSink: (UiEvent) -> Unit) : CircuitUiState
 
     sealed interface UiEvent : CircuitUiEvent {
         data object Back : UiEvent

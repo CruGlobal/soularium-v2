@@ -3,11 +3,7 @@ package org.cru.soularium.domain.session
 import org.cru.soularium.domain.DomainError
 import org.cru.soularium.domain.content.Questions
 
-fun transition(
-    state: SessionState,
-    event: SessionEvent,
-    ctx: SessionContext,
-): TransitionResult = when (state) {
+fun transition(state: SessionState, event: SessionEvent, ctx: SessionContext): TransitionResult = when (state) {
     SessionState.NotStarted -> transitionNotStarted(event)
     SessionState.AddingParticipants -> transitionAddingParticipants(event, ctx)
     is SessionState.InQuestion -> transitionInQuestion(state, event, ctx)
@@ -40,10 +36,7 @@ private fun transitionNotStarted(event: SessionEvent): TransitionResult = when (
         )
 }
 
-private fun transitionAddingParticipants(
-    event: SessionEvent,
-    ctx: SessionContext,
-): TransitionResult = when (event) {
+private fun transitionAddingParticipants(event: SessionEvent, ctx: SessionContext): TransitionResult = when (event) {
     is SessionEvent.AddParticipant -> {
         val names = ctx.participantNames + event.name
         TransitionResult(
@@ -121,20 +114,35 @@ private fun transitionInQuestion(
             val targetActivity =
                 when (state.activity) {
                     QuestionActivity.SelectingRound1 -> {
-                        val needed = if (question.selectionRounds == 2) question.requiredImageCount + 1 else question.requiredImageCount
+                        val needed = if (question.selectionRounds ==
+                            2
+                        ) {
+                            question.requiredImageCount + 1
+                        } else {
+                            question.requiredImageCount
+                        }
                         if (ctx.currentDraftPicks.size < needed) {
                             return TransitionResult(
                                 next = state,
                                 error = DomainError.InvalidSelectionCount(needed, ctx.currentDraftPicks.size),
                             )
                         }
-                        if (question.selectionRounds == 2) QuestionActivity.SelectingRound2 else QuestionActivity.Finalizing
+                        if (question.selectionRounds ==
+                            2
+                        ) {
+                            QuestionActivity.SelectingRound2
+                        } else {
+                            QuestionActivity.Finalizing
+                        }
                     }
                     QuestionActivity.SelectingRound2 -> {
                         if (ctx.currentDraftPicks.size != question.requiredImageCount) {
                             return TransitionResult(
                                 next = state,
-                                error = DomainError.InvalidSelectionCount(question.requiredImageCount, ctx.currentDraftPicks.size),
+                                error = DomainError.InvalidSelectionCount(
+                                    question.requiredImageCount,
+                                    ctx.currentDraftPicks.size,
+                                ),
                             )
                         }
                         QuestionActivity.Finalizing

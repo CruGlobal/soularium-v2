@@ -426,7 +426,8 @@ private class InMemorySessionRepository : SessionRepository {
         refresh()
     }
 
-    override suspend fun loadConversations(sessionId: SessionId): List<Conversation> = conversations[sessionId].orEmpty()
+    override suspend fun loadConversations(sessionId: SessionId): List<Conversation> =
+        conversations[sessionId].orEmpty()
 
     private fun refresh() {
         completed.value = completedIds.mapNotNull { sessions[it] }

@@ -56,10 +56,7 @@ private const val PAGE_HOW_IT_WORKS = 1
  */
 @CircuitInject(IntroScreen::class, AppScope::class)
 @Composable
-fun IntroLayout(
-    state: IntroPresenter.UiState,
-    modifier: Modifier = Modifier,
-) {
+fun IntroLayout(state: IntroPresenter.UiState, modifier: Modifier = Modifier) {
     val pagerState = rememberPagerState(pageCount = { PAGE_COUNT })
     val scope = rememberCoroutineScope()
 
@@ -190,11 +187,7 @@ private fun IntroHowItWorks(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun PageIndicatorRow(
-    pageCount: Int,
-    currentPage: Int,
-    modifier: Modifier = Modifier,
-) {
+private fun PageIndicatorRow(pageCount: Int, currentPage: Int, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(8.dp),

@@ -69,10 +69,7 @@ import org.jetbrains.compose.resources.stringResource
 @OptIn(ExperimentalMaterial3Api::class)
 @CircuitInject(PastConversationsScreen::class, AppScope::class)
 @Composable
-fun PastConversationsLayout(
-    state: PastConversationsPresenter.UiState,
-    modifier: Modifier = Modifier,
-) {
+fun PastConversationsLayout(state: PastConversationsPresenter.UiState, modifier: Modifier = Modifier) {
     val backLabel = stringResource(Res.string.action_back)
 
     var selectedTabIndex by remember { mutableIntStateOf(0) }

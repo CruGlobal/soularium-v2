@@ -15,7 +15,5 @@ data class Session(
 )
 
 /** Creates a fresh session that starts now. */
-fun newSession(
-    id: SessionId,
-    kind: SessionKind,
-): Session = Session(id = id, kind = kind, startedAt = Clock.System.now())
+fun newSession(id: SessionId, kind: SessionKind): Session =
+    Session(id = id, kind = kind, startedAt = Clock.System.now())

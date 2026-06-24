@@ -18,6 +18,5 @@ interface SoulariumAppGraph {
     }
 }
 
-fun createSoulariumAppGraph(
-    platformBindings: PlatformBindings,
-): SoulariumAppGraph = createGraphFactory<SoulariumAppGraph.Factory>().create(platformBindings)
+fun createSoulariumAppGraph(platformBindings: PlatformBindings): SoulariumAppGraph =
+    createGraphFactory<SoulariumAppGraph.Factory>().create(platformBindings)

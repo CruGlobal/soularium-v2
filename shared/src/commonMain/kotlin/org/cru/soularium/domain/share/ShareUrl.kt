@@ -3,10 +3,7 @@ package org.cru.soularium.domain.share
 import org.cru.soularium.domain.CardPick
 import org.cru.soularium.domain.Conversation
 
-fun shareUrlFor(
-    conversation: Conversation,
-    picks: List<CardPick>,
-): String {
+fun shareUrlFor(conversation: Conversation, picks: List<CardPick>): String {
     val finals = picks.filter { it.isFinal }
     val orderedCardIds =
         (1..5).flatMap { q ->

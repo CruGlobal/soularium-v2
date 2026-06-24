@@ -10,7 +10,4 @@ import androidx.compose.runtime.Composable
  * a no-op there and the conversation is exited via in-app controls instead.
  */
 @Composable
-expect fun PlatformBackHandler(
-    enabled: Boolean,
-    onBack: () -> Unit,
-)
+expect fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit)

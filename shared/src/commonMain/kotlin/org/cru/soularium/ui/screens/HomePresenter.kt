@@ -21,13 +21,9 @@ import org.cru.soularium.ui.nav.ResourcesScreen
 import org.cru.soularium.ui.nav.SettingsScreen
 
 @AssistedInject
-class HomePresenter(
-    @Assisted private val navigator: Navigator,
-) : Presenter<HomePresenter.UiState> {
+class HomePresenter(@Assisted private val navigator: Navigator) : Presenter<HomePresenter.UiState> {
 
-    data class UiState(
-        val eventSink: (UiEvent) -> Unit,
-    ) : CircuitUiState
+    data class UiState(val eventSink: (UiEvent) -> Unit) : CircuitUiState
 
     sealed interface UiEvent : CircuitUiEvent {
         data object StartGroupConversation : UiEvent

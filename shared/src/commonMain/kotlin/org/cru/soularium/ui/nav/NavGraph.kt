@@ -13,10 +13,7 @@ import com.slack.circuit.runtime.screen.Screen
  * [startScreen] and renders the current screen via [NavigableCircuitContent].
  */
 @Composable
-fun NavGraph(
-    circuit: Circuit,
-    startScreen: Screen,
-) {
+fun NavGraph(circuit: Circuit, startScreen: Screen) {
     val backStack = rememberSaveableBackStack(startScreen)
     val navigator = rememberCircuitNavigator(backStack) {
         // Root pop (back at start) — leave handling to the platform.

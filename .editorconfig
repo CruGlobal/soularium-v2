@@ -1,10 +1,6 @@
 root = true
 
 [*.{kt,kts}]
-# Use the IntelliJ IDEA code style rather than ktlint_official. The official
-# style adds highly opinionated function-signature / expression-wrapping rules
-# that fight conventional Kotlin and Compose code; intellij_idea keeps the
-# rules that matter (indentation, imports, naming, trailing commas).
 ktlint_code_style = intellij_idea
-# Composable functions are PascalCase by Compose convention.
 ktlint_function_naming_ignore_when_annotated_with = Composable
+max_line_length = 120

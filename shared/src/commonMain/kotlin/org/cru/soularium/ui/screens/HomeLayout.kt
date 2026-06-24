@@ -78,10 +78,7 @@ import org.jetbrains.compose.resources.stringResource
 @OptIn(ExperimentalMaterial3Api::class)
 @CircuitInject(HomeScreen::class, AppScope::class)
 @Composable
-fun HomeLayout(
-    state: HomePresenter.UiState,
-    modifier: Modifier = Modifier,
-) {
+fun HomeLayout(state: HomePresenter.UiState, modifier: Modifier = Modifier) {
     var showMenu by remember { mutableStateOf(false) }
     val menuButtonLabel = stringResource(Res.string.cd_menu_button)
     val startLabel = stringResource(Res.string.cta_start_conversation)
@@ -303,12 +300,7 @@ private fun MenuBottomSheet(
 }
 
 @Composable
-private fun MenuRow(
-    icon: ImageVector,
-    label: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+private fun MenuRow(icon: ImageVector, label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Surface(
         onClick = onClick,
         modifier =

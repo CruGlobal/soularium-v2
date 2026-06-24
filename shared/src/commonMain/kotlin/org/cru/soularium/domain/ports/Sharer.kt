@@ -1,10 +1,7 @@
 package org.cru.soularium.domain.ports
 
 interface Sharer {
-    suspend fun share(
-        text: String,
-        subject: String? = null,
-    ): ShareResult
+    suspend fun share(text: String, subject: String? = null): ShareResult
 }
 
 sealed interface ShareResult {

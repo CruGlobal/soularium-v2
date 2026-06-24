@@ -240,12 +240,7 @@ private fun SelectionHeader(
 }
 
 @Composable
-private fun SelectableCardItem(
-    cardId: Int,
-    isSelected: Boolean,
-    onToggle: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+private fun SelectableCardItem(cardId: Int, isSelected: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier) {
     val cardLabel = stringResource(Res.string.cd_card_thumb, cardId)
 
     val primaryColor = MaterialTheme.colorScheme.primary

@@ -21,6 +21,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.cru.soularium.domain.ContactInfo
+import org.cru.soularium.domain.content.Question
+import org.cru.soularium.domain.content.Questions
 import org.cru.soularium.domain.newSession
 import org.cru.soularium.domain.ports.AnalyticsTracker
 import org.cru.soularium.domain.ports.CrashReporter
@@ -35,13 +37,15 @@ import org.cru.soularium.domain.session.transition
 import org.cru.soularium.domain.share.shareUrlFor
 import org.cru.soularium.ui.nav.ConversationScreen
 
+private const val TOTAL_QUESTIONS = 5
+
 /**
  * Volatile per-conversation UI context that doesn't belong on [SessionState]:
  * participant names (loaded into memory), draft / pending picks while the user
  * is selecting cards, and a one-shot flag that the per-session instruction
  * panel has been seen.
  */
-data class ConversationUiContext(
+internal data class ConversationUiContext(
     val participantNames: List<String> = emptyList(),
     val draftPicks: List<Int> = emptyList(),
     val roundFinals: List<Int> = emptyList(),
@@ -58,17 +62,80 @@ class ConversationPresenter(
     private val sharer: Sharer,
 ) : Presenter<ConversationPresenter.UiState> {
 
-    data class UiState(
-        val sessionState: SessionState,
-        val ui: ConversationUiContext,
-        val summaries: List<ParticipantSummary>,
-        val showExitDialog: Boolean,
-        val eventSink: (UiEvent) -> Unit,
-    ) : CircuitUiState
+    /**
+     * One subtype per page the conversation flow can render. Each subtype carries
+     * exactly the props the matching screen needs, so [ConversationLayout]'s only
+     * branching is the `when` over this sealed hierarchy.
+     */
+    sealed interface UiState : CircuitUiState {
+        val showExitDialog: Boolean
+        val eventSink: (UiEvent) -> Unit
+
+        /** Transient placeholder shown while bootstrapping or popping. */
+        data class Loading(override val showExitDialog: Boolean, override val eventSink: (UiEvent) -> Unit) : UiState
+
+        data class AddingParticipants(
+            val participantNames: List<String>,
+            override val showExitDialog: Boolean,
+            override val eventSink: (UiEvent) -> Unit,
+        ) : UiState
+
+        data class QuestionPrompt(
+            val questionNumber: Int,
+            val totalQuestions: Int,
+            val participantName: String,
+            val isGroup: Boolean,
+            override val showExitDialog: Boolean,
+            override val eventSink: (UiEvent) -> Unit,
+        ) : UiState
+
+        data class Instructions(override val showExitDialog: Boolean, override val eventSink: (UiEvent) -> Unit) :
+            UiState
+
+        data class Selection(
+            val questionNumber: Int,
+            val round: Int,
+            val selectedCardIds: List<Int>,
+            val isConfirmEnabled: Boolean,
+            override val showExitDialog: Boolean,
+            override val eventSink: (UiEvent) -> Unit,
+        ) : UiState
+
+        data class Finalizing(
+            val questionNumber: Int,
+            val cardIds: List<Int>,
+            override val showExitDialog: Boolean,
+            override val eventSink: (UiEvent) -> Unit,
+        ) : UiState
+
+        data class Discussing(
+            val questionNumber: Int,
+            val participantName: String,
+            val cardIds: List<Int>,
+            override val showExitDialog: Boolean,
+            override val eventSink: (UiEvent) -> Unit,
+        ) : UiState
+
+        data class Summary(
+            val participants: List<ParticipantSummary>,
+            override val showExitDialog: Boolean,
+            override val eventSink: (UiEvent) -> Unit,
+        ) : UiState
+
+        data class CollectingContact(
+            val participantName: String,
+            val participantIndex: Int,
+            override val showExitDialog: Boolean,
+            override val eventSink: (UiEvent) -> Unit,
+        ) : UiState
+    }
 
     sealed interface UiEvent : CircuitUiEvent {
-        /** Domain session event from a subscreen (begin selection, pick card, etc.). */
+        /** Domain session event from a subscreen (begin selection, confirm, etc.). */
         data class Dispatch(val event: SessionEvent) : UiEvent
+
+        /** Selection screen tap — the presenter decides pick vs. unpick. */
+        data class ToggleCard(val cardId: Int) : UiEvent
 
         /** Platform back / explicit exit affordance — open the bookmark/discard dialog. */
         data object RequestExit : UiEvent
@@ -156,16 +223,27 @@ class ConversationPresenter(
             }
         }
 
-        return UiState(
-            sessionState = sessionState,
-            ui = ui,
-            summaries = summaries,
-            showExitDialog = showExitDialog,
-        ) { event ->
+        val eventSink: (UiEvent) -> Unit = { event ->
             when (event) {
                 is UiEvent.Dispatch -> {
                     val (newState, newUi) = applyDispatch(
                         event = event.event,
+                        previousState = sessionState,
+                        ui = ui,
+                        scope = scope,
+                        repoMutex = repoMutex,
+                    )
+                    sessionState = newState
+                    ui = newUi
+                }
+                is UiEvent.ToggleCard -> {
+                    val sessionEvent = if (event.cardId in ui.draftPicks) {
+                        SessionEvent.UnpickCard(event.cardId)
+                    } else {
+                        SessionEvent.PickCard(event.cardId)
+                    }
+                    val (newState, newUi) = applyDispatch(
+                        event = sessionEvent,
                         previousState = sessionState,
                         ui = ui,
                         scope = scope,
@@ -242,6 +320,94 @@ class ConversationPresenter(
                 }
             }
         }
+
+        return buildUiState(sessionState, ui, summaries, showExitDialog, eventSink)
+    }
+
+    /**
+     * Projects the presenter's internal state onto the page-specific [UiState]
+     * subtype. All the branching that used to live in the Layout (question
+     * lookup, participant name resolution, round numbering, selection-count
+     * validity) is resolved here.
+     */
+    private fun buildUiState(
+        sessionState: SessionState,
+        ui: ConversationUiContext,
+        summaries: List<ParticipantSummary>,
+        showExitDialog: Boolean,
+        eventSink: (UiEvent) -> Unit,
+    ): UiState = when (sessionState) {
+        SessionState.NotStarted, SessionState.Concluded ->
+            UiState.Loading(showExitDialog, eventSink)
+
+        SessionState.AddingParticipants ->
+            UiState.AddingParticipants(ui.participantNames, showExitDialog, eventSink)
+
+        is SessionState.InQuestion -> {
+            val question = Questions.byNumber(sessionState.questionNumber)
+            val participantName =
+                ui.participantNames.getOrElse(sessionState.activeParticipantIndex) { "" }
+            when (sessionState.activity) {
+                QuestionActivity.ShowingPrompt ->
+                    UiState.QuestionPrompt(
+                        questionNumber = sessionState.questionNumber,
+                        totalQuestions = TOTAL_QUESTIONS,
+                        participantName = participantName,
+                        isGroup = ui.participantNames.size > 1,
+                        showExitDialog = showExitDialog,
+                        eventSink = eventSink,
+                    )
+
+                QuestionActivity.ShowingInstructions ->
+                    UiState.Instructions(showExitDialog, eventSink)
+
+                QuestionActivity.SelectingRound1,
+                QuestionActivity.SelectingRound2,
+                -> {
+                    val isRound2 = sessionState.activity == QuestionActivity.SelectingRound2
+                    UiState.Selection(
+                        questionNumber = sessionState.questionNumber,
+                        round = if (isRound2) 2 else 1,
+                        selectedCardIds = ui.draftPicks,
+                        isConfirmEnabled = isSelectionValid(
+                            question,
+                            sessionState.activity,
+                            ui.draftPicks.size,
+                        ),
+                        showExitDialog = showExitDialog,
+                        eventSink = eventSink,
+                    )
+                }
+
+                QuestionActivity.Finalizing ->
+                    UiState.Finalizing(
+                        questionNumber = sessionState.questionNumber,
+                        cardIds = ui.draftPicks,
+                        showExitDialog = showExitDialog,
+                        eventSink = eventSink,
+                    )
+
+                QuestionActivity.Discussing ->
+                    UiState.Discussing(
+                        questionNumber = sessionState.questionNumber,
+                        participantName = participantName,
+                        cardIds = ui.draftPicks,
+                        showExitDialog = showExitDialog,
+                        eventSink = eventSink,
+                    )
+            }
+        }
+
+        SessionState.Summary ->
+            UiState.Summary(summaries, showExitDialog, eventSink)
+
+        is SessionState.CollectingContact ->
+            UiState.CollectingContact(
+                participantName = ui.participantNames.getOrElse(sessionState.participantIndex) { "" },
+                participantIndex = sessionState.participantIndex,
+                showExitDialog = showExitDialog,
+                eventSink = eventSink,
+            )
     }
 
     /**
@@ -382,6 +548,22 @@ class ConversationPresenter(
     fun interface Factory {
         fun create(navigator: Navigator, screen: ConversationScreen): ConversationPresenter
     }
+}
+
+/**
+ * Mirrors the count rules enforced by the transition function: round 1 of a
+ * two-round question needs a wide set, every other round needs exactly the
+ * required count.
+ */
+private fun isSelectionValid(question: Question, activity: QuestionActivity, count: Int): Boolean = when (activity) {
+    QuestionActivity.SelectingRound1 ->
+        if (question.selectionRounds == 2) {
+            count >= question.requiredImageCount + 1
+        } else {
+            count == question.requiredImageCount
+        }
+    QuestionActivity.SelectingRound2 -> count == question.requiredImageCount
+    else -> false
 }
 
 /**

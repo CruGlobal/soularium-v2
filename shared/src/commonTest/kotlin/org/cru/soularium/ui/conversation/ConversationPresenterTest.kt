@@ -5,7 +5,6 @@ import com.slack.circuit.test.FakeNavigator
 import com.slack.circuit.test.test
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -63,7 +62,7 @@ class ConversationPresenterTest {
     fun `bootstrap from NotStarted transitions to AddingParticipants and logs analytics`() = runTest {
         val analytics = RecordingAnalytics()
         presenter(FakeSessionRepository(), analytics = analytics).test {
-            awaitStableState { it.sessionState == SessionState.AddingParticipants }
+            awaitStableState { it is ConversationPresenter.UiState.AddingParticipants }
             cancelAndIgnoreRemainingEvents()
         }
         assertTrue(
@@ -76,29 +75,62 @@ class ConversationPresenterTest {
     fun `AddParticipant updates context and persists`() = runTest {
         val repo = FakeSessionRepository()
         presenter(repo).test {
-            val started = awaitStableState { it.sessionState == SessionState.AddingParticipants }
+            val started = awaitStableState { it is ConversationPresenter.UiState.AddingParticipants }
             started.eventSink(ConversationPresenter.UiEvent.Dispatch(SessionEvent.AddParticipant("Alice")))
-            val withAlice = awaitStableState { it.ui.participantNames == listOf("Alice") }
+            val withAlice = awaitStableState {
+                (it as? ConversationPresenter.UiState.AddingParticipants)?.participantNames == listOf("Alice")
+            }
             withAlice.eventSink(ConversationPresenter.UiEvent.Dispatch(SessionEvent.AddParticipant("Bob")))
-            val withBoth = awaitStableState { it.ui.participantNames == listOf("Alice", "Bob") }
-            assertEquals(listOf("Alice", "Bob"), withBoth.ui.participantNames)
+            val withBoth = awaitStableState {
+                (it as? ConversationPresenter.UiState.AddingParticipants)?.participantNames == listOf("Alice", "Bob")
+            } as ConversationPresenter.UiState.AddingParticipants
+            assertEquals(listOf("Alice", "Bob"), withBoth.participantNames)
             cancelAndIgnoreRemainingEvents()
         }
         assertEquals(listOf("Alice", "Bob"), repo.lastUpsertedParticipants)
     }
 
     @Test
-    fun `PickCard and UnpickCard mutate draft without invoking transition`() = runTest {
-        val repo = FakeSessionRepository()
+    fun `ToggleCard accumulates and removes picks without invoking transition`() = runTest {
+        val repo = FakeSessionRepository().apply {
+            // Resume at question 3 ShowingPrompt; the test drives forward to a
+            // Selection page so we can observe selectedCardIds toggling.
+            preloadedState = SessionState.InQuestion(3, 0, QuestionActivity.ShowingPrompt)
+            preloadedConversations[sessionId] = listOf(
+                Conversation(ConversationId.random(), sessionId, 0, ContactInfo("Alice")),
+            )
+        }
         presenter(repo).test {
-            val started = awaitStableState { it.sessionState == SessionState.AddingParticipants }
-            started.eventSink(ConversationPresenter.UiEvent.Dispatch(SessionEvent.PickCard(7)))
-            val one = awaitStableState { it.ui.draftPicks == listOf(7) }
-            one.eventSink(ConversationPresenter.UiEvent.Dispatch(SessionEvent.PickCard(12)))
-            val two = awaitStableState { it.ui.draftPicks == listOf(7, 12) }
-            two.eventSink(ConversationPresenter.UiEvent.Dispatch(SessionEvent.UnpickCard(7)))
-            val final = awaitStableState { it.ui.draftPicks == listOf(12) }
-            assertEquals(listOf(12), final.ui.draftPicks)
+            val prompt = awaitStableState { it is ConversationPresenter.UiState.QuestionPrompt }
+            prompt.eventSink(ConversationPresenter.UiEvent.Dispatch(SessionEvent.BeginSelection))
+            val afterBegin = awaitStableState {
+                it is ConversationPresenter.UiState.Instructions ||
+                    it is ConversationPresenter.UiState.Selection
+            }
+            val selection = if (afterBegin is ConversationPresenter.UiState.Instructions) {
+                afterBegin.eventSink(
+                    ConversationPresenter.UiEvent.Dispatch(SessionEvent.DismissInstructions),
+                )
+                awaitStableState { it is ConversationPresenter.UiState.Selection }
+            } else {
+                afterBegin
+            } as ConversationPresenter.UiState.Selection
+
+            // Picking 7 (not present) adds it; the page stays on Selection.
+            selection.eventSink(ConversationPresenter.UiEvent.ToggleCard(7))
+            val one = awaitStableState {
+                (it as? ConversationPresenter.UiState.Selection)?.selectedCardIds == listOf(7)
+            } as ConversationPresenter.UiState.Selection
+            one.eventSink(ConversationPresenter.UiEvent.ToggleCard(12))
+            val two = awaitStableState {
+                (it as? ConversationPresenter.UiState.Selection)?.selectedCardIds == listOf(7, 12)
+            } as ConversationPresenter.UiState.Selection
+            // Toggling 7 again removes it.
+            two.eventSink(ConversationPresenter.UiEvent.ToggleCard(7))
+            val final = awaitStableState {
+                (it as? ConversationPresenter.UiState.Selection)?.selectedCardIds == listOf(12)
+            } as ConversationPresenter.UiState.Selection
+            assertEquals(listOf(12), final.selectedCardIds)
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -113,37 +145,48 @@ class ConversationPresenterTest {
         }
         presenter(repo).test {
             val prompt = awaitStableState {
-                (it.sessionState as? SessionState.InQuestion)?.activity == QuestionActivity.ShowingPrompt &&
-                    it.ui.participantNames == listOf("Alice")
+                it is ConversationPresenter.UiState.QuestionPrompt && it.participantName == "Alice"
             }
             prompt.eventSink(ConversationPresenter.UiEvent.Dispatch(SessionEvent.BeginSelection))
-            awaitStableState {
-                (it.sessionState as? SessionState.InQuestion)?.activity == QuestionActivity.ShowingInstructions
-            }.eventSink(ConversationPresenter.UiEvent.Dispatch(SessionEvent.DismissInstructions))
+            awaitStableState { it is ConversationPresenter.UiState.Instructions }
+                .eventSink(ConversationPresenter.UiEvent.Dispatch(SessionEvent.DismissInstructions))
             val round1 = awaitStableState {
-                (it.sessionState as? SessionState.InQuestion)?.activity == QuestionActivity.SelectingRound1
-            }
-            assertEquals(QuestionActivity.SelectingRound1, (round1.sessionState as SessionState.InQuestion).activity)
+                (it as? ConversationPresenter.UiState.Selection)?.round == 1
+            } as ConversationPresenter.UiState.Selection
+            assertEquals(1, round1.round)
             cancelAndIgnoreRemainingEvents()
         }
     }
 
     @Test
-    fun `DismissInstructions marks instructions shown for the rest of the session`() = runTest {
+    fun `DismissInstructions suppresses the Instructions page for the rest of the session`() = runTest {
+        // After the first dismissal, BeginSelection on a fresh prompt must skip
+        // the Instructions page entirely and land on SelectingRound1.
         val repo = FakeSessionRepository().apply {
-            preloadedState = SessionState.InQuestion(1, 0, QuestionActivity.ShowingPrompt)
+            preloadedState = SessionState.InQuestion(2, 0, QuestionActivity.ShowingPrompt)
         }
         presenter(repo).test {
-            val initial = awaitStableState {
-                it.sessionState is SessionState.InQuestion
+            val firstPrompt = awaitStableState { it is ConversationPresenter.UiState.QuestionPrompt }
+            firstPrompt.eventSink(ConversationPresenter.UiEvent.Dispatch(SessionEvent.BeginSelection))
+            val instructions = awaitStableState { it is ConversationPresenter.UiState.Instructions }
+            instructions.eventSink(ConversationPresenter.UiEvent.Dispatch(SessionEvent.DismissInstructions))
+            val round1 = awaitStableState {
+                (it as? ConversationPresenter.UiState.Selection)?.round == 1
             }
-            assertFalse(initial.ui.instructionsShown)
-            initial.eventSink(ConversationPresenter.UiEvent.Dispatch(SessionEvent.BeginSelection))
-            awaitStableState {
-                (it.sessionState as? SessionState.InQuestion)?.activity == QuestionActivity.ShowingInstructions
-            }.eventSink(ConversationPresenter.UiEvent.Dispatch(SessionEvent.DismissInstructions))
-            val shown = awaitStableState { it.ui.instructionsShown }
-            assertTrue(shown.ui.instructionsShown)
+
+            // BeginSelection from the Selection state ("change selection" path)
+            // re-runs the begin-selection branch; with instructionsShown set,
+            // it should land directly on SelectingRound1 — never on Instructions.
+            round1.eventSink(ConversationPresenter.UiEvent.Dispatch(SessionEvent.BeginSelection))
+            // Drain emissions and assert none are Instructions.
+            val seen = mutableListOf<ConversationPresenter.UiState>()
+            repeat(2) {
+                runCatching { seen += awaitItem() }
+            }
+            assertTrue(
+                seen.none { it is ConversationPresenter.UiState.Instructions },
+                "Instructions should not appear again after dismissal, saw $seen",
+            )
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -155,9 +198,9 @@ class ConversationPresenterTest {
         }
         presenter(repo).test {
             val state = awaitStableState {
-                it.sessionState == SessionState.InQuestion(3, 0, QuestionActivity.ShowingPrompt)
-            }
-            assertEquals(SessionState.InQuestion(3, 0, QuestionActivity.ShowingPrompt), state.sessionState)
+                it is ConversationPresenter.UiState.QuestionPrompt && it.questionNumber == 3
+            } as ConversationPresenter.UiState.QuestionPrompt
+            assertEquals(3, state.questionNumber)
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -172,9 +215,9 @@ class ConversationPresenterTest {
         }
         presenter(repo).test {
             val state = awaitStableState {
-                it.sessionState == SessionState.InQuestion(3, 0, QuestionActivity.ShowingPrompt)
-            }
-            assertEquals(SessionState.InQuestion(3, 0, QuestionActivity.ShowingPrompt), state.sessionState)
+                it is ConversationPresenter.UiState.QuestionPrompt && it.questionNumber == 3
+            } as ConversationPresenter.UiState.QuestionPrompt
+            assertEquals(3, state.questionNumber)
             cancelAndIgnoreRemainingEvents()
         }
     }

@@ -1,0 +1,15 @@
+platform :ios do
+    lane :build do |options|
+        build_app(
+            project: './iosApp/iosApp.xcodeproj',
+            configuration: ENV['releaseBuild'] == 'true' ? 'Release' : 'Debug',
+            scheme: 'iosApp',
+            archive_path: './build/archives/iOS',
+            buildlog_path: './build/archives/logs/',
+            destination: 'generic/platform=iOS',
+            # TODO: We are currently disabling code signing and archiving until we start publishing builds
+            skip_codesigning: true,
+            skip_archive: true
+        )
+    end
+end

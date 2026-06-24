@@ -290,13 +290,15 @@ class ConversationPresenter(
                 UiEvent.Instructions.Dismiss ->
                     dispatch(SessionEvent.DismissInstructions)
 
-                is UiEvent.Selection.ToggleCard -> dispatch(
-                    if (event.cardId in ui.draftPicks) {
-                        SessionEvent.UnpickCard(event.cardId)
+                is UiEvent.Selection.ToggleCard -> {
+                    // Draft picks are volatile UI state — toggle directly without
+                    // round-tripping through the pure transition function.
+                    ui = if (event.cardId in ui.draftPicks) {
+                        ui.copy(draftPicks = ui.draftPicks - event.cardId)
                     } else {
-                        SessionEvent.PickCard(event.cardId)
-                    },
-                )
+                        ui.copy(draftPicks = ui.draftPicks + event.cardId)
+                    }
+                }
                 UiEvent.Selection.Confirm ->
                     dispatch(SessionEvent.ConfirmSelection)
 
@@ -446,9 +448,8 @@ class ConversationPresenter(
     }
 
     /**
-     * Runs the pure transition function for [event], applies its effects
-     * asynchronously, and returns the new (state, ui) pair to assign. PickCard
-     * and UnpickCard mutate only the draft, bypassing the transition.
+     * Runs the pure transition function for [event] and applies its effects
+     * asynchronously. Returns the new (state, ui) pair to assign.
      */
     private fun applyDispatch(
         event: SessionEvent,
@@ -457,16 +458,6 @@ class ConversationPresenter(
         scope: CoroutineScope,
         repoMutex: Mutex,
     ): Pair<SessionState, ConversationUiContext> {
-        when (event) {
-            is SessionEvent.PickCard -> {
-                return previousState to ui.copy(draftPicks = ui.draftPicks + event.cardId)
-            }
-            is SessionEvent.UnpickCard -> {
-                return previousState to ui.copy(draftPicks = ui.draftPicks - event.cardId)
-            }
-            else -> Unit
-        }
-
         val ctx =
             SessionContext(
                 participantNames = ui.participantNames,
@@ -588,8 +579,6 @@ class ConversationPresenter(
                             ?: continue
                     sessionRepository.upsertContact(convId, effect.info)
                 }
-                is Effect.PersistBookmark ->
-                    sessionRepository.setBookmarked(screen.sessionId, effect.bookmark)
                 is Effect.LogAnalytics ->
                     analytics.event(effect.event, effect.params)
             }

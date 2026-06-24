@@ -285,28 +285,11 @@ class TransitionTest {
         assertEquals(1, r.effects.filterIsInstance<Effect.PersistContact>().size)
     }
 
-    // --- Bookmark from any state ---
-
-    @Test
-    fun `Bookmark from InQuestion emits PersistBookmark and stays put`() {
-        val s = SessionState.InQuestion(3, 0, QuestionActivity.Discussing)
-        val r = transition(s, SessionEvent.Bookmark, ctx())
-        assertEquals(s, r.next)
-        assertEquals(1, r.effects.filterIsInstance<Effect.PersistBookmark>().count { it.bookmark })
-    }
-
-    @Test
-    fun `Bookmark from Summary emits PersistBookmark and stays put`() {
-        val r = transition(SessionState.Summary, SessionEvent.Bookmark, ctx())
-        assertEquals(SessionState.Summary, r.next)
-        assertEquals(1, r.effects.filterIsInstance<Effect.PersistBookmark>().count { it.bookmark })
-    }
-
     // --- Concluded is terminal ---
 
     @Test
     fun `Concluded plus any event errors`() {
-        val r = transition(SessionState.Concluded, SessionEvent.Bookmark, ctx())
+        val r = transition(SessionState.Concluded, SessionEvent.BeginSelection, ctx())
         assertEquals(SessionState.Concluded, r.next)
         assertNotNull(r.error)
     }

@@ -33,25 +33,20 @@ import org.jetbrains.compose.resources.stringResource
 
 /**
  * First-time-per-session help panel explaining how image selection works.
- *
- * Rendered as a full-screen surface with a prominent card containing
- * instructions.  Shown once before the first selection round; the caller
- * decides when to display it and hides it when [onDismiss] is invoked.
- *
- * This is a stateless composable. No ViewModel, no navigation logic.
+ * Shown once before the first selection round.
  *
  * NOTE: A dedicated "instructions paragraph" string key (e.g.
- * `instructions_how_to_select`) does not exist in strings.xml.  The body copy
+ * `instructions_how_to_select`) does not exist in strings.xml. The body copy
  * currently uses `selection_navigation_instructions` as the primary instruction
  * text, supplemented by the `selection_choose_3` and `selection_choose_1`
- * badge labels.  If richer instructional copy is needed, add a new string key
- * and replace the body accordingly.
- *
- * @param onDismiss called when the user taps "Got It".
+ * badge labels.
  */
 @Composable
-fun InstructionPanelLayout(onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+fun InstructionPanelLayout(state: ConversationPresenter.UiState.Instructions, modifier: Modifier = Modifier) {
     val gotItLabel = stringResource(Res.string.action_got_it)
+    val onDismiss: () -> Unit = {
+        state.eventSink(ConversationPresenter.UiEvent.Instructions.Dismiss)
+    }
 
     Surface(
         modifier = modifier.fillMaxSize(),

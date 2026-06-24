@@ -46,30 +46,19 @@ import org.jetbrains.compose.resources.stringResource
 /**
  * Subscreen shown when a participant has made their selection and is asked to
  * confirm their final picks before the discussion begins.
- *
- * Displays the participant's chosen cards ([cardIds]) at full size, the
- * per-question finalizing prompt, a review hint, and two action buttons:
- * Confirm (proceeds to discussion) and Change Selection (re-opens selection).
- *
- * This is a stateless composable. No ViewModel, no navigation logic.
- *
- * @param questionNumber    1-based index of the current question (1..5).
- * @param cardIds           ordered list of 1 or 3 card ids (1..50) the
- *                          participant has chosen.
- * @param onConfirm         called when the user taps Confirm.
- * @param onChangeSelection called when the user taps Change Selection to re-pick.
- * @param modifier          optional [Modifier] for the root surface.
  */
 @Composable
-fun FinalizingLayout(
-    questionNumber: Int,
-    cardIds: List<Int>,
-    onConfirm: () -> Unit,
-    onChangeSelection: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+fun FinalizingLayout(state: ConversationPresenter.UiState.Finalizing, modifier: Modifier = Modifier) {
+    val questionNumber = state.questionNumber
+    val cardIds = state.cardIds
     val confirmLabel = stringResource(Res.string.action_confirm)
     val changeSelectionLabel = stringResource(Res.string.action_change_selection)
+    val onConfirm: () -> Unit = {
+        state.eventSink(ConversationPresenter.UiEvent.Finalizing.Confirm)
+    }
+    val onChangeSelection: () -> Unit = {
+        state.eventSink(ConversationPresenter.UiEvent.Finalizing.ChangeSelection)
+    }
 
     Surface(
         modifier = modifier.fillMaxSize(),

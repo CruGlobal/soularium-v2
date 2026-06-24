@@ -59,22 +59,16 @@ fun isPhoneValid(phone: String): Boolean {
 /**
  * Contact-collection form shown after a participant completes all five questions.
  * Lets the facilitator optionally record the participant's details for follow-up.
- *
- * The form is stateless beyond local [remember] state — no ViewModel, no DI.
- *
- * @param participantName Pre-filled value for the First Name field.
- * @param onSave          Called with a [ContactInfo] when the user taps Save.
- * @param onSkip          Called when the user taps Skip for Now.
- * @param modifier        Optional modifier forwarded to the root [Surface].
  */
 @Composable
-fun ContactCollectionLayout(
-    participantName: String,
-    onSave: (ContactInfo) -> Unit,
-    onSkip: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    var firstName by remember { mutableStateOf(participantName) }
+fun ContactCollectionLayout(state: ConversationPresenter.UiState.CollectingContact, modifier: Modifier = Modifier) {
+    val onSave: (ContactInfo) -> Unit = { info ->
+        state.eventSink(ConversationPresenter.UiEvent.CollectingContact.Save(info))
+    }
+    val onSkip: () -> Unit = {
+        state.eventSink(ConversationPresenter.UiEvent.CollectingContact.Skip)
+    }
+    var firstName by remember { mutableStateOf(state.participantName) }
     var lastName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }

@@ -25,7 +25,6 @@ import org.cru.soularium.domain.ports.SessionRepository
 import org.cru.soularium.domain.ports.ShareResult
 import org.cru.soularium.domain.ports.Sharer
 import org.cru.soularium.domain.session.QuestionActivity
-import org.cru.soularium.domain.session.SessionEvent
 import org.cru.soularium.domain.session.SessionState
 import org.cru.soularium.ui.nav.ConversationScreen
 
@@ -76,11 +75,11 @@ class ConversationPresenterTest {
         val repo = FakeSessionRepository()
         presenter(repo).test {
             val started = awaitStableState { it is ConversationPresenter.UiState.AddingParticipants }
-            started.eventSink(ConversationPresenter.UiEvent.Dispatch(SessionEvent.AddParticipant("Alice")))
+            started.eventSink(ConversationPresenter.UiEvent.AddingParticipants.AddParticipant("Alice"))
             val withAlice = awaitStableState {
                 (it as? ConversationPresenter.UiState.AddingParticipants)?.participantNames == listOf("Alice")
             }
-            withAlice.eventSink(ConversationPresenter.UiEvent.Dispatch(SessionEvent.AddParticipant("Bob")))
+            withAlice.eventSink(ConversationPresenter.UiEvent.AddingParticipants.AddParticipant("Bob"))
             val withBoth = awaitStableState {
                 (it as? ConversationPresenter.UiState.AddingParticipants)?.participantNames == listOf("Alice", "Bob")
             } as ConversationPresenter.UiState.AddingParticipants
@@ -102,31 +101,29 @@ class ConversationPresenterTest {
         }
         presenter(repo).test {
             val prompt = awaitStableState { it is ConversationPresenter.UiState.QuestionPrompt }
-            prompt.eventSink(ConversationPresenter.UiEvent.Dispatch(SessionEvent.BeginSelection))
+            prompt.eventSink(ConversationPresenter.UiEvent.QuestionPrompt.BeginSelection)
             val afterBegin = awaitStableState {
                 it is ConversationPresenter.UiState.Instructions ||
                     it is ConversationPresenter.UiState.Selection
             }
             val selection = if (afterBegin is ConversationPresenter.UiState.Instructions) {
-                afterBegin.eventSink(
-                    ConversationPresenter.UiEvent.Dispatch(SessionEvent.DismissInstructions),
-                )
+                afterBegin.eventSink(ConversationPresenter.UiEvent.Instructions.Dismiss)
                 awaitStableState { it is ConversationPresenter.UiState.Selection }
             } else {
                 afterBegin
             } as ConversationPresenter.UiState.Selection
 
             // Picking 7 (not present) adds it; the page stays on Selection.
-            selection.eventSink(ConversationPresenter.UiEvent.ToggleCard(7))
+            selection.eventSink(ConversationPresenter.UiEvent.Selection.ToggleCard(7))
             val one = awaitStableState {
                 (it as? ConversationPresenter.UiState.Selection)?.selectedCardIds == listOf(7)
             } as ConversationPresenter.UiState.Selection
-            one.eventSink(ConversationPresenter.UiEvent.ToggleCard(12))
+            one.eventSink(ConversationPresenter.UiEvent.Selection.ToggleCard(12))
             val two = awaitStableState {
                 (it as? ConversationPresenter.UiState.Selection)?.selectedCardIds == listOf(7, 12)
             } as ConversationPresenter.UiState.Selection
             // Toggling 7 again removes it.
-            two.eventSink(ConversationPresenter.UiEvent.ToggleCard(7))
+            two.eventSink(ConversationPresenter.UiEvent.Selection.ToggleCard(7))
             val final = awaitStableState {
                 (it as? ConversationPresenter.UiState.Selection)?.selectedCardIds == listOf(12)
             } as ConversationPresenter.UiState.Selection
@@ -147,9 +144,9 @@ class ConversationPresenterTest {
             val prompt = awaitStableState {
                 it is ConversationPresenter.UiState.QuestionPrompt && it.participantName == "Alice"
             }
-            prompt.eventSink(ConversationPresenter.UiEvent.Dispatch(SessionEvent.BeginSelection))
+            prompt.eventSink(ConversationPresenter.UiEvent.QuestionPrompt.BeginSelection)
             awaitStableState { it is ConversationPresenter.UiState.Instructions }
-                .eventSink(ConversationPresenter.UiEvent.Dispatch(SessionEvent.DismissInstructions))
+                .eventSink(ConversationPresenter.UiEvent.Instructions.Dismiss)
             val round1 = awaitStableState {
                 (it as? ConversationPresenter.UiState.Selection)?.round == 1
             } as ConversationPresenter.UiState.Selection
@@ -167,18 +164,16 @@ class ConversationPresenterTest {
         }
         presenter(repo).test {
             val firstPrompt = awaitStableState { it is ConversationPresenter.UiState.QuestionPrompt }
-            firstPrompt.eventSink(ConversationPresenter.UiEvent.Dispatch(SessionEvent.BeginSelection))
+            firstPrompt.eventSink(ConversationPresenter.UiEvent.QuestionPrompt.BeginSelection)
             val instructions = awaitStableState { it is ConversationPresenter.UiState.Instructions }
-            instructions.eventSink(ConversationPresenter.UiEvent.Dispatch(SessionEvent.DismissInstructions))
+            instructions.eventSink(ConversationPresenter.UiEvent.Instructions.Dismiss)
             val round1 = awaitStableState {
                 (it as? ConversationPresenter.UiState.Selection)?.round == 1
             }
 
-            // BeginSelection from the Selection state ("change selection" path)
-            // re-runs the begin-selection branch; with instructionsShown set,
-            // it should land directly on SelectingRound1 — never on Instructions.
-            round1.eventSink(ConversationPresenter.UiEvent.Dispatch(SessionEvent.BeginSelection))
-            // Drain emissions and assert none are Instructions.
+            // Re-fire BeginSelection: with instructions already dismissed, the
+            // presenter must skip the Instructions page entirely.
+            round1.eventSink(ConversationPresenter.UiEvent.QuestionPrompt.BeginSelection)
             val seen = mutableListOf<ConversationPresenter.UiState>()
             repeat(2) {
                 runCatching { seen += awaitItem() }

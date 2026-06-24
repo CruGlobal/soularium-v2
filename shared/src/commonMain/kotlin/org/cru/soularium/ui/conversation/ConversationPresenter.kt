@@ -130,23 +130,62 @@ class ConversationPresenter(
         ) : UiState
     }
 
+    /**
+     * Sealed event hierarchy. Top-level entries are emittable from any page
+     * (the back/exit-dialog affordances). Page-specific events are grouped into
+     * nested sealed interfaces named after their owning [UiState] subtype, so
+     * each subscreen has its own narrow vocabulary of events.
+     */
     sealed interface UiEvent : CircuitUiEvent {
-        /** Domain session event from a subscreen (begin selection, confirm, etc.). */
-        data class Dispatch(val event: SessionEvent) : UiEvent
-
-        /** Selection screen tap — the presenter decides pick vs. unpick. */
-        data class ToggleCard(val cardId: Int) : UiEvent
-
         /** Platform back / explicit exit affordance — open the bookmark/discard dialog. */
         data object RequestExit : UiEvent
         data object DismissExitDialog : UiEvent
         data object BookmarkAndExit : UiEvent
         data object DiscardAndExit : UiEvent
 
-        /** Share / contact actions raised from the Summary subscreen. */
-        data class Share(val participantIndex: Int) : UiEvent
-        data class CollectContact(val participantIndex: Int, val info: ContactInfo) : UiEvent
-        data object SkipContact : UiEvent
+        sealed interface AddingParticipants : UiEvent {
+            data class AddParticipant(val name: String) : AddingParticipants
+            data class RemoveParticipant(val index: Int) : AddingParticipants
+            data object Confirm : AddingParticipants
+        }
+
+        sealed interface QuestionPrompt : UiEvent {
+            data object BeginSelection : QuestionPrompt
+        }
+
+        sealed interface Instructions : UiEvent {
+            data object Dismiss : Instructions
+        }
+
+        sealed interface Selection : UiEvent {
+            /** Tap a card — the presenter decides pick vs. unpick. */
+            data class ToggleCard(val cardId: Int) : Selection
+            data object Confirm : Selection
+        }
+
+        sealed interface Finalizing : UiEvent {
+            data object Confirm : Finalizing
+
+            /** Re-open the selection round with the current picks intact. */
+            data object ChangeSelection : Finalizing
+        }
+
+        sealed interface Discussing : UiEvent {
+            data object Done : Discussing
+        }
+
+        sealed interface Summary : UiEvent {
+            data class Share(val participantIndex: Int) : Summary
+
+            /** Start collecting this participant's contact info. */
+            data class StartCollectingContact(val participantIndex: Int) : Summary
+            data object Done : Summary
+        }
+
+        sealed interface CollectingContact : UiEvent {
+            data class Save(val info: ContactInfo) : CollectingContact
+            data object Skip : CollectingContact
+        }
     }
 
     @Composable
@@ -223,35 +262,70 @@ class ConversationPresenter(
             }
         }
 
+        fun dispatch(sessionEvent: SessionEvent) {
+            val (newState, newUi) = applyDispatch(
+                event = sessionEvent,
+                previousState = sessionState,
+                ui = ui,
+                scope = scope,
+                repoMutex = repoMutex,
+            )
+            sessionState = newState
+            ui = newUi
+        }
+
         val eventSink: (UiEvent) -> Unit = { event ->
             when (event) {
-                is UiEvent.Dispatch -> {
-                    val (newState, newUi) = applyDispatch(
-                        event = event.event,
-                        previousState = sessionState,
-                        ui = ui,
-                        scope = scope,
-                        repoMutex = repoMutex,
-                    )
-                    sessionState = newState
-                    ui = newUi
-                }
-                is UiEvent.ToggleCard -> {
-                    val sessionEvent = if (event.cardId in ui.draftPicks) {
+                // Page-specific events
+                is UiEvent.AddingParticipants.AddParticipant ->
+                    dispatch(SessionEvent.AddParticipant(event.name))
+                is UiEvent.AddingParticipants.RemoveParticipant ->
+                    dispatch(SessionEvent.RemoveParticipant(event.index))
+                UiEvent.AddingParticipants.Confirm ->
+                    dispatch(SessionEvent.ConfirmParticipants)
+
+                UiEvent.QuestionPrompt.BeginSelection ->
+                    dispatch(SessionEvent.BeginSelection)
+
+                UiEvent.Instructions.Dismiss ->
+                    dispatch(SessionEvent.DismissInstructions)
+
+                is UiEvent.Selection.ToggleCard -> dispatch(
+                    if (event.cardId in ui.draftPicks) {
                         SessionEvent.UnpickCard(event.cardId)
                     } else {
                         SessionEvent.PickCard(event.cardId)
-                    }
-                    val (newState, newUi) = applyDispatch(
-                        event = sessionEvent,
-                        previousState = sessionState,
-                        ui = ui,
-                        scope = scope,
-                        repoMutex = repoMutex,
-                    )
-                    sessionState = newState
-                    ui = newUi
+                    },
+                )
+                UiEvent.Selection.Confirm ->
+                    dispatch(SessionEvent.ConfirmSelection)
+
+                UiEvent.Finalizing.Confirm ->
+                    dispatch(SessionEvent.ConfirmFinal)
+                UiEvent.Finalizing.ChangeSelection ->
+                    dispatch(SessionEvent.BeginSelection)
+
+                UiEvent.Discussing.Done ->
+                    dispatch(SessionEvent.EndDiscussion)
+
+                is UiEvent.Summary.Share -> shareParticipant(event.participantIndex, scope, repoMutex)
+                is UiEvent.Summary.StartCollectingContact -> {
+                    val name = ui.participantNames.getOrElse(event.participantIndex) { "" }
+                    dispatch(SessionEvent.CollectContact(event.participantIndex, ContactInfo(name)))
                 }
+                UiEvent.Summary.Done ->
+                    dispatch(SessionEvent.Conclude)
+
+                is UiEvent.CollectingContact.Save -> {
+                    val current = sessionState as? SessionState.CollectingContact
+                    if (current != null) {
+                        dispatch(SessionEvent.CollectContact(current.participantIndex, event.info))
+                    }
+                }
+                UiEvent.CollectingContact.Skip ->
+                    dispatch(SessionEvent.SkipContact)
+
+                // Global events
                 UiEvent.RequestExit -> if (sessionState != SessionState.Concluded) {
                     showExitDialog = true
                 }
@@ -278,45 +352,6 @@ class ConversationPresenter(
                         }.onFailure { crashReporter.recordNonFatal(it, "discardAndExit") }
                         navigator.pop()
                     }
-                }
-                is UiEvent.Share -> {
-                    scope.launch {
-                        runCatching {
-                            val url =
-                                repoMutex.withLock {
-                                    val conversation =
-                                        sessionRepository.loadConversations(screen.sessionId)
-                                            .firstOrNull { it.displayOrder == event.participantIndex }
-                                            ?: return@withLock null
-                                    val picks = sessionRepository.loadPicks(conversation.id)
-                                    shareUrlFor(conversation, picks)
-                                } ?: return@launch
-                            sharer.share(text = url)
-                            analytics.event("share_initiated", mapOf("channel" to "other"))
-                        }.onFailure { crashReporter.recordNonFatal(it, "shareSummary") }
-                    }
-                }
-                is UiEvent.CollectContact -> {
-                    val (newState, newUi) = applyDispatch(
-                        event = SessionEvent.CollectContact(event.participantIndex, event.info),
-                        previousState = sessionState,
-                        ui = ui,
-                        scope = scope,
-                        repoMutex = repoMutex,
-                    )
-                    sessionState = newState
-                    ui = newUi
-                }
-                UiEvent.SkipContact -> {
-                    val (newState, newUi) = applyDispatch(
-                        event = SessionEvent.SkipContact,
-                        previousState = sessionState,
-                        ui = ui,
-                        scope = scope,
-                        repoMutex = repoMutex,
-                    )
-                    sessionState = newState
-                    ui = newUi
                 }
             }
         }
@@ -468,6 +503,24 @@ class ConversationPresenter(
                 .onFailure { crashReporter.recordNonFatal(it, "applyEffects after $event") }
         }
         return result.next to nextUi
+    }
+
+    private fun shareParticipant(participantIndex: Int, scope: CoroutineScope, repoMutex: Mutex) {
+        scope.launch {
+            runCatching {
+                val url =
+                    repoMutex.withLock {
+                        val conversation =
+                            sessionRepository.loadConversations(screen.sessionId)
+                                .firstOrNull { it.displayOrder == participantIndex }
+                                ?: return@withLock null
+                        val picks = sessionRepository.loadPicks(conversation.id)
+                        shareUrlFor(conversation, picks)
+                    } ?: return@launch
+                sharer.share(text = url)
+                analytics.event("share_initiated", mapOf("channel" to "other"))
+            }.onFailure { crashReporter.recordNonFatal(it, "shareSummary") }
+        }
     }
 
     /**

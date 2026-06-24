@@ -49,32 +49,20 @@ private const val CARD_ASPECT_RATIO = 3f / 2f
 
 /**
  * Subscreen displayed while the group discusses a participant's finalized picks.
- *
- * Shows the active participant's name, the per-question discussion prompt, the
- * "DISCUSS" label, and either a single full-bleed card image (1 pick) or a
- * [HorizontalPager] with an "Image N of M" indicator (3 picks).  The "Done"
- * button fires [onDone].
- *
- * This is a stateless composable — trivial pager state is held locally.
- * No ViewModel, no DI, no navigation logic.
- *
- * @param questionNumber   1-based question index (1..5); controls which
- *                         discussion prompt is shown.
- * @param participantName  name of the active participant.
- * @param cardIds          finalized card ids (1 or 3 values, each 1..50).
- * @param onDone           called when the user taps "Done".
+ * Shows the active participant's name, the per-question discussion prompt, and
+ * either a single full-bleed card image (1 pick) or a [HorizontalPager] for 3.
  */
 @Composable
-fun DiscussingLayout(
-    questionNumber: Int,
-    participantName: String,
-    cardIds: List<Int>,
-    onDone: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+fun DiscussingLayout(state: ConversationPresenter.UiState.Discussing, modifier: Modifier = Modifier) {
+    val questionNumber = state.questionNumber
+    val participantName = state.participantName
+    val cardIds = state.cardIds
     val discussLabel = stringResource(Res.string.discuss_instructions)
     val doneLabel = stringResource(Res.string.action_done)
     val discussionPrompt = stringResource(questionDiscussionResource(questionNumber))
+    val onDone: () -> Unit = {
+        state.eventSink(ConversationPresenter.UiEvent.Discussing.Done)
+    }
 
     Surface(
         modifier = modifier.fillMaxSize(),

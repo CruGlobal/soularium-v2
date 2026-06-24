@@ -65,30 +65,22 @@ private const val TOTAL_CARDS = 50
 private const val TWO_ROUND_QUESTION_MAX = 2
 
 /**
- * Core image-selection screen for a single selection round.
- *
- * This composable is fully stateless — [selectedCardIds] drives displayed
- * selection state and [onToggleCard] reports a tap. The caller owns the
- * selection logic and validity rules.
- *
- * @param questionNumber     1-based question index (1..5).
- * @param selectedCardIds    IDs of cards currently marked as selected.
- * @param isConfirmEnabled   whether the Confirm button should be enabled;
- *                           the caller derives this from the count rules.
- * @param onToggleCard       called with the card id (1..50) when a card is tapped.
- * @param onConfirm          called when the user taps the enabled Confirm button.
- * @param modifier           optional [Modifier] applied to the root [Surface].
+ * Core image-selection screen for a single selection round. Selection state and
+ * confirm-validity are driven entirely by the presenter via
+ * [ConversationPresenter.UiState.Selection].
  */
 @Composable
-fun SelectionLayout(
-    questionNumber: Int,
-    round: Int,
-    selectedCardIds: List<Int>,
-    isConfirmEnabled: Boolean,
-    onToggleCard: (Int) -> Unit,
-    onConfirm: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+fun SelectionLayout(state: ConversationPresenter.UiState.Selection, modifier: Modifier = Modifier) {
+    val questionNumber = state.questionNumber
+    val round = state.round
+    val selectedCardIds = state.selectedCardIds
+    val isConfirmEnabled = state.isConfirmEnabled
+    val onToggleCard: (Int) -> Unit = { cardId ->
+        state.eventSink(ConversationPresenter.UiEvent.Selection.ToggleCard(cardId))
+    }
+    val onConfirm: () -> Unit = {
+        state.eventSink(ConversationPresenter.UiEvent.Selection.Confirm)
+    }
     val isTwoRoundQuestion = questionNumber <= TWO_ROUND_QUESTION_MAX
     val selectionPrompt = stringResource(questionSelectionRes(questionNumber))
     // Round 1 of a two-round question is a *wide* pick (>= requiredImageCount + 1);

@@ -55,34 +55,24 @@ import org.jetbrains.compose.resources.stringResource
  * @param cardIds the participant's up-to-9 final image picks
  *   (Q1: 3 cards, Q2: 3 cards, Q3–Q5: 1 card each).
  */
-data class ParticipantSummary(val participantIndex: Int, val name: String, val cardIds: List<Int>)
+data class ParticipantSummary(val participantIndex: Int, val name: String, val cardIds: List<Int>,)
 
 /**
- * End-of-conversation summary ("Life in Pictures") screen.
- *
- * Shows each participant's 9-card mosaic with share / add-contact actions.
- * Multiple participants are separated by a [TabRow]; a single participant is
- * shown directly without a tab bar.
- *
- * This composable is stateless except for the locally-remembered selected tab.
- * No ViewModel, no DI, no navigation. All actions are delegated to callers.
- *
- * @param participants  one entry per participant, in order.
- * @param onShare       called with [ParticipantSummary.participantIndex] when the
- *                      Share button is tapped for that participant.
- * @param onAddContact  called with [ParticipantSummary.participantIndex] when the
- *                      "Save Conversation" button is tapped for that participant.
- * @param onDone        called when the user taps the Done button.
- * @param modifier      optional [Modifier] applied to the root [Surface].
+ * End-of-conversation summary ("Life in Pictures") screen. Shows each
+ * participant's 9-card mosaic with share / add-contact actions.
  */
 @Composable
-fun SummaryLayout(
-    participants: List<ParticipantSummary>,
-    onShare: (Int) -> Unit,
-    onAddContact: (Int) -> Unit,
-    onDone: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+fun SummaryLayout(state: ConversationPresenter.UiState.Summary, modifier: Modifier = Modifier) {
+    val participants = state.participants
+    val onShare: (Int) -> Unit = { index ->
+        state.eventSink(ConversationPresenter.UiEvent.Summary.Share(index))
+    }
+    val onAddContact: (Int) -> Unit = { index ->
+        state.eventSink(ConversationPresenter.UiEvent.Summary.StartCollectingContact(index))
+    }
+    val onDone: () -> Unit = {
+        state.eventSink(ConversationPresenter.UiEvent.Summary.Done)
+    }
     var selectedTabIndex by remember { mutableIntStateOf(0) }
 
     val doneLabel = stringResource(Res.string.action_done)

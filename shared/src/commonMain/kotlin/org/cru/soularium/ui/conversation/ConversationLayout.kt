@@ -17,8 +17,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.slack.circuit.codegen.annotations.CircuitInject
 import dev.zacsweers.metro.AppScope
-import org.cru.soularium.domain.ContactInfo
-import org.cru.soularium.domain.session.SessionEvent
 import org.cru.soularium.generated.resources.Res
 import org.cru.soularium.generated.resources.action_cancel
 import org.cru.soularium.generated.resources.conversation_exit_bookmark
@@ -33,8 +31,8 @@ import org.jetbrains.compose.resources.stringResource
  * Renders the page indicated by the presenter's [ConversationPresenter.UiState],
  * plus the bookmark/discard exit dialog. The Layout owns no business logic:
  * every variant of the sealed [ConversationPresenter.UiState] arrives with its
- * props already resolved, and every callback funnels into a single
- * [ConversationPresenter.UiEvent].
+ * props already resolved, and each subscreen handles its own page-specific
+ * events through the shared [ConversationPresenter.UiEvent] hierarchy.
  */
 @CircuitInject(ConversationScreen::class, AppScope::class)
 @Composable
@@ -59,85 +57,16 @@ fun ConversationLayout(state: ConversationPresenter.UiState, modifier: Modifier 
         contentKey = { it::class },
         modifier = modifier,
     ) { current ->
-        val dispatch: (SessionEvent) -> Unit = { event ->
-            current.eventSink(ConversationPresenter.UiEvent.Dispatch(event))
-        }
         when (current) {
             is ConversationPresenter.UiState.Loading -> ConversationLoading()
-
-            is ConversationPresenter.UiState.AddingParticipants ->
-                AddParticipantsLayout(
-                    participantNames = current.participantNames,
-                    onAddParticipant = { dispatch(SessionEvent.AddParticipant(it)) },
-                    onRemoveParticipant = { dispatch(SessionEvent.RemoveParticipant(it)) },
-                    onConfirm = { dispatch(SessionEvent.ConfirmParticipants) },
-                )
-
-            is ConversationPresenter.UiState.QuestionPrompt ->
-                QuestionPromptLayout(
-                    questionNumber = current.questionNumber,
-                    totalQuestions = current.totalQuestions,
-                    participantName = current.participantName,
-                    isGroup = current.isGroup,
-                    onBegin = { dispatch(SessionEvent.BeginSelection) },
-                )
-
-            is ConversationPresenter.UiState.Instructions ->
-                InstructionPanelLayout(
-                    onDismiss = { dispatch(SessionEvent.DismissInstructions) },
-                )
-
-            is ConversationPresenter.UiState.Selection ->
-                SelectionLayout(
-                    questionNumber = current.questionNumber,
-                    round = current.round,
-                    selectedCardIds = current.selectedCardIds,
-                    isConfirmEnabled = current.isConfirmEnabled,
-                    onToggleCard = { cardId ->
-                        current.eventSink(ConversationPresenter.UiEvent.ToggleCard(cardId))
-                    },
-                    onConfirm = { dispatch(SessionEvent.ConfirmSelection) },
-                )
-
-            is ConversationPresenter.UiState.Finalizing ->
-                FinalizingLayout(
-                    questionNumber = current.questionNumber,
-                    cardIds = current.cardIds,
-                    onConfirm = { dispatch(SessionEvent.ConfirmFinal) },
-                    onChangeSelection = { dispatch(SessionEvent.BeginSelection) },
-                )
-
-            is ConversationPresenter.UiState.Discussing ->
-                DiscussingLayout(
-                    questionNumber = current.questionNumber,
-                    participantName = current.participantName,
-                    cardIds = current.cardIds,
-                    onDone = { dispatch(SessionEvent.EndDiscussion) },
-                )
-
-            is ConversationPresenter.UiState.Summary ->
-                SummaryLayout(
-                    participants = current.participants,
-                    onShare = { current.eventSink(ConversationPresenter.UiEvent.Share(it)) },
-                    onAddContact = { index ->
-                        val name = current.participants.firstOrNull { it.participantIndex == index }?.name.orEmpty()
-                        current.eventSink(
-                            ConversationPresenter.UiEvent.CollectContact(index, ContactInfo(name)),
-                        )
-                    },
-                    onDone = { dispatch(SessionEvent.Conclude) },
-                )
-
-            is ConversationPresenter.UiState.CollectingContact ->
-                ContactCollectionLayout(
-                    participantName = current.participantName,
-                    onSave = {
-                        current.eventSink(
-                            ConversationPresenter.UiEvent.CollectContact(current.participantIndex, it),
-                        )
-                    },
-                    onSkip = { current.eventSink(ConversationPresenter.UiEvent.SkipContact) },
-                )
+            is ConversationPresenter.UiState.AddingParticipants -> AddParticipantsLayout(current)
+            is ConversationPresenter.UiState.QuestionPrompt -> QuestionPromptLayout(current)
+            is ConversationPresenter.UiState.Instructions -> InstructionPanelLayout(current)
+            is ConversationPresenter.UiState.Selection -> SelectionLayout(current)
+            is ConversationPresenter.UiState.Finalizing -> FinalizingLayout(current)
+            is ConversationPresenter.UiState.Discussing -> DiscussingLayout(current)
+            is ConversationPresenter.UiState.Summary -> SummaryLayout(current)
+            is ConversationPresenter.UiState.CollectingContact -> ContactCollectionLayout(current)
         }
     }
 }

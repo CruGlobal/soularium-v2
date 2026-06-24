@@ -47,28 +47,24 @@ import org.cru.soularium.generated.resources.participants_title
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * First subscreen of the conversation flow. Shown when [SessionState] is
- * [SessionState.AddingParticipants].
+ * First subscreen of the conversation flow. Shown when the presenter exposes
+ * [ConversationPresenter.UiState.AddingParticipants].
  *
- * This is a stateless composable — the participant list is passed in via
- * [participantNames]; only the transient text-field value is held locally.
- *
- * @param participantNames current list of names that have been added.
- * @param onAddParticipant called with a trimmed, non-blank name when the user
- *   confirms the text field.
- * @param onRemoveParticipant called with the 0-based index of the chip to remove.
- * @param onConfirm called when the user taps Continue (only enabled when the
- *   list is non-empty).
+ * Stateless beyond the transient text-field value held locally.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun AddParticipantsLayout(
-    participantNames: List<String>,
-    onAddParticipant: (String) -> Unit,
-    onRemoveParticipant: (Int) -> Unit,
-    onConfirm: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+fun AddParticipantsLayout(state: ConversationPresenter.UiState.AddingParticipants, modifier: Modifier = Modifier) {
+    val participantNames = state.participantNames
+    val onAddParticipant: (String) -> Unit = { name ->
+        state.eventSink(ConversationPresenter.UiEvent.AddingParticipants.AddParticipant(name))
+    }
+    val onRemoveParticipant: (Int) -> Unit = { index ->
+        state.eventSink(ConversationPresenter.UiEvent.AddingParticipants.RemoveParticipant(index))
+    }
+    val onConfirm: () -> Unit = {
+        state.eventSink(ConversationPresenter.UiEvent.AddingParticipants.Confirm)
+    }
     var nameInput by remember { mutableStateOf("") }
 
     val addLabel = stringResource(Res.string.action_add)

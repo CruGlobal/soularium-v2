@@ -2,13 +2,7 @@ package org.cru.soularium.data.db
 
 import androidx.room.RoomDatabase
 import androidx.sqlite.SQLiteConnection
-import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.sqlite.execSQL
-
-fun createDatabase(): SoulariumDatabase = getDatabaseBuilder()
-    .setDriver(BundledSQLiteDriver())
-    .withForeignKeysEnabled()
-    .build()
 
 /**
  * SQLite enforces foreign keys — and therefore the entities' `ON DELETE

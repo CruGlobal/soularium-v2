@@ -44,6 +44,3 @@ internal class DeviceStateRepositoryImpl(
         val LAST_KNOWN_LOCALE = stringPreferencesKey("last_known_locale")
     }
 }
-
-/** Creates the device-state repository backed by the platform DataStore. */
-fun createDeviceStateRepository(): DeviceStateRepository = DeviceStateRepositoryImpl(createDeviceStateDataStore())

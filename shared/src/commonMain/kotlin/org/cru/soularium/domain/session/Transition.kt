@@ -114,22 +114,14 @@ private fun transitionInQuestion(
             val targetActivity =
                 when (state.activity) {
                     QuestionActivity.SelectingRound1 -> {
-                        val needed = if (question.selectionRounds ==
-                            2
-                        ) {
-                            question.requiredImageCount + 1
-                        } else {
-                            question.requiredImageCount
-                        }
+                        val needed = question.requiredImageCount + if (question.selectionRounds == 2) 1 else 0
                         if (ctx.currentDraftPicks.size < needed) {
                             return TransitionResult(
                                 next = state,
                                 error = DomainError.InvalidSelectionCount(needed, ctx.currentDraftPicks.size),
                             )
                         }
-                        if (question.selectionRounds ==
-                            2
-                        ) {
+                        if (question.selectionRounds == 2) {
                             QuestionActivity.SelectingRound2
                         } else {
                             QuestionActivity.Finalizing

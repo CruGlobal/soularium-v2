@@ -391,10 +391,9 @@ class ConversationPresenter(
  * the user restarts that question cleanly instead of landing on an empty
  * selection.
  */
-private fun snapBackToPromptIfMidQuestion(state: SessionState): SessionState = if (state is SessionState.InQuestion &&
-    state.activity != QuestionActivity.ShowingPrompt
-) {
-    state.copy(activity = QuestionActivity.ShowingPrompt)
-} else {
-    state
-}
+private fun snapBackToPromptIfMidQuestion(state: SessionState): SessionState =
+    if (state is SessionState.InQuestion && state.activity != QuestionActivity.ShowingPrompt) {
+        state.copy(activity = QuestionActivity.ShowingPrompt)
+    } else {
+        state
+    }

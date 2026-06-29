@@ -22,6 +22,13 @@ kotlin {
         namespace = "org.cru.soularium"
         compileSdk = 36
         minSdk = 24
+        // Opt in to AGP's KMP Android-resources pipeline so the Compose
+        // Multiplatform resources plugin can wire its
+        // CopyResourcesToAndroidAssetsTask output into the published Android
+        // artifact. Without this, composeResources don't ship in the APK on
+        // com.android.kotlin.multiplatform.library and stringResource(...)
+        // throws MissingResourceException at runtime. See CMP-9547.
+        androidResources.enable = true
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_17)
             // Teach kotlin-parcelize to recognize the multiplatform-safe

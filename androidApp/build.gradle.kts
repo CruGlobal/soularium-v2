@@ -1,3 +1,6 @@
+import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.tasks.OutputDirectory
+import org.gradle.api.tasks.Sync
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -34,6 +37,43 @@ android {
         release {
             isMinifyEnabled = false
         }
+    }
+}
+
+// Workaround: Compose Multiplatform 1.11.x does not auto-wire its prepared
+// composeResources into the Android assets pipeline when :shared uses AGP 9's
+// com.android.kotlin.multiplatform.library plugin. Stage the prepared resources
+// into a local directory and feed it to the Android variant's assets.
+abstract class StageComposeAssets : Sync() {
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    init {
+        into(outputDir)
+    }
+}
+
+val stageComposeAssets = tasks.register<StageComposeAssets>("stageSharedComposeAssets") {
+    dependsOn(":shared:prepareComposeResourcesTaskForCommonMain")
+    // The runtime resource reader looks them up under
+    // composeResources/<packageOfResClass>/..., so re-root the prepared
+    // commonMain composeResources/ tree into that namespaced directory.
+    from(
+        project(":shared").layout.buildDirectory.dir(
+            "generated/compose/resourceGenerator/preparedResources/commonMain/composeResources",
+        ),
+    ) {
+        into("composeResources/org.cru.soularium.generated.resources")
+    }
+    outputDir.set(layout.buildDirectory.dir("generated/composeResources"))
+}
+
+androidComponents {
+    onVariants { variant ->
+        variant.sources.assets?.addGeneratedSourceDirectory(
+            stageComposeAssets,
+            StageComposeAssets::outputDir,
+        )
     }
 }
 

@@ -66,13 +66,58 @@ gh api repos/$REPO/pulls/$ARGUMENTS/reviews \
 
 Use the exact file path from the diff and the line number in the current version of the file (RIGHT side). Each comment body should contain the full finding description. Always append the attribution footer `\n\n🤖 Posted by [Claude Code](https://claude.ai/code)` to each comment. If no new actionable findings exist (only ✅ items or all already commented), skip this step.
 
-9. If the review has **no ❌ or ⚠️ findings** (only ✅ and/or ⏭️ items), ask the user whether to post the full review. **Skip this step entirely when reviewing a branch with no PR — branch review mode is local-only.** Otherwise, if they say yes:
+9. **Resolve inline comment threads that have been addressed.** On a re-review, close out threads whose findings are now fixed. **Skip this step entirely when reviewing a branch with no PR — there are no threads to resolve.** A previously-posted thread counts as *addressed* when all of the following hold:
+   - it is still **unresolved**, and
+   - its first comment was posted by **this reviewer** — the body contains the `🤖 Posted by [Claude Code]` (or `🤖 [Claude Code]`) attribution footer — never touch a human reviewer's thread, and
+   - the thread has **no other comments** — only the reviewer's original comment, with no replies (`comments.totalCount == 1`). If anyone has replied, there is an active discussion; leave the thread open even if the code looks fixed, and
+   - **no finding in the current pass matches it** (the issue it described is no longer present in the code at that path). If the current review still raises the same finding, leave the thread open.
+
+   Fetch unresolved threads (reuse the GraphQL shape from the dismissal section) — `totalCount` reveals whether anyone replied:
+   ```bash
+   REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+   OWNER=${REPO%%/*}; REPONAME=${REPO##*/}
+   gh api graphql -f query="
+   {
+     repository(owner: \"$OWNER\", name: \"$REPONAME\") {
+       pullRequest(number: $ARGUMENTS) {
+         reviewThreads(first: 100) {
+           nodes {
+             id
+             isResolved
+             comments(first: 1) { totalCount nodes { id author { login } body path line } }
+           }
+         }
+       }
+     }
+   }"
+   ```
+
+   For each addressed thread, reply noting it was fixed, then resolve it:
+   ```bash
+   gh api repos/$REPO/pulls/$ARGUMENTS/comments \
+     --method POST \
+     --field in_reply_to=<comment_id> \
+     --field body="✅ Addressed in <short SHA> — resolving.
+
+   🤖 [Claude Code](https://claude.ai/code)"
+
+   gh api graphql -f query="
+   mutation {
+     resolveReviewThread(input: { threadId: \"<thread_node_id>\" }) {
+       thread { id isResolved }
+     }
+   }"
+   ```
+
+   Only resolve findings you can confirm are fixed by reading the current code — when in doubt, leave the thread open. List the threads you resolved in the review output.
+
+10. If the review has **no ❌ or ⚠️ findings** (only ✅ and/or ⏭️ items), ask the user whether to post the full review. **Skip this step entirely when reviewing a branch with no PR — branch review mode is local-only.** Otherwise, if they say yes:
    - Check whether the PR author matches the current git user (`gh pr view $ARGUMENTS --json author -q .author.login` vs `gh api user -q .login`)
    - If it is a **self-review**, post with `--comment` (GitHub does not allow self-approval)
    - If it is **someone else's PR**, ask whether to approve or just comment, then post with `--approve` or `--comment` accordingly
    - Always append `\n\n🤖 Posted by [Claude Code](https://claude.ai/code)` to the body
 
-10. After the review output, print:
+11. After the review output, print:
 
 ```
 ---
@@ -117,6 +162,10 @@ The project enforces layering by package convention inside the single `:shared` 
 ### UI Layer — Circuit Presenter / Layout
 
 **Presenter**
+- [ ] Presenter class is `public` (Metro's Circuit codegen requires it) and annotated `@AssistedInject`
+- [ ] `Navigator` (and `Screen`, when the screen carries args) injected via `@Assisted`; remaining constructor params are ordinary graph-injected deps
+- [ ] Nested `@CircuitInject(<Feature>Screen::class, AppScope::class) @AssistedFactory fun interface Factory { fun create(navigator: Navigator[, screen: <Feature>Screen]): <Feature>Presenter }` drives codegen — no hand-written factory or graph accessor
+- [ ] The `Factory` interface is placed at the bottom of the class (after `present()`), and its `create()` params match the constructor's `@Assisted` order (`navigator` first, then `screen`)
 - [ ] Implements Circuit's `Presenter<UiState>`
 - [ ] `UiState` is a nested `data class` implementing `CircuitUiState`, exposing `val eventSink: (UiEvent) -> Unit`
 - [ ] `UiEvent` is a nested `sealed interface` implementing `CircuitUiEvent`
@@ -128,7 +177,7 @@ The project enforces layering by package convention inside the single `:shared` 
 - [ ] Presenter contains no UI logic — pure state derivation and event handling
 
 **Layout**
-- [ ] Public, stateless `@Composable fun <Feature>Layout(state: <Feature>Presenter.UiState, modifier: Modifier = Modifier)`
+- [ ] Public, stateless `@Composable fun <Feature>Layout(state: <Feature>Presenter.UiState, modifier: Modifier = Modifier)`, carrying `@CircuitInject(<Feature>Screen::class, AppScope::class)` on the declaration (generates the `Ui.Factory`)
 - [ ] `modifier` is the **last** parameter and is the first thing applied to the root composable
 - [ ] Reads fields off `state` and emits intent via `state.eventSink(...)` — owns no business logic
 - [ ] Layout-local `remember { mutableStateOf(...) }` only for transient view-only state (text-field drafts, expanded/collapsed toggles)
@@ -136,7 +185,7 @@ The project enforces layering by package convention inside the single `:shared` 
 
 **Screen & wiring**
 - [ ] New `Screen` destinations are `@Parcelize` `data object`/`data class` types in `ui/nav/Screens.kt`
-- [ ] Presenter + Layout wired through `SoulariumPresenterFactory` / `SoulariumUiFactory` in `ui/nav/CircuitFactories.kt` — Presenters are not graph accessors themselves; the factory is `@Inject`ed by Metro with their shared deps and constructs each Presenter directly (the Circuit `@CircuitInject` codegen migration is the planned successor — see `CircuitBindings.kt`)
+- [ ] Presenter + Layout wired via `@CircuitInject(<Feature>Screen::class, AppScope::class)` codegen — Metro generates the `Presenter.Factory` / `Ui.Factory` and contributes them to the multibindings consumed by `CircuitBindings.providesCircuit`. There is no hand-written factory or switch table
 - [ ] Loading / error / empty states are first-class on every screen that loads data (the app is offline-first, but `DomainError.PersistenceFailed` still needs a path)
 
 ### Compose / Design System
@@ -173,7 +222,7 @@ DI is compile-time via [Metro](https://github.com/ZacSweers/metro). The graph is
 - [ ] Platform-specific bindings live in `expect class PlatformBindings` actuals. Android actual takes `(context: Context)` and provides it as `@Provides @SingleIn(AppScope::class) internal val context`; iOS actual is empty (Sharer/AnalyticsTracker/CrashReporter impls are common with `@ContributesBinding`)
 - [ ] Set multibindings (`Set<Presenter.Factory>`, `Set<Ui.Factory>`) declared with `@Multibinds(allowEmpty = true)` in `CircuitBindings`; new factories contributed via `@Provides @IntoSet` or `@ContributesIntoSet(AppScope::class)`
 - [ ] New graph accessors on `SoulariumAppGraph` are added ONLY when the consumer is the Compose root (`App.kt` is the only call site today) — everything else takes deps via `@Inject` constructor params, not via the graph
-- [ ] New screens add a `Screen` to `ui/nav/Screens.kt` and wire the Presenter+Layout into `CircuitFactories.kt`; only inject new dependencies into `SoulariumPresenterFactory`'s constructor if no existing arg covers them
+- [ ] New screens add a `Screen` to `ui/nav/Screens.kt`; the Presenter+Layout `@CircuitInject` annotations drive factory codegen — no manual factory registration. Presenter deps come from the graph via `@Inject` constructor params
 - [ ] `createSoulariumAppGraph(PlatformBindings(...))` is called once per entry point — `SoulariumApplication.onCreate()` on Android, `MainViewController()` on iOS — and the graph is passed into `App(graph)` rather than rebuilt per recomposition
 - [ ] No use of Koin, Hilt, Dagger, or Anvil annotations — DI is Metro-only
 
@@ -210,7 +259,7 @@ DI is compile-time via [Metro](https://github.com/ZacSweers/metro). The graph is
 
 ### Kotlin Code Quality
 
-- [ ] Logging uses an injected `CrashReporter` / `AnalyticsTracker` port or a Kermit-style multiplatform logger — no `println`, no Android `Log.*`, no `System.out.println`
+- [ ] Logging goes through the injected `CrashReporter` / `AnalyticsTracker` ports — no `println`, no Android `Log.*`, no `System.out.println`
 - [ ] Exception handling catches specific types — bare `catch (e: Exception)` / `catch (t: Throwable)` is flagged unless catching all is intentional
 - [ ] Multi-branch conditionals on sealed types use `when` (exhaustive, no `else ->` swallowing additions)
 - [ ] Visibility is intentional: `internal` for module-scoped symbols, `private` where possible — sealed UI/Domain types in particular should not leak public when `internal` suffices
@@ -219,10 +268,9 @@ DI is compile-time via [Metro](https://github.com/ZacSweers/metro). The graph is
 
 ### Code Style
 
-Ktlint with the `intellij_idea` code style enforces most rules — step 4's pre-flight already covers those. Manual checks:
+Ktlint with the `android_studio` code style (plus `.editorconfig`) enforces most rules — line length, formatter rules, trailing newline — and step 4's pre-flight already covers those. Manual checks:
 
-- [ ] Max line length: 120 characters
-- [ ] Trailing commas used on multi-line argument/parameter lists
+- [ ] Trailing commas on multi-line signatures/calls, none on single-line ones — ktlint's trailing-comma rules are disabled in `.editorconfig`, so the pre-flight does NOT catch either case
 - [ ] Package prefix: `org.cru.soularium` (with `org.cru.soularium.app` reserved for `:androidApp`)
 - [ ] `@Composable` functions may use capitalized names (ktlint rule exempt); other functions are camelCase
 - [ ] Files end with a trailing newline; no trailing whitespace

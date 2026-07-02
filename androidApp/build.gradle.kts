@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
     id("ktlint-conventions")
+    id("dev.zacsweers.metro")
 }
 
 android {

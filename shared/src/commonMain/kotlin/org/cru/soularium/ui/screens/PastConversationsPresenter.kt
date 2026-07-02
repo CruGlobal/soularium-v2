@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import co.touchlab.kermit.Logger
 import com.slack.circuit.codegen.annotations.CircuitInject
 import com.slack.circuit.runtime.CircuitUiEvent
 import com.slack.circuit.runtime.CircuitUiState
@@ -16,7 +17,6 @@ import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
 import kotlinx.coroutines.launch
-import org.cru.soularium.analytics.CrashReporter
 import org.cru.soularium.db.repository.SessionRepository
 import org.cru.soularium.domain.startedAtLocalDate
 import org.cru.soularium.model.Session
@@ -34,11 +34,12 @@ data class PastConversationItem(
     val participantNames: List<String>,
 )
 
+private val logger = Logger.withTag("PastConversationsPresenter")
+
 @AssistedInject
 class PastConversationsPresenter(
     @Assisted private val navigator: Navigator,
     private val repository: SessionRepository,
-    private val crashReporter: CrashReporter,
 ) : Presenter<PastConversationsPresenter.UiState> {
 
     data class UiState(
@@ -86,7 +87,7 @@ class PastConversationsPresenter(
                 }
                 is UiEvent.Delete -> scope.launch {
                     runCatching { repository.deleteSession(event.sessionId) }
-                        .onFailure { crashReporter.recordNonFatal(it, "deleteSession") }
+                        .onFailure { logger.e(it) { "deleteSession" } }
                 }
             }
         }

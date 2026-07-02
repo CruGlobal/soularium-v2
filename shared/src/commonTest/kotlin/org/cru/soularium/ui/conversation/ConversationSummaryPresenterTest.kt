@@ -12,7 +12,6 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.SerializationException
 import org.ccci.gto.support.androidx.test.junit.runners.AndroidJUnit4
 import org.ccci.gto.support.androidx.test.junit.runners.RunOnAndroidWith
-import org.cru.soularium.analytics.CrashReporter
 import org.cru.soularium.db.repository.FakeSessionRepository
 import org.cru.soularium.db.repository.SessionRepository
 import org.cru.soularium.model.CardPick
@@ -32,7 +31,6 @@ class ConversationSummaryPresenterTest {
         navigator = navigator,
         screen = screen,
         sessionRepository = repo,
-        crashReporter = SummaryNoOpCrash,
     )
 
     @Test
@@ -149,8 +147,3 @@ private fun pick(
     pickOrder = pickOrder,
     isFinal = isFinal,
 )
-
-private object SummaryNoOpCrash : CrashReporter {
-    override fun recordNonFatal(throwable: Throwable, breadcrumb: String?) = Unit
-    override fun setKey(key: String, value: String) = Unit
-}

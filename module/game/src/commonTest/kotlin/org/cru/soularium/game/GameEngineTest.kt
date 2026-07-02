@@ -1,5 +1,11 @@
 package org.cru.soularium.game
 
+import co.touchlab.kermit.LogWriter
+import co.touchlab.kermit.Logger
+import co.touchlab.kermit.Severity
+import co.touchlab.kermit.platformLogWriter
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -17,6 +23,13 @@ import org.cru.soularium.model.game.SessionState.InQuestion.QuestionState
 @OptIn(ExperimentalCoroutinesApi::class)
 class GameEngineTest {
     private val sessionId = Session.Id.random()
+    private val logWriter = RecordingLogWriter()
+
+    @BeforeTest
+    fun captureLogs() = Logger.setLogWriters(logWriter)
+
+    @AfterTest
+    fun restoreLogs() = Logger.setLogWriters(platformLogWriter())
 
     private fun TestScope.engine(
         host: FakeGameEngineHost = FakeGameEngineHost(),
@@ -514,7 +527,7 @@ class GameEngineTest {
         val event = SessionEvent.AddParticipant("Alice")
         e.dispatch(event)
         advanceUntilIdle()
-        assertEquals(listOf("applyEffects after $event"), host.nonFatals)
+        assertEquals(listOf("applyEffects after $event"), logWriter.messages)
         host.executeError = null
         e.dispatch(SessionEvent.AddParticipant("Ben"))
         advanceUntilIdle()
@@ -571,7 +584,7 @@ class GameEngineTest {
         e.start()
         advanceUntilIdle()
         assertEquals(1, host.created.size) // force-recreated
-        assertTrue(host.nonFatals.contains("findSessionState on start"))
+        assertTrue(logWriter.messages.contains("findSessionState on start"))
         assertEquals(SessionState.AddingParticipants, e.state.value.session)
     }
 
@@ -607,7 +620,7 @@ class GameEngineTest {
         val host = FakeGameEngineHost().apply { setBookmarkedError = IllegalStateException("db down") }
         val e = engine(host, initial = GameState(session = SessionState.AddingParticipants))
         e.bookmark() // completing without hanging is the assertion
-        assertEquals(listOf("bookmarkAndExit"), host.nonFatals)
+        assertEquals(listOf("bookmarkAndExit"), logWriter.messages)
         // parity with the old presenter: conversation_bookmarked is logged unconditionally
         assertTrue(
             host.executed.any {
@@ -621,7 +634,7 @@ class GameEngineTest {
         val host = FakeGameEngineHost().apply { deleteSessionError = IllegalStateException("db down") }
         val e = engine(host, initial = GameState(session = SessionState.AddingParticipants))
         e.discard() // completing without hanging is the assertion
-        assertEquals(listOf("discardAndExit"), host.nonFatals)
+        assertEquals(listOf("discardAndExit"), logWriter.messages)
     }
 
     @Test
@@ -641,6 +654,14 @@ class GameEngineTest {
         val host = FakeGameEngineHost().apply { loadSummariesError = IllegalStateException("db down") }
         val e = engine(host, initial = GameState(session = SessionState.Summary))
         assertEquals(emptyList(), e.loadSummaries())
-        assertEquals(listOf("loadSummaries"), host.nonFatals)
+        assertEquals(listOf("loadSummaries"), logWriter.messages)
+    }
+}
+
+private class RecordingLogWriter : LogWriter() {
+    val messages = mutableListOf<String>()
+
+    override fun log(severity: Severity, message: String, tag: String, throwable: Throwable?) {
+        messages += message
     }
 }

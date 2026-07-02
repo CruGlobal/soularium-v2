@@ -63,8 +63,10 @@ kotlin {
                 implementation(libs.compose.runtime)
                 implementation(libs.coroutines.core)
                 implementation(libs.datastore.preferences.core)
+                implementation(libs.gitlive.firebase.crashlytics)
                 implementation(libs.gtoSupport.compose)
                 implementation(libs.gtoSupport.parcelize)
+                implementation(libs.kermit)
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.ktor.http)
@@ -76,6 +78,8 @@ kotlin {
 
         androidMain {
             dependencies {
+                implementation(project.dependencies.platform(libs.firebase.bom))
+
                 implementation(libs.androidx.activity.compose)
                 implementation(libs.androidx.appcompat)
                 implementation(libs.gtoSupport.androidx.core)

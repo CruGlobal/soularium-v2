@@ -18,7 +18,6 @@ internal class FakeGameEngineHost : GameEngineImpl.Host {
     val created = mutableListOf<Pair<Session, SessionState>>()
     val bookmarked = mutableListOf<Boolean>()
     var deleted = 0
-    val nonFatals = mutableListOf<String>()
 
     override suspend fun findSessionState(id: Session.Id): SessionState? {
         findSessionStateError?.let { throw it }
@@ -53,9 +52,5 @@ internal class FakeGameEngineHost : GameEngineImpl.Host {
         executeError?.let { throw it }
         executed += effect
         if (effect is Effect.PersistState) persistedState = effect.state
-    }
-
-    override fun reportNonFatal(throwable: Throwable, context: String) {
-        nonFatals += context
     }
 }

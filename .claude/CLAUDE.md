@@ -45,9 +45,9 @@ module dependency graph rather than by convention.
 
 ### Domain & game logic (`org.cru.soularium.domain`, `:module:game`)
 
-- **Ports**: `domain/ports/` retains `DeviceStateRepository`. `AnalyticsTracker` and
-  `CrashReporter` live in `:module:analytics` (`CrashReporter` is a temporary
-  resident — pending a Kermit logging refactor; don't invest in that interface).
+- **Ports**: `domain/ports/` retains `DeviceStateRepository`. `AnalyticsTracker` lives in
+  `:module:analytics`. (Crash/error reporting is not a port — code logs through the global
+  Kermit `Logger`; see "Logging & crash reporting".)
 - **Game engine** (`:module:game`, `org.cru.soularium.game`): `GameEngine` is an
   interface — instances come from the graph via the nested `GameEngine.Factory`
   (assisted-injected internally); tests construct the internal
@@ -151,6 +151,24 @@ module dependency graph rather than by convention.
   in a self-contained feature package — then create `<Feature>Presenter.kt` and
   `<Feature>Layout.kt` annotated with `@CircuitInject(...)` (see above). Metro generates
   and contributes the factories — no factory registration is required.
+
+### Logging & crash reporting
+
+There is no `CrashReporter` port. Code logs through the **global Kermit `Logger`** (each
+file keeps a `private val logger = Logger.withTag("<Name>")`); error paths call
+`logger.e(throwable) { "breadcrumb" }`. The global logger is bootstrapped once at startup —
+`SoulariumApplication.onCreate` on Android, `MainViewController` on iOS — by
+`LoggingBindings.Accessors.configureLogging()`, which sets the global minimum severity
+(`logMinSeverity`, default `Severity.Error` — so only `Error`/`Assert` are emitted) and
+installs the Metro-assembled `Set<LogWriter>` onto `Logger`. Writers come from
+multibindings: `CrashlyticsLogWriter`
+(`org.cru.soularium.firebase`, `@ContributesIntoSet`) forwards messages + non-fatals to
+Firebase Crashlytics through the GitLive `firebase-crashlytics` KMP SDK, and the platform
+console writer is contributed per-target (`AndroidLoggingBindings` — logcat, debug builds
+only; `IosLoggingBindings` — NSLog). `CrashlyticsLogWriter` is inert (its Firebase calls
+are wrapped defensively) until the `google-services.json` / `GoogleService-Info.plist`
+config files land. Tests exercise presenters without configuring the logger, so log calls
+hit only the default platform writer.
 
 ### Platform abstraction — expect/actual
 

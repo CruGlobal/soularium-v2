@@ -8,20 +8,18 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import org.cru.soularium.analytics.AnalyticsTracker
-import org.cru.soularium.analytics.CrashReporter
 import org.cru.soularium.db.repository.SessionRepository
 import org.cru.soularium.model.Conversation
 import org.cru.soularium.model.Session
 import org.cru.soularium.model.game.SessionState
 
-/** [GameEngineImpl.Host] backed by the real [SessionRepository]/analytics/crash-reporting ports. */
+/** [GameEngineImpl.Host] backed by the real [SessionRepository]/analytics ports. */
 @Inject
 @SingleIn(AppScope::class)
 @ContributesBinding(AppScope::class)
 internal class GameEngineHostImpl(
     private val sessionRepository: SessionRepository,
     private val analytics: AnalyticsTracker,
-    private val crashReporter: CrashReporter,
 ) : GameEngineImpl.Host {
     /**
      * The last-read displayOrder → conversation-id mapping, so per-pick and per-contact effects
@@ -85,9 +83,6 @@ internal class GameEngineHostImpl(
                 analytics.event(effect.event, effect.params)
         }
     }
-
-    override fun reportNonFatal(throwable: Throwable, context: String) =
-        crashReporter.recordNonFatal(throwable, context)
 
     private suspend fun loadConversations(id: Session.Id): List<Conversation> = sessionRepository.loadConversations(id)
         .also { cachedConversationIds = id to it.associate { c -> c.displayOrder to c.id } }

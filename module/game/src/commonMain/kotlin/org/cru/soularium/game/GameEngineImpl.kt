@@ -1,5 +1,6 @@
 package org.cru.soularium.game
 
+import co.touchlab.kermit.Logger
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
@@ -24,6 +25,8 @@ import org.cru.soularium.model.Session
 import org.cru.soularium.model.game.SessionState
 import org.cru.soularium.model.game.SessionState.InQuestion.QuestionState
 
+private val logger = Logger.withTag("GameEngine")
+
 @AssistedInject
 internal class GameEngineImpl(
     private val host: Host,
@@ -43,7 +46,7 @@ internal class GameEngineImpl(
             withContext(NonCancellable) {
                 for (queued in queue) {
                     runCatching { queued.op() }
-                        .onFailure { host.reportNonFatal(it, queued.context()) }
+                        .onFailure { logger.e(it) { queued.context() } }
                 }
             }
         }.invokeOnCompletion { scope.cancel() }
@@ -72,24 +75,24 @@ internal class GameEngineImpl(
     override suspend fun start() {
         val loadResult =
             runCatching { host.findSessionState(sessionId) }
-                .onFailure { host.reportNonFatal(it, "findSessionState on start") }
+                .onFailure { logger.e(it) { "findSessionState on start" } }
         val loaded = loadResult.getOrNull()
         if (loaded != null) {
             _state.update { it.copy(session = snapBackToPromptIfMidQuestion(loaded)) }
             runCatching { host.loadParticipantNames(sessionId) }
                 .onSuccess { names -> if (names.isNotEmpty()) _state.update { it.copy(participantNames = names) } }
-                .onFailure { host.reportNonFatal(it, "loadParticipantNames on start") }
+                .onFailure { logger.e(it) { "loadParticipantNames on start" } }
         }
         if (_state.value.session == SessionState.NotStarted) {
             val exists =
                 runCatching { host.sessionExists(sessionId) }
                     .getOrElse {
-                        host.reportNonFatal(it, "sessionExists on start")
+                        logger.e(it) { "sessionExists on start" }
                         false
                     }
             if (!exists || loadResult.isFailure) {
                 runCatching { host.createSession(Session(id = sessionId, kind = kind), SessionState.NotStarted) }
-                    .onFailure { host.reportNonFatal(it, "createSession on start") }
+                    .onFailure { logger.e(it) { "createSession on start" } }
             }
             dispatch(SessionEvent.StartSession(kind))
         }
@@ -106,7 +109,7 @@ internal class GameEngineImpl(
 
     override suspend fun bookmark() = awaitQueued("bookmarkAndExit") {
         runCatching { host.setBookmarked(sessionId, true) }
-            .onFailure { host.reportNonFatal(it, "bookmarkAndExit") }
+            .onFailure { logger.e(it) { "bookmarkAndExit" } }
         host.execute(sessionId, Effect.LogAnalytics("conversation_bookmarked", emptyMap()))
     }
 
@@ -450,7 +453,5 @@ internal class GameEngineImpl(
         suspend fun deleteSession(id: Session.Id)
 
         suspend fun execute(id: Session.Id, effect: Effect)
-
-        fun reportNonFatal(throwable: Throwable, context: String)
     }
 }

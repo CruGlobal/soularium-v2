@@ -10,7 +10,6 @@ import org.ccci.gto.support.androidx.test.junit.runners.AndroidJUnit4
 import org.ccci.gto.support.androidx.test.junit.runners.RunOnAndroidWith
 import org.ccci.gto.support.turbine.awaitItemMatching
 import org.cru.soularium.db.repository.FakeSessionRepository
-import org.cru.soularium.di.NoOpCrashReporter
 import org.cru.soularium.model.ContactInfo
 import org.cru.soularium.model.Conversation
 import org.cru.soularium.model.Session
@@ -38,7 +37,7 @@ class PastConversationsPresenterTest {
         repo.persistState(sessionId, SessionState.Concluded)
 
         val navigator = FakeNavigator(PastConversationsScreen)
-        val presenter = PastConversationsPresenter(navigator, repo, NoOpCrashReporter())
+        val presenter = PastConversationsPresenter(navigator, repo)
 
         presenter.test {
             val withRow = awaitItemMatching { it.completed.size == 1 }

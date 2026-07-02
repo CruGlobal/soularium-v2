@@ -80,7 +80,7 @@ private const val TWO_ROUND_QUESTION_MAX = 2
  * @param modifier           optional [Modifier] applied to the root [Surface].
  */
 @Composable
-fun SelectionScreen(
+fun SelectionLayout(
     questionNumber: Int,
     round: Int,
     selectedCardIds: List<Int>,

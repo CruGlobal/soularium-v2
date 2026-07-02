@@ -61,7 +61,7 @@ import org.jetbrains.compose.resources.stringResource
  * @param modifier          optional [Modifier] for the root surface.
  */
 @Composable
-fun FinalizingScreen(
+fun FinalizingLayout(
     questionNumber: Int,
     cardIds: List<Int>,
     onConfirm: () -> Unit,

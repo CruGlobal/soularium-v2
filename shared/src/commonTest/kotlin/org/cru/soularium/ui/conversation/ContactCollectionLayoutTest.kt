@@ -4,7 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-class ContactCollectionScreenTest {
+class ContactCollectionLayoutTest {
 
     // ── blank / empty → always valid (optional field) ──────────────────────
 

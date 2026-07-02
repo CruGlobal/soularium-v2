@@ -65,7 +65,7 @@ private const val CARD_ASPECT_RATIO = 3f / 2f
  * @param onDone           called when the user taps "Done".
  */
 @Composable
-fun DiscussingScreen(
+fun DiscussingLayout(
     questionNumber: Int,
     participantName: String,
     cardIds: List<Int>,

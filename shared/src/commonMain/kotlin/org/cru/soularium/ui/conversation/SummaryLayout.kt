@@ -80,7 +80,7 @@ data class ParticipantSummary(
  * @param modifier      optional [Modifier] applied to the root [Surface].
  */
 @Composable
-fun SummaryScreen(
+fun SummaryLayout(
     participants: List<ParticipantSummary>,
     onShare: (Int) -> Unit,
     onAddContact: (Int) -> Unit,

@@ -52,7 +52,7 @@ import org.jetbrains.compose.resources.stringResource
  * @param onBegin            called when the user taps the "Ready" button.
  */
 @Composable
-fun QuestionPromptScreen(
+fun QuestionPromptLayout(
     questionNumber: Int,
     totalQuestions: Int,
     participantName: String,

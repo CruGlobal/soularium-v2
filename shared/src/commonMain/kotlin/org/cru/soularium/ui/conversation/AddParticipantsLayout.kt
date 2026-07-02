@@ -62,7 +62,7 @@ import org.jetbrains.compose.resources.stringResource
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun AddParticipantsScreen(
+fun AddParticipantsLayout(
     participantNames: List<String>,
     onAddParticipant: (String) -> Unit,
     onRemoveParticipant: (Int) -> Unit,

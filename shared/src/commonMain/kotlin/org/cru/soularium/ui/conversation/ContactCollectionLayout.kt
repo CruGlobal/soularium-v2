@@ -68,7 +68,7 @@ fun isPhoneValid(phone: String): Boolean {
  * @param modifier        Optional modifier forwarded to the root [Surface].
  */
 @Composable
-fun ContactCollectionScreen(
+fun ContactCollectionLayout(
     participantName: String,
     onSave: (ContactInfo) -> Unit,
     onSkip: () -> Unit,

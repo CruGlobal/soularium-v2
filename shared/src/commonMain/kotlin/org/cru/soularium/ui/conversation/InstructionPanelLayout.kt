@@ -50,7 +50,7 @@ import org.jetbrains.compose.resources.stringResource
  * @param onDismiss called when the user taps "Got It".
  */
 @Composable
-fun InstructionPanelScreen(
+fun InstructionPanelLayout(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {

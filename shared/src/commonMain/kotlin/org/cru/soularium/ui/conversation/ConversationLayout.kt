@@ -74,7 +74,7 @@ fun ConversationLayout(
             SessionState.NotStarted -> ConversationLoading()
 
             SessionState.AddingParticipants ->
-                AddParticipantsScreen(
+                AddParticipantsLayout(
                     participantNames = state.ui.participantNames,
                     onAddParticipant = { dispatch(SessionEvent.AddParticipant(it)) },
                     onRemoveParticipant = { dispatch(SessionEvent.RemoveParticipant(it)) },
@@ -87,7 +87,7 @@ fun ConversationLayout(
                     state.ui.participantNames.getOrElse(current.activeParticipantIndex) { "" }
                 when (current.activity) {
                     QuestionActivity.ShowingPrompt ->
-                        QuestionPromptScreen(
+                        QuestionPromptLayout(
                             questionNumber = current.questionNumber,
                             totalQuestions = TOTAL_QUESTIONS,
                             participantName = participantName,
@@ -96,14 +96,14 @@ fun ConversationLayout(
                         )
 
                     QuestionActivity.ShowingInstructions ->
-                        InstructionPanelScreen(
+                        InstructionPanelLayout(
                             onDismiss = { dispatch(SessionEvent.DismissInstructions) },
                         )
 
                     QuestionActivity.SelectingRound1,
                     QuestionActivity.SelectingRound2,
                     ->
-                        SelectionScreen(
+                        SelectionLayout(
                             questionNumber = current.questionNumber,
                             round = if (current.activity == QuestionActivity.SelectingRound2) 2 else 1,
                             selectedCardIds = state.ui.draftPicks,
@@ -119,7 +119,7 @@ fun ConversationLayout(
                         )
 
                     QuestionActivity.Finalizing ->
-                        FinalizingScreen(
+                        FinalizingLayout(
                             questionNumber = current.questionNumber,
                             cardIds = state.ui.draftPicks,
                             onConfirm = { dispatch(SessionEvent.ConfirmFinal) },
@@ -127,7 +127,7 @@ fun ConversationLayout(
                         )
 
                     QuestionActivity.Discussing ->
-                        DiscussingScreen(
+                        DiscussingLayout(
                             questionNumber = current.questionNumber,
                             participantName = participantName,
                             cardIds = state.ui.draftPicks,
@@ -137,7 +137,7 @@ fun ConversationLayout(
             }
 
             SessionState.Summary ->
-                SummaryScreen(
+                SummaryLayout(
                     participants = state.summaries,
                     onShare = { state.eventSink(ConversationPresenter.UiEvent.Share(it)) },
                     onAddContact = { index ->
@@ -150,7 +150,7 @@ fun ConversationLayout(
                 )
 
             is SessionState.CollectingContact ->
-                ContactCollectionScreen(
+                ContactCollectionLayout(
                     participantName = state.ui.participantNames.getOrElse(current.participantIndex) { "" },
                     onSave = {
                         state.eventSink(

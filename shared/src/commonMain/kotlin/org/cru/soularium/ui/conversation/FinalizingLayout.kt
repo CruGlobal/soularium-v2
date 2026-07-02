@@ -44,28 +44,19 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * Subscreen shown when a participant has made their selection and is asked to
- * confirm their final picks before the discussion begins.
- *
- * Displays the participant's chosen cards ([cardIds]) at full size, the
- * per-question finalizing prompt, a review hint, and two action buttons:
- * Confirm (proceeds to discussion) and Change Selection (re-opens selection).
- *
- * This is a stateless composable. No ViewModel, no navigation logic.
- *
- * @param questionNumber    1-based index of the current question (1..5).
- * @param cardIds           ordered list of 1 or 3 card ids (1..50) the
- *                          participant has chosen.
- * @param onConfirm         called when the user taps Confirm.
- * @param onChangeSelection called when the user taps Change Selection to re-pick.
- * @param modifier          optional [Modifier] for the root surface.
+ * UI state for the Finalizing sub-layout — confirmation screen showing the
+ * participant's chosen cards before discussion begins.
  */
+data class FinalizingUiState(
+    val questionNumber: Int,
+    val cardIds: List<Int>,
+    val onConfirm: () -> Unit,
+    val onChangeSelection: () -> Unit,
+)
+
 @Composable
-fun FinalizingScreen(
-    questionNumber: Int,
-    cardIds: List<Int>,
-    onConfirm: () -> Unit,
-    onChangeSelection: () -> Unit,
+fun FinalizingLayout(
+    state: FinalizingUiState,
     modifier: Modifier = Modifier,
 ) {
     val confirmLabel = stringResource(Res.string.action_confirm)
@@ -91,7 +82,6 @@ fun FinalizingScreen(
                     .padding(top = 48.dp, bottom = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                // Screen title
                 Text(
                     text = stringResource(Res.string.finalizing_title),
                     style = MaterialTheme.typography.headlineLarge,
@@ -102,9 +92,8 @@ fun FinalizingScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Per-question finalizing prompt
                 Text(
-                    text = stringResource(questionFinalizingResource(questionNumber)),
+                    text = stringResource(questionFinalizingResource(state.questionNumber)),
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onBackground,
                     textAlign = TextAlign.Center,
@@ -113,7 +102,6 @@ fun FinalizingScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Review hint
                 Text(
                     text = stringResource(Res.string.finalizing_review_hint),
                     style = MaterialTheme.typography.bodyMedium,
@@ -124,9 +112,8 @@ fun FinalizingScreen(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // Card images — laid out in a row when there are multiple picks
-                if (cardIds.size == 1) {
-                    val cardId = cardIds.first()
+                if (state.cardIds.size == 1) {
+                    val cardId = state.cardIds.first()
                     val cardDesc = stringResource(Res.string.cd_card_thumb, cardId)
                     Image(
                         painter = painterResource(CardImages.full(cardId)),
@@ -141,7 +128,7 @@ fun FinalizingScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        cardIds.forEach { cardId ->
+                        state.cardIds.forEach { cardId ->
                             val cardDesc = stringResource(Res.string.cd_card_thumb, cardId)
                             Image(
                                 painter = painterResource(CardImages.full(cardId)),
@@ -156,9 +143,8 @@ fun FinalizingScreen(
                 }
             }
 
-            // Confirm button
             Button(
-                onClick = onConfirm,
+                onClick = state.onConfirm,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
@@ -172,9 +158,8 @@ fun FinalizingScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Change-selection button (re-opens the selection screen)
             OutlinedButton(
-                onClick = onChangeSelection,
+                onClick = state.onChangeSelection,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
@@ -191,7 +176,6 @@ fun FinalizingScreen(
     }
 }
 
-/** Returns the [StringResource] for the finalizing prompt of the given 1-based [questionNumber]. */
 private fun questionFinalizingResource(questionNumber: Int): StringResource = when (questionNumber) {
     1 -> Res.string.q1_finalizing
     2 -> Res.string.q2_finalizing

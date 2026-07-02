@@ -32,26 +32,16 @@ import org.cru.soularium.generated.resources.selection_navigation_instructions
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * First-time-per-session help panel explaining how image selection works.
- *
- * Rendered as a full-screen surface with a prominent card containing
- * instructions.  Shown once before the first selection round; the caller
- * decides when to display it and hides it when [onDismiss] is invoked.
- *
- * This is a stateless composable. No ViewModel, no navigation logic.
- *
- * NOTE: A dedicated "instructions paragraph" string key (e.g.
- * `instructions_how_to_select`) does not exist in strings.xml.  The body copy
- * currently uses `selection_navigation_instructions` as the primary instruction
- * text, supplemented by the `selection_choose_3` and `selection_choose_1`
- * badge labels.  If richer instructional copy is needed, add a new string key
- * and replace the body accordingly.
- *
- * @param onDismiss called when the user taps "Got It".
+ * UI state for the InstructionPanel sub-layout — first-time-per-session help
+ * panel explaining how image selection works.
  */
+data class InstructionPanelUiState(
+    val onDismiss: () -> Unit,
+)
+
 @Composable
-fun InstructionPanelScreen(
-    onDismiss: () -> Unit,
+fun InstructionPanelLayout(
+    state: InstructionPanelUiState,
     modifier: Modifier = Modifier,
 ) {
     val gotItLabel = stringResource(Res.string.action_got_it)
@@ -82,7 +72,6 @@ fun InstructionPanelScreen(
                         .padding(32.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    // Primary instruction text
                     Text(
                         text = stringResource(Res.string.selection_navigation_instructions),
                         style = MaterialTheme.typography.bodyLarge,
@@ -93,7 +82,6 @@ fun InstructionPanelScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // Selection count badges
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
@@ -116,9 +104,8 @@ fun InstructionPanelScreen(
 
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    // Dismiss button
                     Button(
-                        onClick = onDismiss,
+                        onClick = state.onDismiss,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(52.dp)

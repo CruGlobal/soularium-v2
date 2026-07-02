@@ -21,6 +21,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.cru.soularium.domain.ContactInfo
+import org.cru.soularium.domain.content.Questions
 import org.cru.soularium.domain.newSession
 import org.cru.soularium.domain.ports.AnalyticsTracker
 import org.cru.soularium.domain.ports.CrashReporter
@@ -34,6 +35,8 @@ import org.cru.soularium.domain.session.SessionState
 import org.cru.soularium.domain.session.transition
 import org.cru.soularium.domain.share.shareUrlFor
 import org.cru.soularium.ui.nav.ConversationScreen
+
+private const val TOTAL_QUESTIONS = 5
 
 /**
  * Volatile per-conversation UI context that doesn't belong on [SessionState]:
@@ -63,8 +66,27 @@ class ConversationPresenter(
         val ui: ConversationUiContext,
         val summaries: List<ParticipantSummary>,
         val showExitDialog: Boolean,
+        val subState: SubState,
         val eventSink: (UiEvent) -> Unit,
     ) : CircuitUiState
+
+    /**
+     * Render-ready projection of the session for the layout. Each variant carries
+     * the [UiState] of exactly one sub-Layout, with its callbacks already wired
+     * to the Presenter's event sink — the Layout only has to dispatch on type.
+     */
+    sealed interface SubState {
+        /** Shown while the session is bootstrapping (NotStarted) or winding down (Concluded). */
+        data object Loading : SubState
+        data class AddingParticipants(val state: AddParticipantsUiState) : SubState
+        data class QuestionPrompt(val state: QuestionPromptUiState) : SubState
+        data class Instructions(val state: InstructionPanelUiState) : SubState
+        data class Selecting(val state: SelectionUiState) : SubState
+        data class Finalizing(val state: FinalizingUiState) : SubState
+        data class Discussing(val state: DiscussingUiState) : SubState
+        data class Summary(val state: SummaryUiState) : SubState
+        data class CollectingContact(val state: ContactCollectionUiState) : SubState
+    }
 
     sealed interface UiEvent : CircuitUiEvent {
         /** Domain session event from a subscreen (begin selection, pick card, etc.). */
@@ -156,11 +178,56 @@ class ConversationPresenter(
             }
         }
 
+        val dispatchEvent: (SessionEvent) -> Unit = { domainEvent ->
+            // Captured by the sub-Layout callbacks below; goes back through the
+            // same Dispatch path as inline `state.eventSink(...)` calls.
+            val (newState, newUi) = applyDispatch(
+                event = domainEvent,
+                previousState = sessionState,
+                ui = ui,
+                scope = scope,
+                repoMutex = repoMutex,
+            )
+            sessionState = newState
+            ui = newUi
+        }
+
+        val subState = projectSubState(
+            sessionState = sessionState,
+            ui = ui,
+            summaries = summaries,
+            dispatch = dispatchEvent,
+            onShare = { index -> shareSummary(index, scope, repoMutex) },
+            onCollectContact = { index, info ->
+                val (newState, newUi) = applyDispatch(
+                    event = SessionEvent.CollectContact(index, info),
+                    previousState = sessionState,
+                    ui = ui,
+                    scope = scope,
+                    repoMutex = repoMutex,
+                )
+                sessionState = newState
+                ui = newUi
+            },
+            onSkipContact = {
+                val (newState, newUi) = applyDispatch(
+                    event = SessionEvent.SkipContact,
+                    previousState = sessionState,
+                    ui = ui,
+                    scope = scope,
+                    repoMutex = repoMutex,
+                )
+                sessionState = newState
+                ui = newUi
+            },
+        )
+
         return UiState(
             sessionState = sessionState,
             ui = ui,
             summaries = summaries,
             showExitDialog = showExitDialog,
+            subState = subState,
         ) { event ->
             when (event) {
                 is UiEvent.Dispatch -> {
@@ -201,23 +268,7 @@ class ConversationPresenter(
                         navigator.pop()
                     }
                 }
-                is UiEvent.Share -> {
-                    scope.launch {
-                        runCatching {
-                            val url =
-                                repoMutex.withLock {
-                                    val conversation =
-                                        sessionRepository.loadConversations(screen.sessionId)
-                                            .firstOrNull { it.displayOrder == event.participantIndex }
-                                            ?: return@withLock null
-                                    val picks = sessionRepository.loadPicks(conversation.id)
-                                    shareUrlFor(conversation, picks)
-                                } ?: return@launch
-                            sharer.share(text = url)
-                            analytics.event("share_initiated", mapOf("channel" to "other"))
-                        }.onFailure { crashReporter.recordNonFatal(it, "shareSummary") }
-                    }
-                }
+                is UiEvent.Share -> shareSummary(event.participantIndex, scope, repoMutex)
                 is UiEvent.CollectContact -> {
                     val (newState, newUi) = applyDispatch(
                         event = SessionEvent.CollectContact(event.participantIndex, event.info),
@@ -376,11 +427,172 @@ class ConversationPresenter(
         }
     }
 
+    /**
+     * Looks up the participant's conversation and final picks, builds the share
+     * URL, and hands it to the platform sharer. Errors are reported as
+     * non-fatals and swallowed — share is best-effort.
+     */
+    private fun shareSummary(
+        participantIndex: Int,
+        scope: CoroutineScope,
+        repoMutex: Mutex,
+    ) {
+        scope.launch {
+            runCatching {
+                val url =
+                    repoMutex.withLock {
+                        val conversation =
+                            sessionRepository.loadConversations(screen.sessionId)
+                                .firstOrNull { it.displayOrder == participantIndex }
+                                ?: return@withLock null
+                        val picks = sessionRepository.loadPicks(conversation.id)
+                        shareUrlFor(conversation, picks)
+                    } ?: return@launch
+                sharer.share(text = url)
+                analytics.event("share_initiated", mapOf("channel" to "other"))
+            }.onFailure { crashReporter.recordNonFatal(it, "shareSummary") }
+        }
+    }
+
     @CircuitInject(ConversationScreen::class, AppScope::class)
     @AssistedFactory
     fun interface Factory {
         fun create(navigator: Navigator, screen: ConversationScreen): ConversationPresenter
     }
+}
+
+/**
+ * Maps the canonical session state + UI context onto a render-ready
+ * [ConversationPresenter.SubState]. All callbacks needed by sub-Layouts are
+ * wired here so the Layout itself is a pure dispatch table.
+ *
+ * NotStarted and Concluded both project to [ConversationPresenter.SubState.Loading]
+ * — the first is transient while bootstrap runs, the second while the
+ * navigator pops back.
+ */
+private fun projectSubState(
+    sessionState: SessionState,
+    ui: ConversationUiContext,
+    summaries: List<ParticipantSummary>,
+    dispatch: (SessionEvent) -> Unit,
+    onShare: (Int) -> Unit,
+    onCollectContact: (Int, ContactInfo) -> Unit,
+    onSkipContact: () -> Unit,
+): ConversationPresenter.SubState = when (sessionState) {
+    SessionState.NotStarted, SessionState.Concluded -> ConversationPresenter.SubState.Loading
+
+    SessionState.AddingParticipants -> ConversationPresenter.SubState.AddingParticipants(
+        AddParticipantsUiState(
+            participantNames = ui.participantNames,
+            onAddParticipant = { dispatch(SessionEvent.AddParticipant(it)) },
+            onRemoveParticipant = { dispatch(SessionEvent.RemoveParticipant(it)) },
+            onConfirm = { dispatch(SessionEvent.ConfirmParticipants) },
+        ),
+    )
+
+    is SessionState.InQuestion -> {
+        val question = Questions.byNumber(sessionState.questionNumber)
+        val participantName =
+            ui.participantNames.getOrElse(sessionState.activeParticipantIndex) { "" }
+        when (sessionState.activity) {
+            QuestionActivity.ShowingPrompt -> ConversationPresenter.SubState.QuestionPrompt(
+                QuestionPromptUiState(
+                    questionNumber = sessionState.questionNumber,
+                    totalQuestions = TOTAL_QUESTIONS,
+                    participantName = participantName,
+                    isGroup = ui.participantNames.size > 1,
+                    onBegin = { dispatch(SessionEvent.BeginSelection) },
+                ),
+            )
+
+            QuestionActivity.ShowingInstructions -> ConversationPresenter.SubState.Instructions(
+                InstructionPanelUiState(
+                    onDismiss = { dispatch(SessionEvent.DismissInstructions) },
+                ),
+            )
+
+            QuestionActivity.SelectingRound1,
+            QuestionActivity.SelectingRound2,
+            -> ConversationPresenter.SubState.Selecting(
+                SelectionUiState(
+                    questionNumber = sessionState.questionNumber,
+                    round = if (sessionState.activity == QuestionActivity.SelectingRound2) 2 else 1,
+                    selectedCardIds = ui.draftPicks,
+                    isConfirmEnabled = isSelectionValid(
+                        question = question,
+                        activity = sessionState.activity,
+                        count = ui.draftPicks.size,
+                    ),
+                    onToggleCard = { cardId ->
+                        if (cardId in ui.draftPicks) {
+                            dispatch(SessionEvent.UnpickCard(cardId))
+                        } else {
+                            dispatch(SessionEvent.PickCard(cardId))
+                        }
+                    },
+                    onConfirm = { dispatch(SessionEvent.ConfirmSelection) },
+                ),
+            )
+
+            QuestionActivity.Finalizing -> ConversationPresenter.SubState.Finalizing(
+                FinalizingUiState(
+                    questionNumber = sessionState.questionNumber,
+                    cardIds = ui.draftPicks,
+                    onConfirm = { dispatch(SessionEvent.ConfirmFinal) },
+                    onChangeSelection = { dispatch(SessionEvent.BeginSelection) },
+                ),
+            )
+
+            QuestionActivity.Discussing -> ConversationPresenter.SubState.Discussing(
+                DiscussingUiState(
+                    questionNumber = sessionState.questionNumber,
+                    participantName = participantName,
+                    cardIds = ui.draftPicks,
+                    onDone = { dispatch(SessionEvent.EndDiscussion) },
+                ),
+            )
+        }
+    }
+
+    SessionState.Summary -> ConversationPresenter.SubState.Summary(
+        SummaryUiState(
+            participants = summaries,
+            onShare = onShare,
+            onAddContact = { index ->
+                val name = ui.participantNames.getOrElse(index) { "" }
+                onCollectContact(index, ContactInfo(name))
+            },
+            onDone = { dispatch(SessionEvent.Conclude) },
+        ),
+    )
+
+    is SessionState.CollectingContact -> ConversationPresenter.SubState.CollectingContact(
+        ContactCollectionUiState(
+            participantName = ui.participantNames.getOrElse(sessionState.participantIndex) { "" },
+            onSave = { onCollectContact(sessionState.participantIndex, it) },
+            onSkip = onSkipContact,
+        ),
+    )
+}
+
+/**
+ * Mirrors the count rules enforced by the transition function: round 1 of a
+ * two-round question needs a wide set, every other round needs exactly the
+ * required count.
+ */
+private fun isSelectionValid(
+    question: org.cru.soularium.domain.content.Question,
+    activity: QuestionActivity,
+    count: Int,
+): Boolean = when (activity) {
+    QuestionActivity.SelectingRound1 ->
+        if (question.selectionRounds == 2) {
+            count >= question.requiredImageCount + 1
+        } else {
+            count == question.requiredImageCount
+        }
+    QuestionActivity.SelectingRound2 -> count == question.requiredImageCount
+    else -> false
 }
 
 /**

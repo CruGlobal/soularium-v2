@@ -57,24 +57,21 @@ fun isPhoneValid(phone: String): Boolean {
 }
 
 /**
- * Contact-collection form shown after a participant completes all five questions.
- * Lets the facilitator optionally record the participant's details for follow-up.
- *
- * The form is stateless beyond local [remember] state — no ViewModel, no DI.
- *
- * @param participantName Pre-filled value for the First Name field.
- * @param onSave          Called with a [ContactInfo] when the user taps Save.
- * @param onSkip          Called when the user taps Skip for Now.
- * @param modifier        Optional modifier forwarded to the root [Surface].
+ * UI state for the ContactCollection sub-layout — optional follow-up form
+ * shown after a participant completes all questions.
  */
+data class ContactCollectionUiState(
+    val participantName: String,
+    val onSave: (ContactInfo) -> Unit,
+    val onSkip: () -> Unit,
+)
+
 @Composable
-fun ContactCollectionScreen(
-    participantName: String,
-    onSave: (ContactInfo) -> Unit,
-    onSkip: () -> Unit,
+fun ContactCollectionLayout(
+    state: ContactCollectionUiState,
     modifier: Modifier = Modifier,
 ) {
-    var firstName by remember { mutableStateOf(participantName) }
+    var firstName by remember { mutableStateOf(state.participantName) }
     var lastName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
@@ -199,7 +196,7 @@ fun ContactCollectionScreen(
             Button(
                 enabled = !phoneError,
                 onClick = {
-                    onSave(
+                    state.onSave(
                         ContactInfo(
                             name = firstName,
                             surname = lastName.ifBlank { null },
@@ -223,7 +220,7 @@ fun ContactCollectionScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             OutlinedButton(
-                onClick = onSkip,
+                onClick = state.onSkip,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)

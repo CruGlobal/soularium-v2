@@ -65,42 +65,34 @@ private const val TOTAL_CARDS = 50
 private const val TWO_ROUND_QUESTION_MAX = 2
 
 /**
- * Core image-selection screen for a single selection round.
- *
- * This composable is fully stateless — [selectedCardIds] drives displayed
- * selection state and [onToggleCard] reports a tap. The caller owns the
- * selection logic and validity rules.
- *
- * @param questionNumber     1-based question index (1..5).
- * @param selectedCardIds    IDs of cards currently marked as selected.
- * @param isConfirmEnabled   whether the Confirm button should be enabled;
- *                           the caller derives this from the count rules.
- * @param onToggleCard       called with the card id (1..50) when a card is tapped.
- * @param onConfirm          called when the user taps the enabled Confirm button.
- * @param modifier           optional [Modifier] applied to the root [Surface].
+ * UI state for the Selection sub-layout — drives a single image-selection
+ * round. `isConfirmEnabled` is computed by the Presenter from the per-question
+ * count rules; the Layout doesn't enforce them itself.
  */
+data class SelectionUiState(
+    val questionNumber: Int,
+    val round: Int,
+    val selectedCardIds: List<Int>,
+    val isConfirmEnabled: Boolean,
+    val onToggleCard: (Int) -> Unit,
+    val onConfirm: () -> Unit,
+)
+
 @Composable
-fun SelectionScreen(
-    questionNumber: Int,
-    round: Int,
-    selectedCardIds: List<Int>,
-    isConfirmEnabled: Boolean,
-    onToggleCard: (Int) -> Unit,
-    onConfirm: () -> Unit,
+fun SelectionLayout(
+    state: SelectionUiState,
     modifier: Modifier = Modifier,
 ) {
-    val isTwoRoundQuestion = questionNumber <= TWO_ROUND_QUESTION_MAX
-    val selectionPrompt = stringResource(questionSelectionRes(questionNumber))
-    // Round 1 of a two-round question is a *wide* pick (>= requiredImageCount + 1);
-    // round 2 narrows to exactly the required count. One-round questions pick one.
+    val isTwoRoundQuestion = state.questionNumber <= TWO_ROUND_QUESTION_MAX
+    val selectionPrompt = stringResource(questionSelectionRes(state.questionNumber))
     val chooseLabel = stringResource(
         when {
             !isTwoRoundQuestion -> Res.string.selection_choose_1
-            round >= 2 -> Res.string.selection_choose_3
+            state.round >= 2 -> Res.string.selection_choose_3
             else -> Res.string.selection_choose_wide
         },
     )
-    val selectedCountLabel = stringResource(Res.string.selection_x_selected, selectedCardIds.size)
+    val selectedCountLabel = stringResource(Res.string.selection_x_selected, state.selectedCardIds.size)
     val confirmLabel = stringResource(Res.string.action_confirm)
     val finishPicksLabel = stringResource(Res.string.selection_finish_picks)
 
@@ -115,10 +107,9 @@ fun SelectionScreen(
                 .navigationBarsPadding(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // Header section
             SelectionHeader(
                 isTwoRoundQuestion = isTwoRoundQuestion,
-                round = round,
+                round = state.round,
                 selectionPrompt = selectionPrompt,
                 chooseLabel = chooseLabel,
                 selectedCountLabel = selectedCountLabel,
@@ -128,7 +119,6 @@ fun SelectionScreen(
                     .padding(top = 16.dp, bottom = 8.dp),
             )
 
-            // Card grid
             LazyVerticalGrid(
                 columns = GridCells.Fixed(CARD_GRID_COLUMNS),
                 modifier = Modifier
@@ -140,19 +130,18 @@ fun SelectionScreen(
             ) {
                 items(TOTAL_CARDS) { index ->
                     val cardId = index + 1
-                    val isSelected = cardId in selectedCardIds
+                    val isSelected = cardId in state.selectedCardIds
                     SelectableCardItem(
                         cardId = cardId,
                         isSelected = isSelected,
-                        onToggle = { onToggleCard(cardId) },
+                        onToggle = { state.onToggleCard(cardId) },
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Hint text when confirm is not yet available
-            if (!isConfirmEnabled) {
+            if (!state.isConfirmEnabled) {
                 Text(
                     text = finishPicksLabel,
                     style = MaterialTheme.typography.bodySmall,
@@ -165,10 +154,9 @@ fun SelectionScreen(
                 Spacer(modifier = Modifier.height(4.dp))
             }
 
-            // Confirm button
             Button(
-                onClick = onConfirm,
-                enabled = isConfirmEnabled,
+                onClick = state.onConfirm,
+                enabled = state.isConfirmEnabled,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)

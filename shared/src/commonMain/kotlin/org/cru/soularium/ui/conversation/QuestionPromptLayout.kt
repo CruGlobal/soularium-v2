@@ -35,37 +35,29 @@ import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * Subscreen shown when a participant is about to answer a question.
- *
- * Displays the "Question N of [totalQuestions]" label, the question prompt, and
- * — prominently when [isGroup] is true — the active participant's name formatted
- * as "Alright, [name]. Your turn."  A single primary button lets the user begin
- * image selection.
- *
- * This is a stateless composable. No ViewModel, no navigation logic.
- *
- * @param questionNumber     1-based index of the current question (1..5).
- * @param totalQuestions     total number of questions in this session (usually 5).
- * @param participantName    name of the participant whose turn it is.
- * @param isGroup            true when there are multiple participants; the name
- *                           greeting is shown only in group sessions.
- * @param onBegin            called when the user taps the "Ready" button.
+ * UI state for the QuestionPrompt sub-layout — shown when a participant is
+ * about to answer a question. `isGroup` controls whether the personal greeting
+ * is displayed; the Presenter derives it from participant count.
  */
+data class QuestionPromptUiState(
+    val questionNumber: Int,
+    val totalQuestions: Int,
+    val participantName: String,
+    val isGroup: Boolean,
+    val onBegin: () -> Unit,
+)
+
 @Composable
-fun QuestionPromptScreen(
-    questionNumber: Int,
-    totalQuestions: Int,
-    participantName: String,
-    isGroup: Boolean,
-    onBegin: () -> Unit,
+fun QuestionPromptLayout(
+    state: QuestionPromptUiState,
     modifier: Modifier = Modifier,
 ) {
-    val accentColor = QuestionProgressColors.getOrElse(questionNumber - 1) {
+    val accentColor = QuestionProgressColors.getOrElse(state.questionNumber - 1) {
         QuestionProgressColors.first()
     }
 
-    val questionLabel = stringResource(Res.string.question_index, questionNumber, totalQuestions)
-    val promptText = stringResource(questionPromptResource(questionNumber))
+    val questionLabel = stringResource(Res.string.question_index, state.questionNumber, state.totalQuestions)
+    val promptText = stringResource(questionPromptResource(state.questionNumber))
     val readyLabel = stringResource(Res.string.action_ready)
 
     Surface(
@@ -88,7 +80,6 @@ fun QuestionPromptScreen(
                     .padding(top = 48.dp, bottom = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                // "Question N of 5" label
                 Text(
                     text = questionLabel,
                     style = MaterialTheme.typography.labelLarge,
@@ -99,10 +90,9 @@ fun QuestionPromptScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Group greeting — "Alright, Name.\nYour turn."
-                if (isGroup) {
+                if (state.isGroup) {
                     Text(
-                        text = stringResource(Res.string.your_turn, participantName),
+                        text = stringResource(Res.string.your_turn, state.participantName),
                         style = MaterialTheme.typography.headlineLarge,
                         color = MaterialTheme.colorScheme.onBackground,
                         textAlign = TextAlign.Center,
@@ -112,7 +102,6 @@ fun QuestionPromptScreen(
                     Spacer(modifier = Modifier.height(32.dp))
                 }
 
-                // Question prompt text
                 Text(
                     text = promptText,
                     style = MaterialTheme.typography.titleLarge,
@@ -122,9 +111,8 @@ fun QuestionPromptScreen(
                 )
             }
 
-            // Primary action button
             Button(
-                onClick = onBegin,
+                onClick = state.onBegin,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
@@ -141,7 +129,6 @@ fun QuestionPromptScreen(
     }
 }
 
-/** Returns the [StringResource] for the prompt of the given 1-based [questionNumber]. */
 private fun questionPromptResource(questionNumber: Int): StringResource = when (questionNumber) {
     1 -> Res.string.q1_prompt
     2 -> Res.string.q2_prompt

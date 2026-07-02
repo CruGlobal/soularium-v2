@@ -62,29 +62,20 @@ data class ParticipantSummary(
 )
 
 /**
- * End-of-conversation summary ("Life in Pictures") screen.
- *
- * Shows each participant's 9-card mosaic with share / add-contact actions.
- * Multiple participants are separated by a [TabRow]; a single participant is
- * shown directly without a tab bar.
- *
- * This composable is stateless except for the locally-remembered selected tab.
- * No ViewModel, no DI, no navigation. All actions are delegated to callers.
- *
- * @param participants  one entry per participant, in order.
- * @param onShare       called with [ParticipantSummary.participantIndex] when the
- *                      Share button is tapped for that participant.
- * @param onAddContact  called with [ParticipantSummary.participantIndex] when the
- *                      "Save Conversation" button is tapped for that participant.
- * @param onDone        called when the user taps the Done button.
- * @param modifier      optional [Modifier] applied to the root [Surface].
+ * UI state for the Summary sub-layout — the end-of-conversation "Life in
+ * Pictures" view. `onShare` and `onAddContact` are called with the participant
+ * index from the currently visible summary.
  */
+data class SummaryUiState(
+    val participants: List<ParticipantSummary>,
+    val onShare: (Int) -> Unit,
+    val onAddContact: (Int) -> Unit,
+    val onDone: () -> Unit,
+)
+
 @Composable
-fun SummaryScreen(
-    participants: List<ParticipantSummary>,
-    onShare: (Int) -> Unit,
-    onAddContact: (Int) -> Unit,
-    onDone: () -> Unit,
+fun SummaryLayout(
+    state: SummaryUiState,
     modifier: Modifier = Modifier,
 ) {
     var selectedTabIndex by remember { mutableIntStateOf(0) }
@@ -101,10 +92,9 @@ fun SummaryScreen(
                 .statusBarsPadding()
                 .navigationBarsPadding(),
         ) {
-            // Tab bar — only shown when there are multiple participants
-            if (participants.size > 1) {
+            if (state.participants.size > 1) {
                 TabRow(selectedTabIndex = selectedTabIndex) {
-                    participants.forEachIndexed { index, participant ->
+                    state.participants.forEachIndexed { index, participant ->
                         Tab(
                             selected = selectedTabIndex == index,
                             onClick = { selectedTabIndex = index },
@@ -119,22 +109,20 @@ fun SummaryScreen(
                 }
             }
 
-            // Participant content — scrollable area
-            if (participants.isNotEmpty()) {
-                val current = participants[selectedTabIndex.coerceIn(0, participants.lastIndex)]
+            if (state.participants.isNotEmpty()) {
+                val current = state.participants[selectedTabIndex.coerceIn(0, state.participants.lastIndex)]
                 ParticipantSummaryContent(
                     participant = current,
-                    onShare = { onShare(current.participantIndex) },
-                    onAddContact = { onAddContact(current.participantIndex) },
+                    onShare = { state.onShare(current.participantIndex) },
+                    onAddContact = { state.onAddContact(current.participantIndex) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
                 )
             }
 
-            // Done button — pinned to the bottom outside the scroll area
             Button(
-                onClick = onDone,
+                onClick = state.onDone,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp)
@@ -152,9 +140,6 @@ fun SummaryScreen(
     }
 }
 
-/**
- * Scrollable content for a single participant's summary panel.
- */
 @Composable
 private fun ParticipantSummaryContent(
     participant: ParticipantSummary,
@@ -173,7 +158,6 @@ private fun ParticipantSummaryContent(
             .padding(horizontal = 24.dp, vertical = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // "That's a Wrap" flourish
         Text(
             text = stringResource(Res.string.summary_thats_a_wrap),
             style = MaterialTheme.typography.labelLarge,
@@ -184,7 +168,6 @@ private fun ParticipantSummaryContent(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // "Great talking with you today!" body text
         Text(
             text = stringResource(Res.string.summary_great_talking),
             style = MaterialTheme.typography.bodyMedium,
@@ -195,7 +178,6 @@ private fun ParticipantSummaryContent(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Participant heading — "%s's Life In Pictures"
         Text(
             text = headingText,
             style = MaterialTheme.typography.headlineSmall,
@@ -206,7 +188,6 @@ private fun ParticipantSummaryContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 3×3 card mosaic
         CardMosaic(
             cardIds = participant.cardIds,
             modifier = Modifier.fillMaxWidth(),
@@ -214,7 +195,6 @@ private fun ParticipantSummaryContent(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Share prompt and button
         Text(
             text = sharePromptText,
             style = MaterialTheme.typography.bodyMedium,
@@ -225,7 +205,6 @@ private fun ParticipantSummaryContent(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Share button
         Button(
             onClick = onShare,
             modifier = Modifier
@@ -241,7 +220,6 @@ private fun ParticipantSummaryContent(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Add contact / Save Conversation button
         OutlinedButton(
             onClick = onAddContact,
             modifier = Modifier
@@ -257,11 +235,6 @@ private fun ParticipantSummaryContent(
     }
 }
 
-/**
- * Renders up to 9 card thumbnails in a 3-column grid.
- *
- * Empty slots (fewer than 9 picks) are skipped; the grid simply has fewer rows.
- */
 @Composable
 private fun CardMosaic(
     cardIds: List<Int>,
@@ -293,7 +266,6 @@ private fun CardMosaic(
                                 .aspectRatio(1f),
                         )
                     } else {
-                        // Empty placeholder to preserve grid alignment
                         Spacer(modifier = Modifier.weight(1f))
                     }
                 }

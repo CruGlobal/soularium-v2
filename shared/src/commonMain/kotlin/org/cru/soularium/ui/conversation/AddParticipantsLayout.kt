@@ -36,6 +36,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import org.cru.soularium.domain.session.SessionState
 import org.cru.soularium.generated.resources.Res
 import org.cru.soularium.generated.resources.action_add
 import org.cru.soularium.generated.resources.cta_continue
@@ -47,26 +48,21 @@ import org.cru.soularium.generated.resources.participants_title
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * First subscreen of the conversation flow. Shown when [SessionState] is
- * [SessionState.AddingParticipants].
- *
- * This is a stateless composable — the participant list is passed in via
- * [participantNames]; only the transient text-field value is held locally.
- *
- * @param participantNames current list of names that have been added.
- * @param onAddParticipant called with a trimmed, non-blank name when the user
- *   confirms the text field.
- * @param onRemoveParticipant called with the 0-based index of the chip to remove.
- * @param onConfirm called when the user taps Continue (only enabled when the
- *   list is non-empty).
+ * UI state for the AddParticipants sub-layout — shown when the session is in
+ * [SessionState.AddingParticipants]. The Presenter constructs this with
+ * callbacks wired to its event sink; the Layout is a stateless renderer.
  */
+data class AddParticipantsUiState(
+    val participantNames: List<String>,
+    val onAddParticipant: (String) -> Unit,
+    val onRemoveParticipant: (Int) -> Unit,
+    val onConfirm: () -> Unit,
+)
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun AddParticipantsScreen(
-    participantNames: List<String>,
-    onAddParticipant: (String) -> Unit,
-    onRemoveParticipant: (Int) -> Unit,
-    onConfirm: () -> Unit,
+fun AddParticipantsLayout(
+    state: AddParticipantsUiState,
     modifier: Modifier = Modifier,
 ) {
     var nameInput by remember { mutableStateOf("") }
@@ -75,12 +71,12 @@ fun AddParticipantsScreen(
     val continueLabel = stringResource(Res.string.cta_continue)
 
     val canAdd = nameInput.isNotBlank()
-    val canContinue = participantNames.isNotEmpty()
+    val canContinue = state.participantNames.isNotEmpty()
 
     fun submitName() {
         val trimmed = nameInput.trim()
         if (trimmed.isNotEmpty()) {
-            onAddParticipant(trimmed)
+            state.onAddParticipant(trimmed)
             nameInput = ""
         }
     }
@@ -146,7 +142,7 @@ fun AddParticipantsScreen(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // Participant chips or empty hint
-                if (participantNames.isEmpty()) {
+                if (state.participantNames.isEmpty()) {
                     Text(
                         text = stringResource(Res.string.participants_empty),
                         style = MaterialTheme.typography.bodyMedium,
@@ -159,7 +155,7 @@ fun AddParticipantsScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        participantNames.forEachIndexed { index, name ->
+                        state.participantNames.forEachIndexed { index, name ->
                             val removeDesc = stringResource(Res.string.participants_remove_action, name)
                             FilterChip(
                                 selected = false,
@@ -167,7 +163,7 @@ fun AddParticipantsScreen(
                                 label = { Text(text = name, style = MaterialTheme.typography.labelLarge) },
                                 trailingIcon = {
                                     IconButton(
-                                        onClick = { onRemoveParticipant(index) },
+                                        onClick = { state.onRemoveParticipant(index) },
                                         modifier = Modifier.semantics { contentDescription = removeDesc },
                                     ) {
                                         Icon(
@@ -184,7 +180,7 @@ fun AddParticipantsScreen(
             }
 
             Button(
-                onClick = onConfirm,
+                onClick = state.onConfirm,
                 enabled = canContinue,
                 modifier = Modifier
                     .fillMaxWidth()

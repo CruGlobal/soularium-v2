@@ -327,7 +327,7 @@ Scan changed files for `@Deprecated` usages. Flag each as a **Minor Issue** (⚠
 ### PR Hygiene
 
 - [ ] No unrelated auto-formatter whitespace changes mixed into the diff (check with `git diff main...HEAD --stat` — flag files with churn that don't match the stated PR scope)
-- [ ] `google-services.json`, `GoogleService-Info.plist`, and `local.properties` are NOT committed — these are gitignored for a reason
+- [ ] Firebase config files (`google-services.json`, `GoogleService-Info.plist`) are deliberately **committed** — they carry client keys that are not secrets (see CLAUDE.md Key Conventions); do NOT flag them. `local.properties` and signing keystores (`*.jks`, `*.keystore`) remain gitignored — those must never be committed
 - [ ] Crowdin-managed translation files are not hand-edited (changes will be overwritten by the next download)
 - [ ] Schema export JSONs in `module/db/schemas/` are committed alongside the corresponding `@Database` version bump
 

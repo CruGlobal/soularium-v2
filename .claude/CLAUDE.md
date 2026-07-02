@@ -295,5 +295,8 @@ author may dismiss severity < 7 findings.
 - User-visible strings come from Compose Multiplatform resources
   (`stringResource(Res.string.*)`), never inline literals. Source strings live in
   `shared/src/commonMain/composeResources/values/strings.xml`.
-- Firebase config files (`google-services.json`, `GoogleService-Info.plist`) and
-  `local.properties` are gitignored — never commit them.
+- Firebase config files (`google-services.json` in `androidApp/`,
+  `GoogleService-Info.plist` in `iosApp/`) are committed to the repo — they carry the
+  `soularium-985bf` project's client keys, which are not secrets (they ship inside the
+  distributed app and are guarded by Firebase security rules / App Check). `local.properties`
+  and signing keystores (`*.jks`, `*.keystore`) remain gitignored — never commit those.

@@ -38,7 +38,3 @@ fastlane/test_output/
 # Secrets
 *.keystore
 *.jks
-google-services.json
-GoogleService-Info.plist
-!**/example.google-services.json
-!**/example.GoogleService-Info.plist

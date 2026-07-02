@@ -3,6 +3,9 @@ package org.cru.soularium.ui.conversation
 import app.cash.turbine.ReceiveTurbine
 import com.slack.circuit.test.FakeNavigator
 import com.slack.circuit.test.test
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,9 +33,6 @@ import org.cru.soularium.domain.session.SessionEvent
 import org.cru.soularium.domain.session.SessionState
 import org.cru.soularium.ui.nav.ConversationScreen
 import org.cru.soularium.ui.screens.PastConversationsPresenter
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 /**
  * End-to-end smoke tests for the conversation flow.
@@ -426,7 +426,8 @@ private class InMemorySessionRepository : SessionRepository {
         refresh()
     }
 
-    override suspend fun loadConversations(sessionId: SessionId): List<Conversation> = conversations[sessionId].orEmpty()
+    override suspend fun loadConversations(sessionId: SessionId): List<Conversation> =
+        conversations[sessionId].orEmpty()
 
     private fun refresh() {
         completed.value = completedIds.mapNotNull { sessions[it] }

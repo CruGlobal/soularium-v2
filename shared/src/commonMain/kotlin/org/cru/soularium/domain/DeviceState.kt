@@ -8,8 +8,4 @@ package org.cru.soularium.domain
  * @param locale       the user's chosen locale code (e.g. `en`, `zh-Hans`),
  *                     or `null` to follow the OS locale.
  */
-data class DeviceState(
-    val hasSeenIntro: Boolean = false,
-    val agreedToTos: Boolean = false,
-    val locale: String? = null,
-)
+data class DeviceState(val hasSeenIntro: Boolean = false, val agreedToTos: Boolean = false, val locale: String? = null)

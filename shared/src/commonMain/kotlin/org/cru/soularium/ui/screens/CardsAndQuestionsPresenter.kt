@@ -13,13 +13,10 @@ import dev.zacsweers.metro.AssistedInject
 import org.cru.soularium.ui.nav.CardsAndQuestionsScreen
 
 @AssistedInject
-class CardsAndQuestionsPresenter(
-    @Assisted private val navigator: Navigator,
-) : Presenter<CardsAndQuestionsPresenter.UiState> {
+class CardsAndQuestionsPresenter(@Assisted private val navigator: Navigator) :
+    Presenter<CardsAndQuestionsPresenter.UiState> {
 
-    data class UiState(
-        val eventSink: (UiEvent) -> Unit,
-    ) : CircuitUiState
+    data class UiState(val eventSink: (UiEvent) -> Unit) : CircuitUiState
 
     sealed interface UiEvent : CircuitUiEvent {
         data object Back : UiEvent

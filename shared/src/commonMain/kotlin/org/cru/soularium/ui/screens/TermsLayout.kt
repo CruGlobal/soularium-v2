@@ -39,10 +39,7 @@ import org.jetbrains.compose.resources.stringResource
  */
 @CircuitInject(TermsScreen::class, AppScope::class)
 @Composable
-fun TermsLayout(
-    state: TermsPresenter.UiState,
-    modifier: Modifier = Modifier,
-) {
+fun TermsLayout(state: TermsPresenter.UiState, modifier: Modifier = Modifier) {
     val scrollState = rememberScrollState()
     val agreeLabel = stringResource(Res.string.action_agree)
     val backLabel = stringResource(Res.string.action_back)

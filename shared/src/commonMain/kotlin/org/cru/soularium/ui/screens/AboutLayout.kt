@@ -48,10 +48,7 @@ import org.jetbrains.compose.resources.stringResource
 @OptIn(ExperimentalMaterial3Api::class)
 @CircuitInject(AboutScreen::class, AppScope::class)
 @Composable
-fun AboutLayout(
-    state: AboutPresenter.UiState,
-    modifier: Modifier = Modifier,
-) {
+fun AboutLayout(state: AboutPresenter.UiState, modifier: Modifier = Modifier) {
     val backLabel = stringResource(Res.string.action_back)
 
     Scaffold(
@@ -141,10 +138,7 @@ fun AboutLayout(
 }
 
 @Composable
-private fun SectionHeading(
-    text: String,
-    modifier: Modifier = Modifier,
-) {
+private fun SectionHeading(text: String, modifier: Modifier = Modifier) {
     Text(
         text = text,
         style = MaterialTheme.typography.titleSmall,
@@ -154,10 +148,7 @@ private fun SectionHeading(
 }
 
 @Composable
-private fun SectionBody(
-    text: String,
-    modifier: Modifier = Modifier,
-) {
+private fun SectionBody(text: String, modifier: Modifier = Modifier) {
     Text(
         text = text,
         style = MaterialTheme.typography.bodyLarge,
@@ -167,11 +158,7 @@ private fun SectionBody(
 }
 
 @Composable
-private fun TipItem(
-    title: String,
-    body: String,
-    modifier: Modifier = Modifier,
-) {
+private fun TipItem(title: String, body: String, modifier: Modifier = Modifier) {
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
             text = title,

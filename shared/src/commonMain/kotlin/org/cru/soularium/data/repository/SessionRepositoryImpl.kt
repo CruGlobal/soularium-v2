@@ -4,6 +4,8 @@ import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
+import kotlin.time.Clock
+import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.encodeToString
@@ -24,8 +26,6 @@ import org.cru.soularium.domain.SessionId
 import org.cru.soularium.domain.SessionKind
 import org.cru.soularium.domain.ports.SessionRepository
 import org.cru.soularium.domain.session.SessionState
-import kotlin.time.Clock
-import kotlin.time.Instant
 
 @Inject
 @SingleIn(AppScope::class)
@@ -37,22 +37,18 @@ class SessionRepositoryImpl(
 ) : SessionRepository {
     private val json: Json = Json { ignoreUnknownKeys = true }
 
-    override suspend fun createSession(
-        session: Session,
-        initialState: SessionState,
-    ): SessionId {
+    override suspend fun createSession(session: Session, initialState: SessionState): SessionId {
         sessionDao.upsert(session.toEntity(initialState))
         return session.id
     }
 
     override suspend fun loadSession(id: SessionId): Session? = sessionDao.byId(id.value)?.toDomain()
 
-    override suspend fun loadState(id: SessionId): SessionState? = sessionDao.byId(id.value)?.let { json.decodeFromString<SessionState>(it.stateSnapshotJson) }
+    override suspend fun loadState(id: SessionId): SessionState? = sessionDao.byId(id.value)?.let {
+        json.decodeFromString<SessionState>(it.stateSnapshotJson)
+    }
 
-    override suspend fun persistState(
-        id: SessionId,
-        state: SessionState,
-    ) {
+    override suspend fun persistState(id: SessionId, state: SessionState) {
         val current = sessionDao.byId(id.value) ?: return
         // Reaching Concluded ends the session, so it surfaces under
         // Past Conversations → Completed (which filters on ended_at).
@@ -70,10 +66,7 @@ class SessionRepositoryImpl(
         )
     }
 
-    override suspend fun setBookmarked(
-        id: SessionId,
-        bookmarked: Boolean,
-    ) {
+    override suspend fun setBookmarked(id: SessionId, bookmarked: Boolean) {
         val current = sessionDao.byId(id.value) ?: return
         val bookmarkedAt = if (bookmarked) Clock.System.now().toEpochMilliseconds() else null
         sessionDao.upsert(current.copy(bookmarkedAt = bookmarkedAt))
@@ -84,10 +77,7 @@ class SessionRepositoryImpl(
         sessionDao.upsert(current.copy(endedAt = Clock.System.now().toEpochMilliseconds()))
     }
 
-    override suspend fun upsertParticipants(
-        sessionId: SessionId,
-        names: List<String>,
-    ): List<ConversationId> {
+    override suspend fun upsertParticipants(sessionId: SessionId, names: List<String>): List<ConversationId> {
         val existing = conversationDao.forSession(sessionId.value)
         val keptIds = mutableListOf<ConversationId>()
         names.forEachIndexed { index, name ->
@@ -114,10 +104,7 @@ class SessionRepositoryImpl(
         return keptIds
     }
 
-    override suspend fun upsertContact(
-        conversationId: ConversationId,
-        info: ContactInfo,
-    ) {
+    override suspend fun upsertContact(conversationId: ConversationId, info: ContactInfo) {
         val current = conversationDao.byId(conversationId.value) ?: return
         conversationDao.upsert(
             current.copy(
@@ -151,17 +138,27 @@ class SessionRepositoryImpl(
         cardPickDao.replaceRound(conversationId.value, questionNumber, isFinal, entities)
     }
 
-    override suspend fun loadPicks(conversationId: ConversationId): List<CardPick> = cardPickDao.forConversation(conversationId.value).map { it.toDomain() }
+    override suspend fun loadPicks(conversationId: ConversationId): List<CardPick> =
+        cardPickDao.forConversation(conversationId.value).map {
+            it.toDomain()
+        }
 
-    override fun observeCompletedSessions(): Flow<List<Session>> = sessionDao.observeCompleted().map { list -> list.map { it.toDomain() } }
+    override fun observeCompletedSessions(): Flow<List<Session>> = sessionDao.observeCompleted().map { list ->
+        list.map { it.toDomain() }
+    }
 
-    override fun observeBookmarkedSessions(): Flow<List<Session>> = sessionDao.observeBookmarked().map { list -> list.map { it.toDomain() } }
+    override fun observeBookmarkedSessions(): Flow<List<Session>> = sessionDao.observeBookmarked().map { list ->
+        list.map { it.toDomain() }
+    }
 
     override suspend fun deleteSession(id: SessionId) {
         sessionDao.delete(id.value)
     }
 
-    override suspend fun loadConversations(sessionId: SessionId): List<Conversation> = conversationDao.forSession(sessionId.value).map { it.toDomain() }
+    override suspend fun loadConversations(sessionId: SessionId): List<Conversation> =
+        conversationDao.forSession(sessionId.value).map {
+            it.toDomain()
+        }
 
     private fun Session.toEntity(state: SessionState) = SessionEntity(
         id = id.value,

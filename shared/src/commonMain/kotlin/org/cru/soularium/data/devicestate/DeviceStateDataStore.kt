@@ -9,4 +9,5 @@ import okio.Path.Companion.toPath
 internal const val DEVICE_STATE_FILE = "soularium_device_state.preferences_pb"
 
 /** Builds a preferences [DataStore] at the absolute path returned by [producePath]. */
-internal fun preferenceDataStoreAt(producePath: () -> String): DataStore<Preferences> = PreferenceDataStoreFactory.createWithPath(produceFile = { producePath().toPath() })
+internal fun preferenceDataStoreAt(producePath: () -> String): DataStore<Preferences> =
+    PreferenceDataStoreFactory.createWithPath(produceFile = { producePath().toPath() })

@@ -159,10 +159,7 @@ fun DiscussingLayout(
 }
 
 @Composable
-private fun SingleCardImage(
-    cardId: Int,
-    modifier: Modifier = Modifier,
-) {
+private fun SingleCardImage(cardId: Int, modifier: Modifier = Modifier) {
     Image(
         painter = painterResource(CardImages.full(cardId)),
         contentDescription = stringResource(Res.string.cd_card_thumb, cardId),
@@ -172,10 +169,7 @@ private fun SingleCardImage(
 }
 
 @Composable
-private fun MultiCardPager(
-    cardIds: List<Int>,
-    modifier: Modifier = Modifier,
-) {
+private fun MultiCardPager(cardIds: List<Int>, modifier: Modifier = Modifier) {
     val pagerState = rememberPagerState(pageCount = { cardIds.size })
     val currentPage = pagerState.currentPage
     val totalPages = cardIds.size

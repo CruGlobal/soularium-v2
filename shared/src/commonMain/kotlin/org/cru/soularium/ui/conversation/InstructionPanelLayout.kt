@@ -50,10 +50,7 @@ import org.jetbrains.compose.resources.stringResource
  * @param onDismiss called when the user taps "Got It".
  */
 @Composable
-fun InstructionPanelLayout(
-    onDismiss: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+fun InstructionPanelLayout(onDismiss: () -> Unit, modifier: Modifier = Modifier) {
     val gotItLabel = stringResource(Res.string.action_got_it)
 
     Surface(

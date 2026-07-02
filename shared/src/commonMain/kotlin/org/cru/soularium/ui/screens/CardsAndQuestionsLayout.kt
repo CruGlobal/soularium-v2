@@ -75,10 +75,7 @@ private const val TAB_QUESTIONS = 1
 @OptIn(ExperimentalMaterial3Api::class)
 @CircuitInject(CardsAndQuestionsScreen::class, AppScope::class)
 @Composable
-fun CardsAndQuestionsLayout(
-    state: CardsAndQuestionsPresenter.UiState,
-    modifier: Modifier = Modifier,
-) {
+fun CardsAndQuestionsLayout(state: CardsAndQuestionsPresenter.UiState, modifier: Modifier = Modifier) {
     val backLabel = stringResource(Res.string.action_back)
     var selectedTab by remember { mutableIntStateOf(TAB_IMAGES) }
     var viewerCardId by remember { mutableStateOf<Int?>(null) }
@@ -163,10 +160,7 @@ fun CardsAndQuestionsLayout(
 }
 
 @Composable
-private fun CardsGrid(
-    onCardTap: (Int) -> Unit,
-    modifier: Modifier = Modifier,
-) {
+private fun CardsGrid(onCardTap: (Int) -> Unit, modifier: Modifier = Modifier) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(CARD_GRID_COLUMNS),
         modifier = modifier.padding(4.dp),
@@ -184,11 +178,7 @@ private fun CardsGrid(
 }
 
 @Composable
-private fun CardThumbnailItem(
-    cardId: Int,
-    onTap: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+private fun CardThumbnailItem(cardId: Int, onTap: () -> Unit, modifier: Modifier = Modifier) {
     val contentDesc = stringResource(Res.string.cards_card_number, cardId)
     Image(
         painter = painterResource(CardImages.thumb(cardId)),
@@ -202,9 +192,7 @@ private fun CardThumbnailItem(
 }
 
 @Composable
-private fun QuestionsList(
-    modifier: Modifier = Modifier,
-) {
+private fun QuestionsList(modifier: Modifier = Modifier) {
     val questions = remember { Questions.all }
     LazyColumn(modifier = modifier) {
         items(questions) { question ->
@@ -215,10 +203,7 @@ private fun QuestionsList(
 }
 
 @Composable
-private fun QuestionItem(
-    question: Question,
-    modifier: Modifier = Modifier,
-) {
+private fun QuestionItem(question: Question, modifier: Modifier = Modifier) {
     val promptRes = questionPromptRes(question.number)
     Column(
         modifier = modifier
@@ -249,11 +234,7 @@ private fun questionPromptRes(questionNumber: Int): StringResource = when (quest
 }
 
 @Composable
-private fun CardFullScreenViewer(
-    cardId: Int,
-    onDismiss: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+private fun CardFullScreenViewer(cardId: Int, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
     val contentDesc = stringResource(Res.string.cards_card_number, cardId)
     val closeLabel = stringResource(Res.string.action_back)
 

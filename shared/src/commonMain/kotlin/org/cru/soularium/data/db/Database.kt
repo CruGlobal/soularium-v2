@@ -11,10 +11,11 @@ import androidx.sqlite.execSQL
  * connection must opt in via this callback. Without it, deleting a session
  * would orphan its conversations and card picks instead of cascading.
  */
-internal fun RoomDatabase.Builder<SoulariumDatabase>.withForeignKeysEnabled(): RoomDatabase.Builder<SoulariumDatabase> = addCallback(
-    object : RoomDatabase.Callback() {
-        override fun onOpen(connection: SQLiteConnection) {
-            connection.execSQL("PRAGMA foreign_keys = ON")
-        }
-    },
-)
+internal fun RoomDatabase.Builder<SoulariumDatabase>.withForeignKeysEnabled(): RoomDatabase.Builder<SoulariumDatabase> =
+    addCallback(
+        object : RoomDatabase.Callback() {
+            override fun onOpen(connection: SQLiteConnection) {
+                connection.execSQL("PRAGMA foreign_keys = ON")
+            }
+        },
+    )

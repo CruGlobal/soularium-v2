@@ -22,13 +22,8 @@ import org.cru.soularium.domain.ports.Sharer
 @Inject
 @SingleIn(AppScope::class)
 @ContributesBinding(AppScope::class)
-class AndroidSharer(
-    private val context: Context,
-) : Sharer {
-    override suspend fun share(
-        text: String,
-        subject: String?,
-    ): ShareResult = try {
+class AndroidSharer(private val context: Context) : Sharer {
+    override suspend fun share(text: String, subject: String?): ShareResult = try {
         val sendIntent =
             Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"

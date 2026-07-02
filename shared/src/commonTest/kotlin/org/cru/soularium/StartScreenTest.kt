@@ -1,11 +1,11 @@
 package org.cru.soularium
 
+import kotlin.test.Test
+import kotlin.test.assertEquals
 import org.cru.soularium.domain.DeviceState
 import org.cru.soularium.ui.nav.HomeScreen
 import org.cru.soularium.ui.nav.IntroScreen
 import org.cru.soularium.ui.nav.TermsScreen
-import kotlin.test.Test
-import kotlin.test.assertEquals
 
 /**
  * Verifies the launch-time routing rules previously housed in DeviceStateViewModel:

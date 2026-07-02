@@ -1,5 +1,10 @@
 package org.cru.soularium.data.repository
 
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
 import org.cru.soularium.data.db.SoulariumDatabase
 import org.cru.soularium.data.db.inMemorySoulariumDatabase
@@ -7,11 +12,6 @@ import org.cru.soularium.domain.SessionId
 import org.cru.soularium.domain.SessionKind
 import org.cru.soularium.domain.newSession
 import org.cru.soularium.domain.session.SessionState
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
 
 class SessionRepositoryImplTest {
     private fun newRepo(): Pair<SoulariumDatabase, SessionRepositoryImpl> {

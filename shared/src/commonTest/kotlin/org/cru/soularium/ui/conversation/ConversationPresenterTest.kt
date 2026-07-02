@@ -3,6 +3,10 @@ package org.cru.soularium.ui.conversation
 import app.cash.turbine.ReceiveTurbine
 import com.slack.circuit.test.FakeNavigator
 import com.slack.circuit.test.test
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,10 +29,6 @@ import org.cru.soularium.domain.session.QuestionActivity
 import org.cru.soularium.domain.session.SessionEvent
 import org.cru.soularium.domain.session.SessionState
 import org.cru.soularium.ui.nav.ConversationScreen
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 
 @RunOnAndroidWith(AndroidJUnit4::class)
 class ConversationPresenterTest {
@@ -223,13 +223,16 @@ private class FakeSessionRepository : SessionRepository {
 
     override suspend fun loadPicks(conversationId: ConversationId): List<CardPick> = emptyList()
 
-    override fun observeCompletedSessions(): Flow<List<Session>> = MutableStateFlow<List<Session>>(emptyList()).asStateFlow()
+    override fun observeCompletedSessions(): Flow<List<Session>> =
+        MutableStateFlow<List<Session>>(emptyList()).asStateFlow()
 
-    override fun observeBookmarkedSessions(): Flow<List<Session>> = MutableStateFlow<List<Session>>(emptyList()).asStateFlow()
+    override fun observeBookmarkedSessions(): Flow<List<Session>> =
+        MutableStateFlow<List<Session>>(emptyList()).asStateFlow()
 
     override suspend fun deleteSession(id: SessionId) = Unit
 
-    override suspend fun loadConversations(sessionId: SessionId): List<Conversation> = preloadedConversations[sessionId].orEmpty()
+    override suspend fun loadConversations(sessionId: SessionId): List<Conversation> =
+        preloadedConversations[sessionId].orEmpty()
 }
 
 private class RecordingAnalytics : AnalyticsTracker {

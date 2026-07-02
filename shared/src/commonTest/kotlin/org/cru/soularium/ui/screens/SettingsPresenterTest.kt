@@ -2,6 +2,8 @@ package org.cru.soularium.ui.screens
 
 import com.slack.circuit.test.FakeNavigator
 import com.slack.circuit.test.test
+import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
@@ -12,8 +14,6 @@ import org.cru.soularium.domain.DeviceState
 import org.cru.soularium.domain.ports.DeviceStateRepository
 import org.cru.soularium.ui.nav.HomeScreen
 import org.cru.soularium.ui.nav.SettingsScreen
-import kotlin.test.Test
-import kotlin.test.assertEquals
 
 @RunOnAndroidWith(AndroidJUnit4::class)
 class SettingsPresenterTest {

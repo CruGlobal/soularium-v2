@@ -14,13 +14,9 @@ import org.cru.soularium.ui.nav.ResourcesScreen
 import org.cru.soularium.ui.nav.TermsScreen
 
 @AssistedInject
-class ResourcesPresenter(
-    @Assisted private val navigator: Navigator,
-) : Presenter<ResourcesPresenter.UiState> {
+class ResourcesPresenter(@Assisted private val navigator: Navigator) : Presenter<ResourcesPresenter.UiState> {
 
-    data class UiState(
-        val eventSink: (UiEvent) -> Unit,
-    ) : CircuitUiState
+    data class UiState(val eventSink: (UiEvent) -> Unit) : CircuitUiState
 
     sealed interface UiEvent : CircuitUiEvent {
         data object Back : UiEvent

@@ -19,10 +19,11 @@ import org.cru.soularium.data.devicestate.preferenceDataStoreAt
 interface AndroidDataBindings {
     companion object {
         @Provides
-        internal fun providesDatabaseBuilder(context: Context): RoomDatabase.Builder<SoulariumDatabase> = Room.databaseBuilder<SoulariumDatabase>(
-            context = context,
-            name = context.getDatabasePath("soularium.db").absolutePath,
-        )
+        internal fun providesDatabaseBuilder(context: Context): RoomDatabase.Builder<SoulariumDatabase> =
+            Room.databaseBuilder<SoulariumDatabase>(
+                context = context,
+                name = context.getDatabasePath("soularium.db").absolutePath,
+            )
 
         @Provides
         @SingleIn(AppScope::class)

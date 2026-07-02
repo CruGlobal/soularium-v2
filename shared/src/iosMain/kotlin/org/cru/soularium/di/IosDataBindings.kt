@@ -22,7 +22,8 @@ import platform.Foundation.NSUserDomainMask
 interface IosDataBindings {
     companion object {
         @Provides
-        internal fun providesDatabaseBuilder(): RoomDatabase.Builder<SoulariumDatabase> = Room.databaseBuilder<SoulariumDatabase>(name = documentDirectory() + "/soularium.db")
+        internal fun providesDatabaseBuilder(): RoomDatabase.Builder<SoulariumDatabase> =
+            Room.databaseBuilder<SoulariumDatabase>(name = documentDirectory() + "/soularium.db")
 
         @Provides
         @SingleIn(AppScope::class)

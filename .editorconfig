@@ -1,10 +1,14 @@
 root = true
 
+[*]
+insert_final_newline = true
+
 [*.{kt,kts}]
-# Use the IntelliJ IDEA code style rather than ktlint_official. The official
-# style adds highly opinionated function-signature / expression-wrapping rules
-# that fight conventional Kotlin and Compose code; intellij_idea keeps the
-# rules that matter (indentation, imports, naming, trailing commas).
-ktlint_code_style = intellij_idea
-# Composable functions are PascalCase by Compose convention.
+ij_kotlin_allow_trailing_comma = true
+ij_kotlin_allow_trailing_comma_on_call_site = true
+ktlint_code_style = android_studio
 ktlint_function_naming_ignore_when_annotated_with = Composable
+ktlint_standard_spacing-between-declarations-with-annotations = disabled
+ktlint_standard_trailing-comma-on-call-site = disabled
+ktlint_standard_trailing-comma-on-declaration-site = disabled
+max_line_length = 120

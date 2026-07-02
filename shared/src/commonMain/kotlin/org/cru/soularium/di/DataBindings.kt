@@ -39,6 +39,7 @@ interface DataBindings {
 
         @Provides
         @SingleIn(AppScope::class)
-        fun providesDeviceStateRepository(dataStore: DataStore<Preferences>): DeviceStateRepository = DeviceStateRepositoryImpl(dataStore)
+        fun providesDeviceStateRepository(dataStore: DataStore<Preferences>): DeviceStateRepository =
+            DeviceStateRepositoryImpl(dataStore)
     }
 }

@@ -328,18 +328,19 @@ class ConversationPresenter(
     }
 
     /** Loads each participant's final 9 picks for the Summary screen. */
-    private suspend fun loadSummaries(): List<ParticipantSummary> = sessionRepository.loadConversations(screen.sessionId).map { conversation ->
-        val cardIds =
-            sessionRepository.loadPicks(conversation.id)
-                .filter { it.isFinal }
-                .sortedWith(compareBy({ it.questionNumber }, { it.pickOrder }))
-                .map { it.cardId }
-        ParticipantSummary(
-            participantIndex = conversation.displayOrder,
-            name = conversation.contact.name,
-            cardIds = cardIds,
-        )
-    }
+    private suspend fun loadSummaries(): List<ParticipantSummary> =
+        sessionRepository.loadConversations(screen.sessionId).map { conversation ->
+            val cardIds =
+                sessionRepository.loadPicks(conversation.id)
+                    .filter { it.isFinal }
+                    .sortedWith(compareBy({ it.questionNumber }, { it.pickOrder }))
+                    .map { it.cardId }
+            ParticipantSummary(
+                participantIndex = conversation.displayOrder,
+                name = conversation.contact.name,
+                cardIds = cardIds,
+            )
+        }
 
     private suspend fun applyEffects(effects: List<Effect>) {
         for (effect in effects) {
@@ -390,8 +391,9 @@ class ConversationPresenter(
  * the user restarts that question cleanly instead of landing on an empty
  * selection.
  */
-private fun snapBackToPromptIfMidQuestion(state: SessionState): SessionState = if (state is SessionState.InQuestion && state.activity != QuestionActivity.ShowingPrompt) {
-    state.copy(activity = QuestionActivity.ShowingPrompt)
-} else {
-    state
-}
+private fun snapBackToPromptIfMidQuestion(state: SessionState): SessionState =
+    if (state is SessionState.InQuestion && state.activity != QuestionActivity.ShowingPrompt) {
+        state.copy(activity = QuestionActivity.ShowingPrompt)
+    } else {
+        state
+    }

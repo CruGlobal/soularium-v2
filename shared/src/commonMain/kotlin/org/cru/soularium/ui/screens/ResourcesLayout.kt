@@ -73,11 +73,7 @@ sealed interface ResourceAction {
  * @param label  Short descriptive line shown below the header.
  * @param action What happens when the row is tapped.
  */
-data class ResourceLink(
-    val header: String,
-    val label: String,
-    val action: ResourceAction,
-)
+data class ResourceLink(val header: String, val label: String, val action: ResourceAction)
 
 /**
  * Resources screen — a [LazyColumn] of [ResourceLink] rows. Each row either
@@ -87,10 +83,7 @@ data class ResourceLink(
 @OptIn(ExperimentalMaterial3Api::class)
 @CircuitInject(ResourcesScreen::class, AppScope::class)
 @Composable
-fun ResourcesLayout(
-    state: ResourcesPresenter.UiState,
-    modifier: Modifier = Modifier,
-) {
+fun ResourcesLayout(state: ResourcesPresenter.UiState, modifier: Modifier = Modifier) {
     val uriHandler = LocalUriHandler.current
 
     val mySoulariumHeader = stringResource(Res.string.resource_mysoularium_header)
@@ -220,11 +213,7 @@ fun ResourcesLayout(
 }
 
 @Composable
-private fun ResourceRow(
-    resource: ResourceLink,
-    onTap: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+private fun ResourceRow(resource: ResourceLink, onTap: () -> Unit, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .fillMaxWidth()

@@ -3,10 +3,16 @@
   "extends": [
     "config:recommended"
   ],
+  "automerge": true,
+  "automergeStrategy": "squash",
   "dependencyDashboard": true,
   "labels": [
     "dependencies"
   ],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "automerge": true
+  },
   "packageRules": [
     {
       "groupName": "Compose Multiplatform",

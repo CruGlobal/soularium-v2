@@ -24,7 +24,6 @@ import org.cru.soularium.domain.SessionId
 import org.cru.soularium.domain.SessionKind
 import org.cru.soularium.domain.content.Questions
 import org.cru.soularium.domain.ports.AnalyticsTracker
-import org.cru.soularium.domain.ports.CrashReporter
 import org.cru.soularium.domain.ports.SessionRepository
 import org.cru.soularium.domain.ports.ShareResult
 import org.cru.soularium.domain.ports.Sharer
@@ -209,7 +208,7 @@ class ConversationFlowTest {
 
         val pastScreen = org.cru.soularium.ui.nav.PastConversationsScreen
         val pastNavigator = FakeNavigator(pastScreen)
-        val past = PastConversationsPresenter(pastNavigator, repo, SilentCrash)
+        val past = PastConversationsPresenter(pastNavigator, repo)
         past.test {
             val withRow = awaitStable { it.completed.size == 1 }
             assertEquals(sessionId, withRow.completed.single().sessionId)
@@ -232,7 +231,6 @@ class ConversationFlowTest {
         screen = screen,
         sessionRepository = repo,
         analytics = SilentAnalytics,
-        crashReporter = SilentCrash,
         sharer = sharer,
     )
 }
@@ -446,9 +444,4 @@ private class RecordingSharer : Sharer {
 private object SilentAnalytics : AnalyticsTracker {
     override fun screenView(screenName: String) = Unit
     override fun event(name: String, params: Map<String, Any>) = Unit
-}
-
-private object SilentCrash : CrashReporter {
-    override fun recordNonFatal(throwable: Throwable, breadcrumb: String?) = Unit
-    override fun setKey(key: String, value: String) = Unit
 }

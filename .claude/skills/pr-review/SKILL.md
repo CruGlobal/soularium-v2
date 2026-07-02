@@ -143,7 +143,7 @@ The project enforces layering by package convention inside the single `:shared` 
 
 - [ ] Models are `@Serializable` (kotlinx.serialization) — required for state-snapshot persistence and share-link generation
 - [ ] ID wrappers (`SessionId`, `ConversationId`, etc.) are `@Serializable @JvmInline value class` over UUID strings
-- [ ] Ports (`ContentRepository`, `SessionRepository`, `DeviceStateRepository`, `AnalyticsTracker`, `CrashReporter`, `Sharer`) are defined as interfaces in `domain/ports/` — cross-platform implementations live in `data`; platform-specific implementations live in `androidMain`/`iosMain` (e.g. `AndroidSharer`, `IosSharer`) and are bound via `@ContributesBinding(AppScope::class)`
+- [ ] Ports (`ContentRepository`, `SessionRepository`, `DeviceStateRepository`, `AnalyticsTracker`, `Sharer`) are defined as interfaces in `domain/ports/` — cross-platform implementations live in `data`; platform-specific implementations live in `androidMain`/`iosMain` (e.g. `AndroidSharer`, `IosSharer`) and are bound via `@ContributesBinding(AppScope::class)`. (Crash/error reporting is NOT a port — code logs through the global Kermit `Logger`; see Kotlin Code Quality below)
 - [ ] `transition(state, event, ctx)` in `domain/session/` is **pure** — no I/O, no suspending calls, no `Dispatchers.*`. Side effects are returned as `Effect` data for the Presenter to execute
 - [ ] New `SessionEvent` variants are added to the sealed hierarchy and handled exhaustively in `transition()` (no `else ->` swallowing)
 - [ ] Errors surface via `TransitionResult.error` (`DomainError` sealed interface) — no `Result<T>` wrapper, no thrown exceptions for control flow
@@ -219,7 +219,7 @@ DI is compile-time via [Metro](https://github.com/ZacSweers/metro). The graph is
 
 - [ ] New impl classes use `@Inject` (constructor or class) and bind to their port via `@ContributesBinding(AppScope::class)`; app-lifetime singletons are scoped with `@SingleIn(AppScope::class)`
 - [ ] Non-constructor-injectable types (Room database/DAOs, factory-built domain services like `createDeviceStateRepository()`) go through `@Provides` inside a `@BindingContainer @ContributesTo(AppScope::class)` interface — see `DataBindings.kt`
-- [ ] Platform-specific bindings live in `expect class PlatformBindings` actuals. Android actual takes `(context: Context)` and provides it as `@Provides @SingleIn(AppScope::class) internal val context`; iOS actual is empty (Sharer/AnalyticsTracker/CrashReporter impls are common with `@ContributesBinding`)
+- [ ] Platform-specific bindings live in `expect class PlatformBindings` actuals. Android actual takes `(context: Context)` and provides it as `@Provides @SingleIn(AppScope::class) internal val context`; iOS actual is empty (Sharer/AnalyticsTracker impls are common with `@ContributesBinding`). Platform Kermit console writers are contributed into the `Set<LogWriter>` multibinding via separate `AndroidLoggingBindings` (`@ElementsIntoSet`, logcat on debuggable builds) / `IosLoggingBindings` (`@IntoSet`, NSLog) — not on `PlatformBindings`
 - [ ] Set multibindings (`Set<Presenter.Factory>`, `Set<Ui.Factory>`) declared with `@Multibinds(allowEmpty = true)` in `CircuitBindings`; new factories contributed via `@Provides @IntoSet` or `@ContributesIntoSet(AppScope::class)`
 - [ ] New graph accessors on `SoulariumAppGraph` are added ONLY when the consumer is the Compose root (`App.kt` is the only call site today) — everything else takes deps via `@Inject` constructor params, not via the graph
 - [ ] New screens add a `Screen` to `ui/nav/Screens.kt`; the Presenter+Layout `@CircuitInject` annotations drive factory codegen — no manual factory registration. Presenter deps come from the graph via `@Inject` constructor params
@@ -259,7 +259,7 @@ DI is compile-time via [Metro](https://github.com/ZacSweers/metro). The graph is
 
 ### Kotlin Code Quality
 
-- [ ] Logging goes through the injected `CrashReporter` / `AnalyticsTracker` ports — no `println`, no Android `Log.*`, no `System.out.println`
+- [ ] Logging/crash reporting goes through the global Kermit `Logger` (a per-file `private val logger = Logger.withTag("<Name>")`, error paths call `logger.e(throwable) { "breadcrumb" }`) and analytics through the injected `AnalyticsTracker` port — no `println`, no Android `Log.*`, no `System.out.println`. The `Logger` is bootstrapped once via `LoggingBindings.Accessors.configureLogging()`; `CrashlyticsLogWriter` (GitLive `firebase-crashlytics`) is the crash sink and stays inert until the Firebase config files land
 - [ ] Exception handling catches specific types — bare `catch (e: Exception)` / `catch (t: Throwable)` is flagged unless catching all is intentional
 - [ ] Multi-branch conditionals on sealed types use `when` (exhaustive, no `else ->` swallowing additions)
 - [ ] Visibility is intentional: `internal` for module-scoped symbols, `private` where possible — sealed UI/Domain types in particular should not leak public when `internal` suffices

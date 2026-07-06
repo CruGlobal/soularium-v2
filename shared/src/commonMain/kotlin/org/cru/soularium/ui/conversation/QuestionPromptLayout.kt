@@ -17,8 +17,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import org.cru.soularium.generated.resources.Res
@@ -46,9 +44,7 @@ fun QuestionPromptLayout(state: ConversationPresenter.UiState.QuestionPrompt, mo
         QuestionProgressColors.first()
     }
 
-    val questionLabel = stringResource(Res.string.question_index, questionNumber, state.totalQuestions)
     val promptText = stringResource(questionPromptResource(questionNumber))
-    val readyLabel = stringResource(Res.string.action_ready)
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -72,7 +68,7 @@ fun QuestionPromptLayout(state: ConversationPresenter.UiState.QuestionPrompt, mo
             ) {
                 // "Question N of 5" label
                 Text(
-                    text = questionLabel,
+                    text = stringResource(Res.string.question_index, questionNumber, state.totalQuestions),
                     style = MaterialTheme.typography.labelLarge,
                     color = accentColor,
                     textAlign = TextAlign.Center,
@@ -110,10 +106,9 @@ fun QuestionPromptLayout(state: ConversationPresenter.UiState.QuestionPrompt, mo
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
-                    .semantics { contentDescription = readyLabel },
             ) {
                 Text(
-                    text = readyLabel,
+                    text = stringResource(Res.string.action_ready),
                     style = MaterialTheme.typography.labelLarge,
                 )
             }

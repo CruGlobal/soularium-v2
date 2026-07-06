@@ -24,8 +24,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -57,8 +55,6 @@ fun DiscussingLayout(state: ConversationPresenter.UiState.Discussing, modifier: 
     val questionNumber = state.questionNumber
     val participantName = state.participantName
     val cardIds = state.cardIds
-    val discussLabel = stringResource(Res.string.discuss_instructions)
-    val doneLabel = stringResource(Res.string.action_done)
     val discussionPrompt = stringResource(questionDiscussionResource(questionNumber))
 
     Surface(
@@ -84,7 +80,7 @@ fun DiscussingLayout(state: ConversationPresenter.UiState.Discussing, modifier: 
             ) {
                 // "DISCUSS" label
                 Text(
-                    text = discussLabel,
+                    text = stringResource(Res.string.discuss_instructions),
                     style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.primary,
                     textAlign = TextAlign.Center,
@@ -130,10 +126,9 @@ fun DiscussingLayout(state: ConversationPresenter.UiState.Discussing, modifier: 
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
-                    .semantics { contentDescription = doneLabel },
             ) {
                 Text(
-                    text = doneLabel,
+                    text = stringResource(Res.string.action_done),
                     style = MaterialTheme.typography.labelLarge,
                 )
             }

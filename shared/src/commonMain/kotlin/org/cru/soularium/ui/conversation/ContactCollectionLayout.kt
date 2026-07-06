@@ -24,8 +24,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -72,8 +70,6 @@ fun ContactCollectionLayout(state: ConversationPresenter.UiState.CollectingConta
 
     val scrollState = rememberScrollState()
 
-    val saveLabel = stringResource(Res.string.action_save)
-    val skipLabel = stringResource(Res.string.action_skip_for_now)
     val invalidPhoneMessage = stringResource(Res.string.contact_invalid_phone)
 
     Surface(
@@ -202,10 +198,9 @@ fun ContactCollectionLayout(state: ConversationPresenter.UiState.CollectingConta
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
-                    .semantics { contentDescription = saveLabel },
             ) {
                 Text(
-                    text = saveLabel,
+                    text = stringResource(Res.string.action_save),
                     style = MaterialTheme.typography.labelLarge,
                 )
             }
@@ -217,10 +212,9 @@ fun ContactCollectionLayout(state: ConversationPresenter.UiState.CollectingConta
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
-                    .semantics { contentDescription = skipLabel },
             ) {
                 Text(
-                    text = skipLabel,
+                    text = stringResource(Res.string.action_skip_for_now),
                     style = MaterialTheme.typography.labelLarge,
                 )
             }

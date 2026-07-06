@@ -87,8 +87,6 @@ fun SelectionLayout(state: ConversationPresenter.UiState.Selection, modifier: Mo
         },
     )
     val selectedCountLabel = stringResource(Res.string.selection_x_selected, selectedCardIds.size)
-    val confirmLabel = stringResource(Res.string.action_confirm)
-    val finishPicksLabel = stringResource(Res.string.selection_finish_picks)
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -140,7 +138,7 @@ fun SelectionLayout(state: ConversationPresenter.UiState.Selection, modifier: Mo
             // Hint text when confirm is not yet available
             if (!isConfirmEnabled) {
                 Text(
-                    text = finishPicksLabel,
+                    text = stringResource(Res.string.selection_finish_picks),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -159,10 +157,9 @@ fun SelectionLayout(state: ConversationPresenter.UiState.Selection, modifier: Mo
                     .fillMaxWidth()
                     .height(52.dp)
                     .padding(horizontal = 24.dp)
-                    .semantics { contentDescription = confirmLabel },
             ) {
                 Text(
-                    text = confirmLabel,
+                    text = stringResource(Res.string.action_confirm),
                     style = MaterialTheme.typography.labelLarge,
                 )
             }

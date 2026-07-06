@@ -30,8 +30,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import org.cru.soularium.generated.resources.Res
@@ -65,8 +63,6 @@ data class ParticipantSummary(val participantIndex: Int, val name: String, val c
 fun SummaryLayout(state: ConversationPresenter.UiState.Summary, modifier: Modifier = Modifier) {
     val participants = state.participants
     var selectedTabIndex by remember { mutableIntStateOf(0) }
-
-    val doneLabel = stringResource(Res.string.action_done)
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -122,10 +118,9 @@ fun SummaryLayout(state: ConversationPresenter.UiState.Summary, modifier: Modifi
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp)
                     .sizeIn(minHeight = 48.dp)
-                    .semantics { contentDescription = doneLabel },
             ) {
                 Text(
-                    text = doneLabel,
+                    text = stringResource(Res.string.action_done),
                     style = MaterialTheme.typography.labelLarge,
                 )
             }
@@ -147,8 +142,6 @@ private fun ParticipantSummaryContent(
 ) {
     val headingText = stringResource(Res.string.summary_title, participant.name)
     val sharePromptText = stringResource(Res.string.summary_share_prompt, participant.name)
-    val shareLabel = stringResource(Res.string.action_share)
-    val saveLabel = stringResource(Res.string.contact_save_conversation)
 
     Column(
         modifier = modifier
@@ -214,10 +207,9 @@ private fun ParticipantSummaryContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .sizeIn(minHeight = 48.dp)
-                .semantics { contentDescription = shareLabel },
         ) {
             Text(
-                text = shareLabel,
+                text = stringResource(Res.string.action_share),
                 style = MaterialTheme.typography.labelLarge,
             )
         }
@@ -230,10 +222,9 @@ private fun ParticipantSummaryContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .sizeIn(minHeight = 48.dp)
-                .semantics { contentDescription = saveLabel },
         ) {
             Text(
-                text = saveLabel,
+                text = stringResource(Res.string.contact_save_conversation),
                 style = MaterialTheme.typography.labelLarge,
             )
         }

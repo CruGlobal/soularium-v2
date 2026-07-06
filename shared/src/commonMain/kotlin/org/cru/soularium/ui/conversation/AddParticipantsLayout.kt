@@ -58,9 +58,6 @@ fun AddParticipantsLayout(state: ConversationPresenter.UiState.AddingParticipant
     val participantNames = state.participantNames
     var nameInput by remember { mutableStateOf("") }
 
-    val addLabel = stringResource(Res.string.action_add)
-    val continueLabel = stringResource(Res.string.cta_continue)
-
     val canAdd = nameInput.isNotBlank()
     val canContinue = participantNames.isNotEmpty()
 
@@ -119,12 +116,10 @@ fun AddParticipantsLayout(state: ConversationPresenter.UiState.AddingParticipant
                     Button(
                         onClick = { submitName() },
                         enabled = canAdd,
-                        modifier = Modifier
-                            .height(52.dp)
-                            .semantics { contentDescription = addLabel },
+                        modifier = Modifier.height(52.dp),
                     ) {
                         Text(
-                            text = addLabel,
+                            text = stringResource(Res.string.action_add),
                             style = MaterialTheme.typography.labelLarge,
                         )
                     }
@@ -182,10 +177,9 @@ fun AddParticipantsLayout(state: ConversationPresenter.UiState.AddingParticipant
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
-                    .semantics { contentDescription = continueLabel },
             ) {
                 Text(
-                    text = continueLabel,
+                    text = stringResource(Res.string.cta_continue),
                     style = MaterialTheme.typography.labelLarge,
                 )
             }

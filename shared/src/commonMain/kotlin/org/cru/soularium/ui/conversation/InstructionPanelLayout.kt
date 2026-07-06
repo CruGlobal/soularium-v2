@@ -19,8 +19,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -43,8 +41,6 @@ import org.jetbrains.compose.resources.stringResource
  */
 @Composable
 fun InstructionPanelLayout(state: ConversationPresenter.UiState.Instructions, modifier: Modifier = Modifier) {
-    val gotItLabel = stringResource(Res.string.action_got_it)
-
     Surface(
         modifier = modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background,
@@ -111,10 +107,9 @@ fun InstructionPanelLayout(state: ConversationPresenter.UiState.Instructions, mo
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(52.dp)
-                            .semantics { contentDescription = gotItLabel },
                     ) {
                         Text(
-                            text = gotItLabel,
+                            text = stringResource(Res.string.action_got_it),
                             style = MaterialTheme.typography.labelLarge,
                         )
                     }

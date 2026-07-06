@@ -23,8 +23,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import org.cru.soularium.generated.resources.Res
@@ -51,8 +49,6 @@ import org.jetbrains.compose.resources.stringResource
 fun FinalizingLayout(state: ConversationPresenter.UiState.Finalizing, modifier: Modifier = Modifier) {
     val questionNumber = state.questionNumber
     val cardIds = state.cardIds
-    val confirmLabel = stringResource(Res.string.action_confirm)
-    val changeSelectionLabel = stringResource(Res.string.action_change_selection)
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -145,10 +141,9 @@ fun FinalizingLayout(state: ConversationPresenter.UiState.Finalizing, modifier: 
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
-                    .semantics { contentDescription = confirmLabel },
             ) {
                 Text(
-                    text = confirmLabel,
+                    text = stringResource(Res.string.action_confirm),
                     style = MaterialTheme.typography.labelLarge,
                 )
             }
@@ -161,10 +156,9 @@ fun FinalizingLayout(state: ConversationPresenter.UiState.Finalizing, modifier: 
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
-                    .semantics { contentDescription = changeSelectionLabel },
             ) {
                 Text(
-                    text = changeSelectionLabel,
+                    text = stringResource(Res.string.action_change_selection),
                     style = MaterialTheme.typography.labelLarge,
                 )
             }

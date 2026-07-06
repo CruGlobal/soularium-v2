@@ -56,15 +56,6 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun AddParticipantsLayout(state: ConversationPresenter.UiState.AddingParticipants, modifier: Modifier = Modifier) {
     val participantNames = state.participantNames
-    val onAddParticipant: (String) -> Unit = { name ->
-        state.eventSink(ConversationPresenter.UiEvent.AddingParticipants.AddParticipant(name))
-    }
-    val onRemoveParticipant: (Int) -> Unit = { index ->
-        state.eventSink(ConversationPresenter.UiEvent.AddingParticipants.RemoveParticipant(index))
-    }
-    val onConfirm: () -> Unit = {
-        state.eventSink(ConversationPresenter.UiEvent.AddingParticipants.Confirm)
-    }
     var nameInput by remember { mutableStateOf("") }
 
     val addLabel = stringResource(Res.string.action_add)
@@ -76,7 +67,7 @@ fun AddParticipantsLayout(state: ConversationPresenter.UiState.AddingParticipant
     fun submitName() {
         val trimmed = nameInput.trim()
         if (trimmed.isNotEmpty()) {
-            onAddParticipant(trimmed)
+            state.eventSink(ConversationPresenter.UiEvent.AddingParticipants.AddParticipant(trimmed))
             nameInput = ""
         }
     }
@@ -163,7 +154,13 @@ fun AddParticipantsLayout(state: ConversationPresenter.UiState.AddingParticipant
                                 label = { Text(text = name, style = MaterialTheme.typography.labelLarge) },
                                 trailingIcon = {
                                     IconButton(
-                                        onClick = { onRemoveParticipant(index) },
+                                        onClick = {
+                                            state.eventSink(
+                                                ConversationPresenter.UiEvent.AddingParticipants.RemoveParticipant(
+                                                    index,
+                                                ),
+                                            )
+                                        },
                                         modifier = Modifier.semantics { contentDescription = removeDesc },
                                     ) {
                                         Icon(
@@ -180,7 +177,7 @@ fun AddParticipantsLayout(state: ConversationPresenter.UiState.AddingParticipant
             }
 
             Button(
-                onClick = onConfirm,
+                onClick = { state.eventSink(ConversationPresenter.UiEvent.AddingParticipants.Confirm) },
                 enabled = canContinue,
                 modifier = Modifier
                     .fillMaxWidth()

@@ -75,12 +75,6 @@ fun SelectionLayout(state: ConversationPresenter.UiState.Selection, modifier: Mo
     val round = state.round
     val selectedCardIds = state.selectedCardIds
     val isConfirmEnabled = state.isConfirmEnabled
-    val onToggleCard: (Int) -> Unit = { cardId ->
-        state.eventSink(ConversationPresenter.UiEvent.Selection.ToggleCard(cardId))
-    }
-    val onConfirm: () -> Unit = {
-        state.eventSink(ConversationPresenter.UiEvent.Selection.Confirm)
-    }
     val isTwoRoundQuestion = questionNumber <= TWO_ROUND_QUESTION_MAX
     val selectionPrompt = stringResource(questionSelectionRes(questionNumber))
     // Round 1 of a two-round question is a *wide* pick (>= requiredImageCount + 1);
@@ -136,7 +130,7 @@ fun SelectionLayout(state: ConversationPresenter.UiState.Selection, modifier: Mo
                     SelectableCardItem(
                         cardId = cardId,
                         isSelected = isSelected,
-                        onToggle = { onToggleCard(cardId) },
+                        onToggle = { state.eventSink(ConversationPresenter.UiEvent.Selection.ToggleCard(cardId)) },
                     )
                 }
             }
@@ -159,7 +153,7 @@ fun SelectionLayout(state: ConversationPresenter.UiState.Selection, modifier: Mo
 
             // Confirm button
             Button(
-                onClick = onConfirm,
+                onClick = { state.eventSink(ConversationPresenter.UiEvent.Selection.Confirm) },
                 enabled = isConfirmEnabled,
                 modifier = Modifier
                     .fillMaxWidth()

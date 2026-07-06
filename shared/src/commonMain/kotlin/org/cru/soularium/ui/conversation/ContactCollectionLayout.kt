@@ -62,12 +62,6 @@ fun isPhoneValid(phone: String): Boolean {
  */
 @Composable
 fun ContactCollectionLayout(state: ConversationPresenter.UiState.CollectingContact, modifier: Modifier = Modifier) {
-    val onSave: (ContactInfo) -> Unit = { info ->
-        state.eventSink(ConversationPresenter.UiEvent.CollectingContact.Save(info))
-    }
-    val onSkip: () -> Unit = {
-        state.eventSink(ConversationPresenter.UiEvent.CollectingContact.Skip)
-    }
     var firstName by remember { mutableStateOf(state.participantName) }
     var lastName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -193,13 +187,15 @@ fun ContactCollectionLayout(state: ConversationPresenter.UiState.CollectingConta
             Button(
                 enabled = !phoneError,
                 onClick = {
-                    onSave(
-                        ContactInfo(
-                            name = firstName,
-                            surname = lastName.ifBlank { null },
-                            email = email.ifBlank { null },
-                            phone = phone.ifBlank { null },
-                            notes = notes.ifBlank { null },
+                    state.eventSink(
+                        ConversationPresenter.UiEvent.CollectingContact.Save(
+                            ContactInfo(
+                                name = firstName,
+                                surname = lastName.ifBlank { null },
+                                email = email.ifBlank { null },
+                                phone = phone.ifBlank { null },
+                                notes = notes.ifBlank { null },
+                            ),
                         ),
                     )
                 },
@@ -217,7 +213,7 @@ fun ContactCollectionLayout(state: ConversationPresenter.UiState.CollectingConta
             Spacer(modifier = Modifier.height(12.dp))
 
             OutlinedButton(
-                onClick = onSkip,
+                onClick = { state.eventSink(ConversationPresenter.UiEvent.CollectingContact.Skip) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)

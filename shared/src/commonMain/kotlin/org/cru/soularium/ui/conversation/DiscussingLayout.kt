@@ -60,9 +60,6 @@ fun DiscussingLayout(state: ConversationPresenter.UiState.Discussing, modifier: 
     val discussLabel = stringResource(Res.string.discuss_instructions)
     val doneLabel = stringResource(Res.string.action_done)
     val discussionPrompt = stringResource(questionDiscussionResource(questionNumber))
-    val onDone: () -> Unit = {
-        state.eventSink(ConversationPresenter.UiEvent.Discussing.Done)
-    }
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -129,7 +126,7 @@ fun DiscussingLayout(state: ConversationPresenter.UiState.Discussing, modifier: 
 
             // "Done" primary action
             Button(
-                onClick = onDone,
+                onClick = { state.eventSink(ConversationPresenter.UiEvent.Discussing.Done) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)

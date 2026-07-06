@@ -49,9 +49,6 @@ fun QuestionPromptLayout(state: ConversationPresenter.UiState.QuestionPrompt, mo
     val questionLabel = stringResource(Res.string.question_index, questionNumber, state.totalQuestions)
     val promptText = stringResource(questionPromptResource(questionNumber))
     val readyLabel = stringResource(Res.string.action_ready)
-    val onBegin: () -> Unit = {
-        state.eventSink(ConversationPresenter.UiEvent.QuestionPrompt.BeginSelection)
-    }
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -109,7 +106,7 @@ fun QuestionPromptLayout(state: ConversationPresenter.UiState.QuestionPrompt, mo
 
             // Primary action button
             Button(
-                onClick = onBegin,
+                onClick = { state.eventSink(ConversationPresenter.UiEvent.QuestionPrompt.BeginSelection) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)

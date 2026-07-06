@@ -64,15 +64,6 @@ data class ParticipantSummary(val participantIndex: Int, val name: String, val c
 @Composable
 fun SummaryLayout(state: ConversationPresenter.UiState.Summary, modifier: Modifier = Modifier) {
     val participants = state.participants
-    val onShare: (Int) -> Unit = { index ->
-        state.eventSink(ConversationPresenter.UiEvent.Summary.Share(index))
-    }
-    val onAddContact: (Int) -> Unit = { index ->
-        state.eventSink(ConversationPresenter.UiEvent.Summary.StartCollectingContact(index))
-    }
-    val onDone: () -> Unit = {
-        state.eventSink(ConversationPresenter.UiEvent.Summary.Done)
-    }
     var selectedTabIndex by remember { mutableIntStateOf(0) }
 
     val doneLabel = stringResource(Res.string.action_done)
@@ -110,8 +101,14 @@ fun SummaryLayout(state: ConversationPresenter.UiState.Summary, modifier: Modifi
                 val current = participants[selectedTabIndex.coerceIn(0, participants.lastIndex)]
                 ParticipantSummaryContent(
                     participant = current,
-                    onShare = { onShare(current.participantIndex) },
-                    onAddContact = { onAddContact(current.participantIndex) },
+                    onShare = {
+                        state.eventSink(ConversationPresenter.UiEvent.Summary.Share(current.participantIndex))
+                    },
+                    onAddContact = {
+                        state.eventSink(
+                            ConversationPresenter.UiEvent.Summary.StartCollectingContact(current.participantIndex),
+                        )
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
@@ -120,7 +117,7 @@ fun SummaryLayout(state: ConversationPresenter.UiState.Summary, modifier: Modifi
 
             // Done button — pinned to the bottom outside the scroll area
             Button(
-                onClick = onDone,
+                onClick = { state.eventSink(ConversationPresenter.UiEvent.Summary.Done) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp)

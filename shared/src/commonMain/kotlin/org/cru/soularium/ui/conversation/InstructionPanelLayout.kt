@@ -44,9 +44,6 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun InstructionPanelLayout(state: ConversationPresenter.UiState.Instructions, modifier: Modifier = Modifier) {
     val gotItLabel = stringResource(Res.string.action_got_it)
-    val onDismiss: () -> Unit = {
-        state.eventSink(ConversationPresenter.UiEvent.Instructions.Dismiss)
-    }
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -110,7 +107,7 @@ fun InstructionPanelLayout(state: ConversationPresenter.UiState.Instructions, mo
 
                     // Dismiss button
                     Button(
-                        onClick = onDismiss,
+                        onClick = { state.eventSink(ConversationPresenter.UiEvent.Instructions.Dismiss) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(52.dp)

@@ -53,12 +53,6 @@ fun FinalizingLayout(state: ConversationPresenter.UiState.Finalizing, modifier: 
     val cardIds = state.cardIds
     val confirmLabel = stringResource(Res.string.action_confirm)
     val changeSelectionLabel = stringResource(Res.string.action_change_selection)
-    val onConfirm: () -> Unit = {
-        state.eventSink(ConversationPresenter.UiEvent.Finalizing.Confirm)
-    }
-    val onChangeSelection: () -> Unit = {
-        state.eventSink(ConversationPresenter.UiEvent.Finalizing.ChangeSelection)
-    }
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -147,7 +141,7 @@ fun FinalizingLayout(state: ConversationPresenter.UiState.Finalizing, modifier: 
 
             // Confirm button
             Button(
-                onClick = onConfirm,
+                onClick = { state.eventSink(ConversationPresenter.UiEvent.Finalizing.Confirm) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
@@ -163,7 +157,7 @@ fun FinalizingLayout(state: ConversationPresenter.UiState.Finalizing, modifier: 
 
             // Change-selection button (re-opens the selection screen)
             OutlinedButton(
-                onClick = onChangeSelection,
+                onClick = { state.eventSink(ConversationPresenter.UiEvent.Finalizing.ChangeSelection) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)

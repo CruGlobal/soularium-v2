@@ -17,12 +17,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.slack.circuit.codegen.annotations.CircuitInject
 import dev.zacsweers.metro.AppScope
-import org.cru.soularium.domain.ContactInfo
-import org.cru.soularium.domain.content.Question
-import org.cru.soularium.domain.content.Questions
-import org.cru.soularium.domain.session.QuestionActivity
-import org.cru.soularium.domain.session.SessionEvent
-import org.cru.soularium.domain.session.SessionState
 import org.cru.soularium.generated.resources.Res
 import org.cru.soularium.generated.resources.action_cancel
 import org.cru.soularium.generated.resources.conversation_exit_bookmark
@@ -33,21 +27,19 @@ import org.cru.soularium.platform.PlatformBackHandler
 import org.cru.soularium.ui.nav.ConversationScreen
 import org.jetbrains.compose.resources.stringResource
 
-private const val TOTAL_QUESTIONS = 5
-
 /**
- * The conversation Layout composable: renders one of several subscreens based
- * on the current [SessionState], plus the bookmark/discard exit dialog.
- *
- * Subscreens are stateless callback-driven composables; every callback is
- * routed through [ConversationPresenter.UiEvent] via [state.eventSink].
+ * Renders the page indicated by the presenter's [ConversationPresenter.UiState],
+ * plus the bookmark/discard exit dialog. The Layout owns no business logic:
+ * every variant of the sealed [ConversationPresenter.UiState] arrives with its
+ * props already resolved, and each subscreen handles its own page-specific
+ * events through the shared [ConversationPresenter.UiEvent] hierarchy.
  */
 @CircuitInject(ConversationScreen::class, AppScope::class)
 @Composable
 fun ConversationLayout(state: ConversationPresenter.UiState, modifier: Modifier = Modifier) {
     // Intercept the platform back affordance so leaving mid-conversation is a
     // deliberate choice between bookmarking and discarding progress.
-    PlatformBackHandler(enabled = state.sessionState != SessionState.Concluded) {
+    PlatformBackHandler(enabled = state !is ConversationPresenter.UiState.Loading) {
         state.eventSink(ConversationPresenter.UiEvent.RequestExit)
     }
 
@@ -60,122 +52,23 @@ fun ConversationLayout(state: ConversationPresenter.UiState, modifier: Modifier 
     }
 
     AnimatedContent(
-        targetState = state.sessionState,
+        targetState = state,
         transitionSpec = { fadeIn() togetherWith fadeOut() },
+        contentKey = { it::class },
         modifier = modifier,
     ) { current ->
-        val dispatch: (SessionEvent) -> Unit = { event ->
-            state.eventSink(ConversationPresenter.UiEvent.Dispatch(event))
-        }
         when (current) {
-            SessionState.NotStarted -> ConversationLoading()
-
-            SessionState.AddingParticipants ->
-                AddParticipantsLayout(
-                    participantNames = state.ui.participantNames,
-                    onAddParticipant = { dispatch(SessionEvent.AddParticipant(it)) },
-                    onRemoveParticipant = { dispatch(SessionEvent.RemoveParticipant(it)) },
-                    onConfirm = { dispatch(SessionEvent.ConfirmParticipants) },
-                )
-
-            is SessionState.InQuestion -> {
-                val question = Questions.byNumber(current.questionNumber)
-                val participantName =
-                    state.ui.participantNames.getOrElse(current.activeParticipantIndex) { "" }
-                when (current.activity) {
-                    QuestionActivity.ShowingPrompt ->
-                        QuestionPromptLayout(
-                            questionNumber = current.questionNumber,
-                            totalQuestions = TOTAL_QUESTIONS,
-                            participantName = participantName,
-                            isGroup = state.ui.participantNames.size > 1,
-                            onBegin = { dispatch(SessionEvent.BeginSelection) },
-                        )
-
-                    QuestionActivity.ShowingInstructions ->
-                        InstructionPanelLayout(
-                            onDismiss = { dispatch(SessionEvent.DismissInstructions) },
-                        )
-
-                    QuestionActivity.SelectingRound1,
-                    QuestionActivity.SelectingRound2,
-                    ->
-                        SelectionLayout(
-                            questionNumber = current.questionNumber,
-                            round = if (current.activity == QuestionActivity.SelectingRound2) 2 else 1,
-                            selectedCardIds = state.ui.draftPicks,
-                            isConfirmEnabled = isSelectionValid(question, current.activity, state.ui.draftPicks.size),
-                            onToggleCard = { cardId ->
-                                if (cardId in state.ui.draftPicks) {
-                                    dispatch(SessionEvent.UnpickCard(cardId))
-                                } else {
-                                    dispatch(SessionEvent.PickCard(cardId))
-                                }
-                            },
-                            onConfirm = { dispatch(SessionEvent.ConfirmSelection) },
-                        )
-
-                    QuestionActivity.Finalizing ->
-                        FinalizingLayout(
-                            questionNumber = current.questionNumber,
-                            cardIds = state.ui.draftPicks,
-                            onConfirm = { dispatch(SessionEvent.ConfirmFinal) },
-                            onChangeSelection = { dispatch(SessionEvent.BeginSelection) },
-                        )
-
-                    QuestionActivity.Discussing ->
-                        DiscussingLayout(
-                            questionNumber = current.questionNumber,
-                            participantName = participantName,
-                            cardIds = state.ui.draftPicks,
-                            onDone = { dispatch(SessionEvent.EndDiscussion) },
-                        )
-                }
-            }
-
-            SessionState.Summary ->
-                SummaryLayout(
-                    participants = state.summaries,
-                    onShare = { state.eventSink(ConversationPresenter.UiEvent.Share(it)) },
-                    onAddContact = { index ->
-                        val name = state.ui.participantNames.getOrElse(index) { "" }
-                        state.eventSink(
-                            ConversationPresenter.UiEvent.CollectContact(index, ContactInfo(name)),
-                        )
-                    },
-                    onDone = { dispatch(SessionEvent.Conclude) },
-                )
-
-            is SessionState.CollectingContact ->
-                ContactCollectionLayout(
-                    participantName = state.ui.participantNames.getOrElse(current.participantIndex) { "" },
-                    onSave = {
-                        state.eventSink(
-                            ConversationPresenter.UiEvent.CollectContact(current.participantIndex, it),
-                        )
-                    },
-                    onSkip = { state.eventSink(ConversationPresenter.UiEvent.SkipContact) },
-                )
-
-            SessionState.Concluded -> ConversationLoading()
+            is ConversationPresenter.UiState.Loading -> ConversationLoading()
+            is ConversationPresenter.UiState.AddingParticipants -> AddParticipantsLayout(current)
+            is ConversationPresenter.UiState.QuestionPrompt -> QuestionPromptLayout(current)
+            is ConversationPresenter.UiState.Instructions -> InstructionPanelLayout(current)
+            is ConversationPresenter.UiState.Selection -> SelectionLayout(current)
+            is ConversationPresenter.UiState.Finalizing -> FinalizingLayout(current)
+            is ConversationPresenter.UiState.Discussing -> DiscussingLayout(current)
+            is ConversationPresenter.UiState.Summary -> SummaryLayout(current)
+            is ConversationPresenter.UiState.CollectingContact -> ContactCollectionLayout(current)
         }
     }
-}
-
-/**
- * Mirrors the count rules enforced by the transition function: round 1 of a
- * two-round question needs a wide set, every other round needs exactly the
- * required count.
- */
-private fun isSelectionValid(question: Question, activity: QuestionActivity, count: Int): Boolean = when (activity) {
-    QuestionActivity.SelectingRound1 ->
-        if (question.selectionRounds == 2) {
-            count >= question.requiredImageCount + 1
-        } else {
-            count == question.requiredImageCount
-        }
-    QuestionActivity.SelectingRound2 -> count == question.requiredImageCount
-    else -> false
 }
 
 /**

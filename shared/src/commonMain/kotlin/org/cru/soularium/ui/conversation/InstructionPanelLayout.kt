@@ -19,8 +19,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -33,26 +31,16 @@ import org.jetbrains.compose.resources.stringResource
 
 /**
  * First-time-per-session help panel explaining how image selection works.
- *
- * Rendered as a full-screen surface with a prominent card containing
- * instructions.  Shown once before the first selection round; the caller
- * decides when to display it and hides it when [onDismiss] is invoked.
- *
- * This is a stateless composable. No ViewModel, no navigation logic.
+ * Shown once before the first selection round.
  *
  * NOTE: A dedicated "instructions paragraph" string key (e.g.
- * `instructions_how_to_select`) does not exist in strings.xml.  The body copy
+ * `instructions_how_to_select`) does not exist in strings.xml. The body copy
  * currently uses `selection_navigation_instructions` as the primary instruction
  * text, supplemented by the `selection_choose_3` and `selection_choose_1`
- * badge labels.  If richer instructional copy is needed, add a new string key
- * and replace the body accordingly.
- *
- * @param onDismiss called when the user taps "Got It".
+ * badge labels.
  */
 @Composable
-fun InstructionPanelLayout(onDismiss: () -> Unit, modifier: Modifier = Modifier) {
-    val gotItLabel = stringResource(Res.string.action_got_it)
-
+fun InstructionPanelLayout(state: ConversationPresenter.UiState.Instructions, modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background,
@@ -115,14 +103,13 @@ fun InstructionPanelLayout(onDismiss: () -> Unit, modifier: Modifier = Modifier)
 
                     // Dismiss button
                     Button(
-                        onClick = onDismiss,
+                        onClick = { state.eventSink(ConversationPresenter.UiEvent.Instructions.Dismiss) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(52.dp)
-                            .semantics { contentDescription = gotItLabel },
                     ) {
                         Text(
-                            text = gotItLabel,
+                            text = stringResource(Res.string.action_got_it),
                             style = MaterialTheme.typography.labelLarge,
                         )
                     }

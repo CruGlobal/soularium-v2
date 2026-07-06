@@ -47,32 +47,16 @@ import org.cru.soularium.generated.resources.participants_title
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * First subscreen of the conversation flow. Shown when [SessionState] is
- * [SessionState.AddingParticipants].
+ * First subscreen of the conversation flow. Shown when the presenter exposes
+ * [ConversationPresenter.UiState.AddingParticipants].
  *
- * This is a stateless composable — the participant list is passed in via
- * [participantNames]; only the transient text-field value is held locally.
- *
- * @param participantNames current list of names that have been added.
- * @param onAddParticipant called with a trimmed, non-blank name when the user
- *   confirms the text field.
- * @param onRemoveParticipant called with the 0-based index of the chip to remove.
- * @param onConfirm called when the user taps Continue (only enabled when the
- *   list is non-empty).
+ * Stateless beyond the transient text-field value held locally.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun AddParticipantsLayout(
-    participantNames: List<String>,
-    onAddParticipant: (String) -> Unit,
-    onRemoveParticipant: (Int) -> Unit,
-    onConfirm: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+fun AddParticipantsLayout(state: ConversationPresenter.UiState.AddingParticipants, modifier: Modifier = Modifier) {
+    val participantNames = state.participantNames
     var nameInput by remember { mutableStateOf("") }
-
-    val addLabel = stringResource(Res.string.action_add)
-    val continueLabel = stringResource(Res.string.cta_continue)
 
     val canAdd = nameInput.isNotBlank()
     val canContinue = participantNames.isNotEmpty()
@@ -80,7 +64,7 @@ fun AddParticipantsLayout(
     fun submitName() {
         val trimmed = nameInput.trim()
         if (trimmed.isNotEmpty()) {
-            onAddParticipant(trimmed)
+            state.eventSink(ConversationPresenter.UiEvent.AddingParticipants.AddParticipant(trimmed))
             nameInput = ""
         }
     }
@@ -132,12 +116,10 @@ fun AddParticipantsLayout(
                     Button(
                         onClick = { submitName() },
                         enabled = canAdd,
-                        modifier = Modifier
-                            .height(52.dp)
-                            .semantics { contentDescription = addLabel },
+                        modifier = Modifier.height(52.dp),
                     ) {
                         Text(
-                            text = addLabel,
+                            text = stringResource(Res.string.action_add),
                             style = MaterialTheme.typography.labelLarge,
                         )
                     }
@@ -167,7 +149,13 @@ fun AddParticipantsLayout(
                                 label = { Text(text = name, style = MaterialTheme.typography.labelLarge) },
                                 trailingIcon = {
                                     IconButton(
-                                        onClick = { onRemoveParticipant(index) },
+                                        onClick = {
+                                            state.eventSink(
+                                                ConversationPresenter.UiEvent.AddingParticipants.RemoveParticipant(
+                                                    index,
+                                                ),
+                                            )
+                                        },
                                         modifier = Modifier.semantics { contentDescription = removeDesc },
                                     ) {
                                         Icon(
@@ -184,15 +172,14 @@ fun AddParticipantsLayout(
             }
 
             Button(
-                onClick = onConfirm,
+                onClick = { state.eventSink(ConversationPresenter.UiEvent.AddingParticipants.Confirm) },
                 enabled = canContinue,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
-                    .semantics { contentDescription = continueLabel },
             ) {
                 Text(
-                    text = continueLabel,
+                    text = stringResource(Res.string.cta_continue),
                     style = MaterialTheme.typography.labelLarge,
                 )
             }

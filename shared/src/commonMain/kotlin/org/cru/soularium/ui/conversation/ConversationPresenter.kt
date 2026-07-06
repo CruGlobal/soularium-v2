@@ -21,6 +21,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.cru.soularium.domain.ContactInfo
+import org.cru.soularium.domain.content.Question
+import org.cru.soularium.domain.content.Questions
 import org.cru.soularium.domain.newSession
 import org.cru.soularium.domain.ports.AnalyticsTracker
 import org.cru.soularium.domain.ports.CrashReporter
@@ -35,13 +37,15 @@ import org.cru.soularium.domain.session.transition
 import org.cru.soularium.domain.share.shareUrlFor
 import org.cru.soularium.ui.nav.ConversationScreen
 
+private const val TOTAL_QUESTIONS = 5
+
 /**
  * Volatile per-conversation UI context that doesn't belong on [SessionState]:
  * participant names (loaded into memory), draft / pending picks while the user
  * is selecting cards, and a one-shot flag that the per-session instruction
  * panel has been seen.
  */
-data class ConversationUiContext(
+internal data class ConversationUiContext(
     val participantNames: List<String> = emptyList(),
     val draftPicks: List<Int> = emptyList(),
     val roundFinals: List<Int> = emptyList(),
@@ -58,28 +62,130 @@ class ConversationPresenter(
     private val sharer: Sharer,
 ) : Presenter<ConversationPresenter.UiState> {
 
-    data class UiState(
-        val sessionState: SessionState,
-        val ui: ConversationUiContext,
-        val summaries: List<ParticipantSummary>,
-        val showExitDialog: Boolean,
-        val eventSink: (UiEvent) -> Unit,
-    ) : CircuitUiState
+    /**
+     * One subtype per page the conversation flow can render. Each subtype carries
+     * exactly the props the matching screen needs, so [ConversationLayout]'s only
+     * branching is the `when` over this sealed hierarchy.
+     */
+    sealed interface UiState : CircuitUiState {
+        val showExitDialog: Boolean
+        val eventSink: (UiEvent) -> Unit
 
+        /** Transient placeholder shown while bootstrapping or popping. */
+        data class Loading(override val showExitDialog: Boolean, override val eventSink: (UiEvent) -> Unit) : UiState
+
+        data class AddingParticipants(
+            val participantNames: List<String>,
+            override val showExitDialog: Boolean,
+            override val eventSink: (UiEvent) -> Unit,
+        ) : UiState
+
+        data class QuestionPrompt(
+            val questionNumber: Int,
+            val totalQuestions: Int,
+            val participantName: String,
+            val isGroup: Boolean,
+            override val showExitDialog: Boolean,
+            override val eventSink: (UiEvent) -> Unit,
+        ) : UiState
+
+        data class Instructions(override val showExitDialog: Boolean, override val eventSink: (UiEvent) -> Unit) :
+            UiState
+
+        data class Selection(
+            val questionNumber: Int,
+            val round: Int,
+            val selectedCardIds: List<Int>,
+            val isConfirmEnabled: Boolean,
+            override val showExitDialog: Boolean,
+            override val eventSink: (UiEvent) -> Unit,
+        ) : UiState
+
+        data class Finalizing(
+            val questionNumber: Int,
+            val cardIds: List<Int>,
+            override val showExitDialog: Boolean,
+            override val eventSink: (UiEvent) -> Unit,
+        ) : UiState
+
+        data class Discussing(
+            val questionNumber: Int,
+            val participantName: String,
+            val cardIds: List<Int>,
+            override val showExitDialog: Boolean,
+            override val eventSink: (UiEvent) -> Unit,
+        ) : UiState
+
+        data class Summary(
+            val participants: List<ParticipantSummary>,
+            override val showExitDialog: Boolean,
+            override val eventSink: (UiEvent) -> Unit,
+        ) : UiState
+
+        data class CollectingContact(
+            val participantName: String,
+            val participantIndex: Int,
+            override val showExitDialog: Boolean,
+            override val eventSink: (UiEvent) -> Unit,
+        ) : UiState
+    }
+
+    /**
+     * Sealed event hierarchy. Top-level entries are emittable from any page
+     * (the back/exit-dialog affordances). Page-specific events are grouped into
+     * nested sealed interfaces named after their owning [UiState] subtype, so
+     * each subscreen has its own narrow vocabulary of events.
+     */
     sealed interface UiEvent : CircuitUiEvent {
-        /** Domain session event from a subscreen (begin selection, pick card, etc.). */
-        data class Dispatch(val event: SessionEvent) : UiEvent
-
         /** Platform back / explicit exit affordance — open the bookmark/discard dialog. */
         data object RequestExit : UiEvent
         data object DismissExitDialog : UiEvent
         data object BookmarkAndExit : UiEvent
         data object DiscardAndExit : UiEvent
 
-        /** Share / contact actions raised from the Summary subscreen. */
-        data class Share(val participantIndex: Int) : UiEvent
-        data class CollectContact(val participantIndex: Int, val info: ContactInfo) : UiEvent
-        data object SkipContact : UiEvent
+        sealed interface AddingParticipants : UiEvent {
+            data class AddParticipant(val name: String) : AddingParticipants
+            data class RemoveParticipant(val index: Int) : AddingParticipants
+            data object Confirm : AddingParticipants
+        }
+
+        sealed interface QuestionPrompt : UiEvent {
+            data object BeginSelection : QuestionPrompt
+        }
+
+        sealed interface Instructions : UiEvent {
+            data object Dismiss : Instructions
+        }
+
+        sealed interface Selection : UiEvent {
+            /** Tap a card — the presenter decides pick vs. unpick. */
+            data class ToggleCard(val cardId: Int) : Selection
+            data object Confirm : Selection
+        }
+
+        sealed interface Finalizing : UiEvent {
+            data object Confirm : Finalizing
+
+            /** Re-open the selection round with the current picks intact. */
+            data object ChangeSelection : Finalizing
+        }
+
+        sealed interface Discussing : UiEvent {
+            data object Done : Discussing
+        }
+
+        sealed interface Summary : UiEvent {
+            data class Share(val participantIndex: Int) : Summary
+
+            /** Start collecting this participant's contact info. */
+            data class StartCollectingContact(val participantIndex: Int) : Summary
+            data object Done : Summary
+        }
+
+        sealed interface CollectingContact : UiEvent {
+            data class Save(val info: ContactInfo) : CollectingContact
+            data object Skip : CollectingContact
+        }
     }
 
     @Composable
@@ -156,24 +262,72 @@ class ConversationPresenter(
             }
         }
 
-        return UiState(
-            sessionState = sessionState,
-            ui = ui,
-            summaries = summaries,
-            showExitDialog = showExitDialog,
-        ) { event ->
+        fun dispatch(sessionEvent: SessionEvent) {
+            val (newState, newUi) = applyDispatch(
+                event = sessionEvent,
+                previousState = sessionState,
+                ui = ui,
+                scope = scope,
+                repoMutex = repoMutex,
+            )
+            sessionState = newState
+            ui = newUi
+        }
+
+        val eventSink: (UiEvent) -> Unit = { event ->
             when (event) {
-                is UiEvent.Dispatch -> {
-                    val (newState, newUi) = applyDispatch(
-                        event = event.event,
-                        previousState = sessionState,
-                        ui = ui,
-                        scope = scope,
-                        repoMutex = repoMutex,
-                    )
-                    sessionState = newState
-                    ui = newUi
+                // Page-specific events
+                is UiEvent.AddingParticipants.AddParticipant ->
+                    dispatch(SessionEvent.AddParticipant(event.name))
+                is UiEvent.AddingParticipants.RemoveParticipant ->
+                    dispatch(SessionEvent.RemoveParticipant(event.index))
+                UiEvent.AddingParticipants.Confirm ->
+                    dispatch(SessionEvent.ConfirmParticipants)
+
+                UiEvent.QuestionPrompt.BeginSelection ->
+                    dispatch(SessionEvent.BeginSelection)
+
+                UiEvent.Instructions.Dismiss ->
+                    dispatch(SessionEvent.DismissInstructions)
+
+                is UiEvent.Selection.ToggleCard -> {
+                    // Draft picks are volatile UI state — toggle directly without
+                    // round-tripping through the pure transition function.
+                    ui = if (event.cardId in ui.draftPicks) {
+                        ui.copy(draftPicks = ui.draftPicks - event.cardId)
+                    } else {
+                        ui.copy(draftPicks = ui.draftPicks + event.cardId)
+                    }
                 }
+                UiEvent.Selection.Confirm ->
+                    dispatch(SessionEvent.ConfirmSelection)
+
+                UiEvent.Finalizing.Confirm ->
+                    dispatch(SessionEvent.ConfirmFinal)
+                UiEvent.Finalizing.ChangeSelection ->
+                    dispatch(SessionEvent.BeginSelection)
+
+                UiEvent.Discussing.Done ->
+                    dispatch(SessionEvent.EndDiscussion)
+
+                is UiEvent.Summary.Share -> shareParticipant(event.participantIndex, scope, repoMutex)
+                is UiEvent.Summary.StartCollectingContact -> {
+                    val name = ui.participantNames.getOrElse(event.participantIndex) { "" }
+                    dispatch(SessionEvent.CollectContact(event.participantIndex, ContactInfo(name)))
+                }
+                UiEvent.Summary.Done ->
+                    dispatch(SessionEvent.Conclude)
+
+                is UiEvent.CollectingContact.Save -> {
+                    val current = sessionState as? SessionState.CollectingContact
+                    if (current != null) {
+                        dispatch(SessionEvent.CollectContact(current.participantIndex, event.info))
+                    }
+                }
+                UiEvent.CollectingContact.Skip ->
+                    dispatch(SessionEvent.SkipContact)
+
+                // Global events
                 UiEvent.RequestExit -> if (sessionState != SessionState.Concluded) {
                     showExitDialog = true
                 }
@@ -201,53 +355,101 @@ class ConversationPresenter(
                         navigator.pop()
                     }
                 }
-                is UiEvent.Share -> {
-                    scope.launch {
-                        runCatching {
-                            val url =
-                                repoMutex.withLock {
-                                    val conversation =
-                                        sessionRepository.loadConversations(screen.sessionId)
-                                            .firstOrNull { it.displayOrder == event.participantIndex }
-                                            ?: return@withLock null
-                                    val picks = sessionRepository.loadPicks(conversation.id)
-                                    shareUrlFor(conversation, picks)
-                                } ?: return@launch
-                            sharer.share(text = url)
-                            analytics.event("share_initiated", mapOf("channel" to "other"))
-                        }.onFailure { crashReporter.recordNonFatal(it, "shareSummary") }
-                    }
-                }
-                is UiEvent.CollectContact -> {
-                    val (newState, newUi) = applyDispatch(
-                        event = SessionEvent.CollectContact(event.participantIndex, event.info),
-                        previousState = sessionState,
-                        ui = ui,
-                        scope = scope,
-                        repoMutex = repoMutex,
-                    )
-                    sessionState = newState
-                    ui = newUi
-                }
-                UiEvent.SkipContact -> {
-                    val (newState, newUi) = applyDispatch(
-                        event = SessionEvent.SkipContact,
-                        previousState = sessionState,
-                        ui = ui,
-                        scope = scope,
-                        repoMutex = repoMutex,
-                    )
-                    sessionState = newState
-                    ui = newUi
-                }
             }
         }
+
+        return buildUiState(sessionState, ui, summaries, showExitDialog, eventSink)
     }
 
     /**
-     * Runs the pure transition function for [event], applies its effects
-     * asynchronously, and returns the new (state, ui) pair to assign. PickCard
-     * and UnpickCard mutate only the draft, bypassing the transition.
+     * Projects the presenter's internal state onto the page-specific [UiState]
+     * subtype. All the branching that used to live in the Layout (question
+     * lookup, participant name resolution, round numbering, selection-count
+     * validity) is resolved here.
+     */
+    private fun buildUiState(
+        sessionState: SessionState,
+        ui: ConversationUiContext,
+        summaries: List<ParticipantSummary>,
+        showExitDialog: Boolean,
+        eventSink: (UiEvent) -> Unit,
+    ): UiState = when (sessionState) {
+        SessionState.NotStarted, SessionState.Concluded ->
+            UiState.Loading(showExitDialog, eventSink)
+
+        SessionState.AddingParticipants ->
+            UiState.AddingParticipants(ui.participantNames, showExitDialog, eventSink)
+
+        is SessionState.InQuestion -> {
+            val question = Questions.byNumber(sessionState.questionNumber)
+            val participantName =
+                ui.participantNames.getOrElse(sessionState.activeParticipantIndex) { "" }
+            when (sessionState.activity) {
+                QuestionActivity.ShowingPrompt ->
+                    UiState.QuestionPrompt(
+                        questionNumber = sessionState.questionNumber,
+                        totalQuestions = TOTAL_QUESTIONS,
+                        participantName = participantName,
+                        isGroup = ui.participantNames.size > 1,
+                        showExitDialog = showExitDialog,
+                        eventSink = eventSink,
+                    )
+
+                QuestionActivity.ShowingInstructions ->
+                    UiState.Instructions(showExitDialog, eventSink)
+
+                QuestionActivity.SelectingRound1,
+                QuestionActivity.SelectingRound2,
+                -> {
+                    val isRound2 = sessionState.activity == QuestionActivity.SelectingRound2
+                    UiState.Selection(
+                        questionNumber = sessionState.questionNumber,
+                        round = if (isRound2) 2 else 1,
+                        selectedCardIds = ui.draftPicks,
+                        isConfirmEnabled = isSelectionValid(
+                            question,
+                            sessionState.activity,
+                            ui.draftPicks.size,
+                        ),
+                        showExitDialog = showExitDialog,
+                        eventSink = eventSink,
+                    )
+                }
+
+                QuestionActivity.Finalizing ->
+                    UiState.Finalizing(
+                        questionNumber = sessionState.questionNumber,
+                        cardIds = ui.draftPicks,
+                        showExitDialog = showExitDialog,
+                        eventSink = eventSink,
+                    )
+
+                QuestionActivity.Discussing ->
+                    UiState.Discussing(
+                        questionNumber = sessionState.questionNumber,
+                        participantName = participantName,
+                        cardIds = ui.draftPicks,
+                        showExitDialog = showExitDialog,
+                        eventSink = eventSink,
+                    )
+            }
+        }
+
+        SessionState.Summary ->
+            UiState.Summary(summaries, showExitDialog, eventSink)
+
+        is SessionState.CollectingContact ->
+            UiState.CollectingContact(
+                participantName = ui.participantNames.getOrElse(sessionState.participantIndex) { "" },
+                participantIndex = sessionState.participantIndex,
+                showExitDialog = showExitDialog,
+                eventSink = eventSink,
+            )
+    }
+
+    /**
+     * Runs the pure transition function for [event] and applies its effects
+     * asynchronously. Returns the new (state, ui) pair to assign.
      */
     private fun applyDispatch(
         event: SessionEvent,
@@ -256,16 +458,6 @@ class ConversationPresenter(
         scope: CoroutineScope,
         repoMutex: Mutex,
     ): Pair<SessionState, ConversationUiContext> {
-        when (event) {
-            is SessionEvent.PickCard -> {
-                return previousState to ui.copy(draftPicks = ui.draftPicks + event.cardId)
-            }
-            is SessionEvent.UnpickCard -> {
-                return previousState to ui.copy(draftPicks = ui.draftPicks - event.cardId)
-            }
-            else -> Unit
-        }
-
         val ctx =
             SessionContext(
                 participantNames = ui.participantNames,
@@ -302,6 +494,24 @@ class ConversationPresenter(
                 .onFailure { crashReporter.recordNonFatal(it, "applyEffects after $event") }
         }
         return result.next to nextUi
+    }
+
+    private fun shareParticipant(participantIndex: Int, scope: CoroutineScope, repoMutex: Mutex) {
+        scope.launch {
+            runCatching {
+                val url =
+                    repoMutex.withLock {
+                        val conversation =
+                            sessionRepository.loadConversations(screen.sessionId)
+                                .firstOrNull { it.displayOrder == participantIndex }
+                                ?: return@withLock null
+                        val picks = sessionRepository.loadPicks(conversation.id)
+                        shareUrlFor(conversation, picks)
+                    } ?: return@launch
+                sharer.share(text = url)
+                analytics.event("share_initiated", mapOf("channel" to "other"))
+            }.onFailure { crashReporter.recordNonFatal(it, "shareSummary") }
+        }
     }
 
     /**
@@ -369,8 +579,6 @@ class ConversationPresenter(
                             ?: continue
                     sessionRepository.upsertContact(convId, effect.info)
                 }
-                is Effect.PersistBookmark ->
-                    sessionRepository.setBookmarked(screen.sessionId, effect.bookmark)
                 is Effect.LogAnalytics ->
                     analytics.event(effect.event, effect.params)
             }
@@ -382,6 +590,22 @@ class ConversationPresenter(
     fun interface Factory {
         fun create(navigator: Navigator, screen: ConversationScreen): ConversationPresenter
     }
+}
+
+/**
+ * Mirrors the count rules enforced by the transition function: round 1 of a
+ * two-round question needs a wide set, every other round needs exactly the
+ * required count.
+ */
+private fun isSelectionValid(question: Question, activity: QuestionActivity, count: Int): Boolean = when (activity) {
+    QuestionActivity.SelectingRound1 ->
+        if (question.selectionRounds == 2) {
+            count >= question.requiredImageCount + 1
+        } else {
+            count == question.requiredImageCount
+        }
+    QuestionActivity.SelectingRound2 -> count == question.requiredImageCount
+    else -> false
 }
 
 /**

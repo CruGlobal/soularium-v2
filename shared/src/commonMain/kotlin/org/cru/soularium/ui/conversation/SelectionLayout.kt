@@ -65,30 +65,16 @@ private const val TOTAL_CARDS = 50
 private const val TWO_ROUND_QUESTION_MAX = 2
 
 /**
- * Core image-selection screen for a single selection round.
- *
- * This composable is fully stateless — [selectedCardIds] drives displayed
- * selection state and [onToggleCard] reports a tap. The caller owns the
- * selection logic and validity rules.
- *
- * @param questionNumber     1-based question index (1..5).
- * @param selectedCardIds    IDs of cards currently marked as selected.
- * @param isConfirmEnabled   whether the Confirm button should be enabled;
- *                           the caller derives this from the count rules.
- * @param onToggleCard       called with the card id (1..50) when a card is tapped.
- * @param onConfirm          called when the user taps the enabled Confirm button.
- * @param modifier           optional [Modifier] applied to the root [Surface].
+ * Core image-selection screen for a single selection round. Selection state and
+ * confirm-validity are driven entirely by the presenter via
+ * [ConversationPresenter.UiState.Selection].
  */
 @Composable
-fun SelectionLayout(
-    questionNumber: Int,
-    round: Int,
-    selectedCardIds: List<Int>,
-    isConfirmEnabled: Boolean,
-    onToggleCard: (Int) -> Unit,
-    onConfirm: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+fun SelectionLayout(state: ConversationPresenter.UiState.Selection, modifier: Modifier = Modifier) {
+    val questionNumber = state.questionNumber
+    val round = state.round
+    val selectedCardIds = state.selectedCardIds
+    val isConfirmEnabled = state.isConfirmEnabled
     val isTwoRoundQuestion = questionNumber <= TWO_ROUND_QUESTION_MAX
     val selectionPrompt = stringResource(questionSelectionRes(questionNumber))
     // Round 1 of a two-round question is a *wide* pick (>= requiredImageCount + 1);
@@ -101,8 +87,6 @@ fun SelectionLayout(
         },
     )
     val selectedCountLabel = stringResource(Res.string.selection_x_selected, selectedCardIds.size)
-    val confirmLabel = stringResource(Res.string.action_confirm)
-    val finishPicksLabel = stringResource(Res.string.selection_finish_picks)
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -144,7 +128,7 @@ fun SelectionLayout(
                     SelectableCardItem(
                         cardId = cardId,
                         isSelected = isSelected,
-                        onToggle = { onToggleCard(cardId) },
+                        onToggle = { state.eventSink(ConversationPresenter.UiEvent.Selection.ToggleCard(cardId)) },
                     )
                 }
             }
@@ -154,7 +138,7 @@ fun SelectionLayout(
             // Hint text when confirm is not yet available
             if (!isConfirmEnabled) {
                 Text(
-                    text = finishPicksLabel,
+                    text = stringResource(Res.string.selection_finish_picks),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -167,16 +151,15 @@ fun SelectionLayout(
 
             // Confirm button
             Button(
-                onClick = onConfirm,
+                onClick = { state.eventSink(ConversationPresenter.UiEvent.Selection.Confirm) },
                 enabled = isConfirmEnabled,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
                     .padding(horizontal = 24.dp)
-                    .semantics { contentDescription = confirmLabel },
             ) {
                 Text(
-                    text = confirmLabel,
+                    text = stringResource(Res.string.action_confirm),
                     style = MaterialTheme.typography.labelLarge,
                 )
             }

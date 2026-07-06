@@ -23,8 +23,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import org.cru.soularium.generated.resources.Res
@@ -46,30 +44,11 @@ import org.jetbrains.compose.resources.stringResource
 /**
  * Subscreen shown when a participant has made their selection and is asked to
  * confirm their final picks before the discussion begins.
- *
- * Displays the participant's chosen cards ([cardIds]) at full size, the
- * per-question finalizing prompt, a review hint, and two action buttons:
- * Confirm (proceeds to discussion) and Change Selection (re-opens selection).
- *
- * This is a stateless composable. No ViewModel, no navigation logic.
- *
- * @param questionNumber    1-based index of the current question (1..5).
- * @param cardIds           ordered list of 1 or 3 card ids (1..50) the
- *                          participant has chosen.
- * @param onConfirm         called when the user taps Confirm.
- * @param onChangeSelection called when the user taps Change Selection to re-pick.
- * @param modifier          optional [Modifier] for the root surface.
  */
 @Composable
-fun FinalizingLayout(
-    questionNumber: Int,
-    cardIds: List<Int>,
-    onConfirm: () -> Unit,
-    onChangeSelection: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val confirmLabel = stringResource(Res.string.action_confirm)
-    val changeSelectionLabel = stringResource(Res.string.action_change_selection)
+fun FinalizingLayout(state: ConversationPresenter.UiState.Finalizing, modifier: Modifier = Modifier) {
+    val questionNumber = state.questionNumber
+    val cardIds = state.cardIds
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -158,14 +137,13 @@ fun FinalizingLayout(
 
             // Confirm button
             Button(
-                onClick = onConfirm,
+                onClick = { state.eventSink(ConversationPresenter.UiEvent.Finalizing.Confirm) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
-                    .semantics { contentDescription = confirmLabel },
             ) {
                 Text(
-                    text = confirmLabel,
+                    text = stringResource(Res.string.action_confirm),
                     style = MaterialTheme.typography.labelLarge,
                 )
             }
@@ -174,14 +152,13 @@ fun FinalizingLayout(
 
             // Change-selection button (re-opens the selection screen)
             OutlinedButton(
-                onClick = onChangeSelection,
+                onClick = { state.eventSink(ConversationPresenter.UiEvent.Finalizing.ChangeSelection) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
-                    .semantics { contentDescription = changeSelectionLabel },
             ) {
                 Text(
-                    text = changeSelectionLabel,
+                    text = stringResource(Res.string.action_change_selection),
                     style = MaterialTheme.typography.labelLarge,
                 )
             }

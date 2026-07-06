@@ -106,10 +106,6 @@ private fun transitionInQuestion(
             TransitionResult(next = next, effects = listOf(Effect.PersistState(next)))
         }
 
-        is SessionEvent.PickCard, is SessionEvent.UnpickCard ->
-            // selection draft state is owned by the UI; the machine treats these as no-ops
-            TransitionResult(next = state)
-
         SessionEvent.ConfirmSelection -> {
             val targetActivity =
                 when (state.activity) {
@@ -213,12 +209,6 @@ private fun transitionInQuestion(
             TransitionResult(next = next, effects = listOf(Effect.PersistState(next)))
         }
 
-        SessionEvent.Bookmark ->
-            TransitionResult(
-                next = state,
-                effects = listOf(Effect.PersistBookmark(true)),
-            )
-
         else ->
             TransitionResult(
                 next = state,
@@ -252,11 +242,6 @@ private fun transitionSummary(event: SessionEvent): TransitionResult = when (eve
                 Effect.PersistState(SessionState.Concluded),
                 Effect.LogAnalytics(event = "session_completed", params = emptyMap()),
             ),
-        )
-    SessionEvent.Bookmark ->
-        TransitionResult(
-            next = SessionState.Summary,
-            effects = listOf(Effect.PersistBookmark(true)),
         )
     else ->
         TransitionResult(
@@ -309,11 +294,6 @@ private fun transitionCollectingContact(
                 Effect.PersistState(SessionState.Concluded),
                 Effect.LogAnalytics(event = "session_completed", params = emptyMap()),
             ),
-        )
-    SessionEvent.Bookmark ->
-        TransitionResult(
-            next = state,
-            effects = listOf(Effect.PersistBookmark(true)),
         )
     else ->
         TransitionResult(

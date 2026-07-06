@@ -16,7 +16,5 @@ sealed interface Effect {
 
     data class PersistContact(val participantIndex: Int, val info: ContactInfo) : Effect
 
-    data class PersistBookmark(val bookmark: Boolean) : Effect
-
     data class LogAnalytics(val event: String, val params: Map<String, Any>) : Effect
 }

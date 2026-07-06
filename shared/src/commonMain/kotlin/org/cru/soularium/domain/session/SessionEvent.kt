@@ -16,10 +16,6 @@ sealed interface SessionEvent {
 
     data object DismissInstructions : SessionEvent
 
-    data class PickCard(val cardId: Int) : SessionEvent
-
-    data class UnpickCard(val cardId: Int) : SessionEvent
-
     data object ConfirmSelection : SessionEvent
 
     data object ConfirmFinal : SessionEvent
@@ -31,6 +27,4 @@ sealed interface SessionEvent {
     data object SkipContact : SessionEvent
 
     data object Conclude : SessionEvent
-
-    data object Bookmark : SessionEvent
 }

@@ -28,8 +28,6 @@ import org.cru.soularium.domain.ports.CrashReporter
 import org.cru.soularium.domain.ports.SessionRepository
 import org.cru.soularium.domain.ports.ShareResult
 import org.cru.soularium.domain.ports.Sharer
-import org.cru.soularium.domain.session.QuestionActivity
-import org.cru.soularium.domain.session.SessionEvent
 import org.cru.soularium.domain.session.SessionState
 import org.cru.soularium.ui.nav.ConversationScreen
 import org.cru.soularium.ui.screens.PastConversationsPresenter
@@ -56,21 +54,24 @@ class ConversationFlowTest {
         val navigator = FakeNavigator(screen)
 
         presenter(navigator, screen, repo, sharer = sharer).test {
-            val added = awaitStable { it.sessionState == SessionState.AddingParticipants }
+            val added = awaitStable { it is ConversationPresenter.UiState.AddingParticipants }
             added.addParticipant("Jordan")
-            awaitStable { it.ui.participantNames == listOf("Jordan") }
-                .dispatch(SessionEvent.ConfirmParticipants)
+            awaitStable {
+                (it as? ConversationPresenter.UiState.AddingParticipants)?.participantNames == listOf("Jordan")
+            }.eventSink(ConversationPresenter.UiEvent.AddingParticipants.Confirm)
 
             // Five questions, one participant each.
             playAllTurns(turns = 5)
-            val summary = awaitStable { it.sessionState == SessionState.Summary && it.summaries.size == 1 }
-            assertEquals(9, summary.summaries.single().cardIds.size)
+            val summary = awaitStable {
+                (it as? ConversationPresenter.UiState.Summary)?.participants?.size == 1
+            } as ConversationPresenter.UiState.Summary
+            assertEquals(9, summary.participants.single().cardIds.size)
 
-            summary.eventSink(ConversationPresenter.UiEvent.Share(0))
+            summary.eventSink(ConversationPresenter.UiEvent.Summary.Share(0))
             advanceUntilIdle()
 
-            summary.dispatch(SessionEvent.Conclude)
-            awaitStable { it.sessionState == SessionState.Concluded }
+            summary.eventSink(ConversationPresenter.UiEvent.Summary.Done)
+            awaitStable { it is ConversationPresenter.UiState.Loading }
             cancelAndIgnoreRemainingEvents()
         }
         assertEquals(1, sharer.shared.size)
@@ -85,20 +86,26 @@ class ConversationFlowTest {
         val navigator = FakeNavigator(screen)
 
         presenter(navigator, screen, repo).test {
-            awaitStable { it.sessionState == SessionState.AddingParticipants }
+            awaitStable { it is ConversationPresenter.UiState.AddingParticipants }
                 .also { it.addParticipant("Amara") }
-            awaitStable { it.ui.participantNames == listOf("Amara") }
-                .also { it.addParticipant("Ben") }
-            awaitStable { it.ui.participantNames == listOf("Amara", "Ben") }
-                .also { it.addParticipant("Chen") }
-            awaitStable { it.ui.participantNames == listOf("Amara", "Ben", "Chen") }
-                .dispatch(SessionEvent.ConfirmParticipants)
+            awaitStable {
+                (it as? ConversationPresenter.UiState.AddingParticipants)?.participantNames == listOf("Amara")
+            }.also { it.addParticipant("Ben") }
+            awaitStable {
+                (it as? ConversationPresenter.UiState.AddingParticipants)?.participantNames == listOf("Amara", "Ben")
+            }.also { it.addParticipant("Chen") }
+            awaitStable {
+                (it as? ConversationPresenter.UiState.AddingParticipants)?.participantNames ==
+                    listOf("Amara", "Ben", "Chen")
+            }.eventSink(ConversationPresenter.UiEvent.AddingParticipants.Confirm)
 
             // Question-major: every participant answers a question before the
             // next one begins — 5 questions × 3 participants = 15 turns.
             playAllTurns(turns = 5 * 3)
-            val summary = awaitStable { it.sessionState == SessionState.Summary && it.summaries.size == 3 }
-            summary.summaries.forEach { participant ->
+            val summary = awaitStable {
+                (it as? ConversationPresenter.UiState.Summary)?.participants?.size == 3
+            } as ConversationPresenter.UiState.Summary
+            summary.participants.forEach { participant ->
                 assertEquals(9, participant.cardIds.size, "${participant.name} should have 9 final picks")
             }
             cancelAndIgnoreRemainingEvents()
@@ -114,14 +121,14 @@ class ConversationFlowTest {
 
         // First sitting: play questions 1 and 2, then bookmark at question 3.
         presenter(navigator, screen, repo).test {
-            awaitStable { it.sessionState == SessionState.AddingParticipants }
+            awaitStable { it is ConversationPresenter.UiState.AddingParticipants }
                 .also { it.addParticipant("Riley") }
-            awaitStable { it.ui.participantNames == listOf("Riley") }
-                .dispatch(SessionEvent.ConfirmParticipants)
+            awaitStable {
+                (it as? ConversationPresenter.UiState.AddingParticipants)?.participantNames == listOf("Riley")
+            }.eventSink(ConversationPresenter.UiEvent.AddingParticipants.Confirm)
             playAllTurns(turns = 2)
             val atQ3 = awaitStable {
-                (it.sessionState as? SessionState.InQuestion)
-                    ?.let { q -> q.questionNumber == 3 && q.activity == QuestionActivity.ShowingPrompt } == true
+                (it as? ConversationPresenter.UiState.QuestionPrompt)?.questionNumber == 3
             }
             atQ3.eventSink(ConversationPresenter.UiEvent.BookmarkAndExit)
             advanceUntilIdle()
@@ -133,13 +140,13 @@ class ConversationFlowTest {
         val resumeNavigator = FakeNavigator(screen)
         presenter(resumeNavigator, screen, repo).test {
             val resumed = awaitStable {
-                it.sessionState == SessionState.InQuestion(3, 0, QuestionActivity.ShowingPrompt)
-            }
-            assertEquals(listOf("Riley"), resumed.ui.participantNames)
+                (it as? ConversationPresenter.UiState.QuestionPrompt)?.questionNumber == 3
+            } as ConversationPresenter.UiState.QuestionPrompt
+            assertEquals("Riley", resumed.participantName)
             playAllTurns(turns = 3, startingFrom = resumed)
-            awaitStable { it.sessionState == SessionState.Summary }
-                .dispatch(SessionEvent.Conclude)
-            awaitStable { it.sessionState == SessionState.Concluded }
+            awaitStable { it is ConversationPresenter.UiState.Summary }
+                .eventSink(ConversationPresenter.UiEvent.Summary.Done)
+            awaitStable { it is ConversationPresenter.UiState.Loading }
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -152,17 +159,19 @@ class ConversationFlowTest {
         val navigator = FakeNavigator(screen)
 
         presenter(navigator, screen, repo).test {
-            awaitStable { it.sessionState == SessionState.AddingParticipants }
+            awaitStable { it is ConversationPresenter.UiState.AddingParticipants }
                 .also { it.addParticipant("Dana") }
-            awaitStable { it.ui.participantNames == listOf("Dana") }
-                .also { it.addParticipant("Eli") }
-            awaitStable { it.ui.participantNames == listOf("Dana", "Eli") }
-                .dispatch(SessionEvent.ConfirmParticipants)
+            awaitStable {
+                (it as? ConversationPresenter.UiState.AddingParticipants)?.participantNames == listOf("Dana")
+            }.also { it.addParticipant("Eli") }
+            awaitStable {
+                (it as? ConversationPresenter.UiState.AddingParticipants)?.participantNames == listOf("Dana", "Eli")
+            }.eventSink(ConversationPresenter.UiEvent.AddingParticipants.Confirm)
 
             // Both participants finish question 1; bookmark at the start of Q2.
             playAllTurns(turns = 2)
             val atQ2 = awaitStable {
-                it.sessionState == SessionState.InQuestion(2, 0, QuestionActivity.ShowingPrompt)
+                (it as? ConversationPresenter.UiState.QuestionPrompt)?.questionNumber == 2
             }
             atQ2.eventSink(ConversationPresenter.UiEvent.BookmarkAndExit)
             advanceUntilIdle()
@@ -174,15 +183,17 @@ class ConversationFlowTest {
         val resumeNavigator = FakeNavigator(screen)
         presenter(resumeNavigator, screen, repo).test {
             val resumed = awaitStable {
-                it.sessionState == SessionState.InQuestion(2, 0, QuestionActivity.ShowingPrompt) &&
-                    it.ui.participantNames == listOf("Dana", "Eli")
-            }
-            assertEquals(listOf("Dana", "Eli"), resumed.ui.participantNames)
+                val prompt = it as? ConversationPresenter.UiState.QuestionPrompt
+                prompt?.questionNumber == 2 && prompt.isGroup && prompt.participantName == "Dana"
+            } as ConversationPresenter.UiState.QuestionPrompt
+            assertEquals("Dana", resumed.participantName)
 
             // Questions 2-5, both participants each, reaching the summary.
             playAllTurns(turns = 4 * 2, startingFrom = resumed)
-            val summary = awaitStable { it.sessionState == SessionState.Summary && it.summaries.size == 2 }
-            assertEquals(2, summary.summaries.size)
+            val summary = awaitStable {
+                (it as? ConversationPresenter.UiState.Summary)?.participants?.size == 2
+            } as ConversationPresenter.UiState.Summary
+            assertEquals(2, summary.participants.size)
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -196,14 +207,15 @@ class ConversationFlowTest {
 
         // Run a full solo session so it lands in the completed list.
         presenter(navigator, screen, repo).test {
-            awaitStable { it.sessionState == SessionState.AddingParticipants }
+            awaitStable { it is ConversationPresenter.UiState.AddingParticipants }
                 .also { it.addParticipant("Sam") }
-            awaitStable { it.ui.participantNames == listOf("Sam") }
-                .dispatch(SessionEvent.ConfirmParticipants)
+            awaitStable {
+                (it as? ConversationPresenter.UiState.AddingParticipants)?.participantNames == listOf("Sam")
+            }.eventSink(ConversationPresenter.UiEvent.AddingParticipants.Confirm)
             playAllTurns(turns = 5)
-            awaitStable { it.sessionState == SessionState.Summary }
-                .dispatch(SessionEvent.Conclude)
-            awaitStable { it.sessionState == SessionState.Concluded }
+            awaitStable { it is ConversationPresenter.UiState.Summary }
+                .eventSink(ConversationPresenter.UiEvent.Summary.Done)
+            awaitStable { it is ConversationPresenter.UiState.Loading }
             cancelAndIgnoreRemainingEvents()
         }
 
@@ -244,11 +256,7 @@ private suspend fun <T> ReceiveTurbine<T>.awaitStable(predicate: (T) -> Boolean)
 }
 
 private fun ConversationPresenter.UiState.addParticipant(name: String) {
-    eventSink(ConversationPresenter.UiEvent.Dispatch(SessionEvent.AddParticipant(name)))
-}
-
-private fun ConversationPresenter.UiState.dispatch(event: SessionEvent) {
-    eventSink(ConversationPresenter.UiEvent.Dispatch(event))
+    eventSink(ConversationPresenter.UiEvent.AddingParticipants.AddParticipant(name))
 }
 
 /**
@@ -266,26 +274,23 @@ private suspend fun ReceiveTurbine<ConversationPresenter.UiState>.playAllTurns(
 ) {
     var firstPrompt: ConversationPresenter.UiState? = startingFrom
     repeat(turns) {
-        val prompt = firstPrompt ?: awaitStable {
-            (it.sessionState as? SessionState.InQuestion)?.activity == QuestionActivity.ShowingPrompt
-        }
+        val prompt = (firstPrompt ?: awaitStable { it is ConversationPresenter.UiState.QuestionPrompt })
+            as ConversationPresenter.UiState.QuestionPrompt
         firstPrompt = null
-        val question = Questions.byNumber((prompt.sessionState as SessionState.InQuestion).questionNumber)
-        prompt.dispatch(SessionEvent.BeginSelection)
+        val question = Questions.byNumber(prompt.questionNumber)
+        prompt.eventSink(ConversationPresenter.UiEvent.QuestionPrompt.BeginSelection)
 
         val afterBegin = awaitStable {
-            (it.sessionState as? SessionState.InQuestion)?.activity != QuestionActivity.ShowingPrompt
+            it is ConversationPresenter.UiState.Instructions || it is ConversationPresenter.UiState.Selection
         }
-        val landed = if ((afterBegin.sessionState as SessionState.InQuestion).activity ==
-            QuestionActivity.ShowingInstructions
-        ) {
-            afterBegin.dispatch(SessionEvent.DismissInstructions)
+        val landed = if (afterBegin is ConversationPresenter.UiState.Instructions) {
+            afterBegin.eventSink(ConversationPresenter.UiEvent.Instructions.Dismiss)
             awaitStable {
-                (it.sessionState as? SessionState.InQuestion)?.activity == QuestionActivity.SelectingRound1
+                (it as? ConversationPresenter.UiState.Selection)?.round == 1
             }
         } else {
             afterBegin
-        }
+        } as ConversationPresenter.UiState.Selection
 
         val round1Count = if (question.selectionRounds == 2) {
             question.requiredImageCount + 1
@@ -293,37 +298,38 @@ private suspend fun ReceiveTurbine<ConversationPresenter.UiState>.playAllTurns(
             question.requiredImageCount
         }
         landed.pick(round1Count)
-        val afterRound1 = awaitStable { it.ui.draftPicks.size == round1Count }
-        afterRound1.dispatch(SessionEvent.ConfirmSelection)
+        val afterRound1 = awaitStable {
+            (it as? ConversationPresenter.UiState.Selection)?.selectedCardIds?.size == round1Count
+        }
+        afterRound1.eventSink(ConversationPresenter.UiEvent.Selection.Confirm)
 
         // afterConfirm is either SelectingRound2 (two-round Q) or Finalizing (one-round Q).
         val afterConfirm = awaitStable {
-            (it.sessionState as? SessionState.InQuestion)?.activity != QuestionActivity.SelectingRound1
+            (it as? ConversationPresenter.UiState.Selection)?.round == 2 ||
+                it is ConversationPresenter.UiState.Finalizing
         }
         val readyForFinalize =
-            if ((afterConfirm.sessionState as SessionState.InQuestion).activity ==
-                QuestionActivity.SelectingRound2
-            ) {
+            if (afterConfirm is ConversationPresenter.UiState.Selection) {
                 afterConfirm.pick(question.requiredImageCount)
-                val r2 = awaitStable { it.ui.draftPicks.size == question.requiredImageCount }
-                r2.dispatch(SessionEvent.ConfirmSelection)
-                awaitStable {
-                    (it.sessionState as? SessionState.InQuestion)?.activity == QuestionActivity.Finalizing
+                val r2 = awaitStable {
+                    (it as? ConversationPresenter.UiState.Selection)?.selectedCardIds?.size ==
+                        question.requiredImageCount
                 }
+                r2.eventSink(ConversationPresenter.UiEvent.Selection.Confirm)
+                awaitStable { it is ConversationPresenter.UiState.Finalizing }
             } else {
                 // One-round question: afterConfirm is already Finalizing — no extra dispatch
                 // happened, so no new emission to await; reuse the captured state.
                 afterConfirm
             }
-        readyForFinalize.dispatch(SessionEvent.ConfirmFinal)
-        awaitStable {
-            (it.sessionState as? SessionState.InQuestion)?.activity == QuestionActivity.Discussing
-        }.dispatch(SessionEvent.EndDiscussion)
+        readyForFinalize.eventSink(ConversationPresenter.UiEvent.Finalizing.Confirm)
+        awaitStable { it is ConversationPresenter.UiState.Discussing }
+            .eventSink(ConversationPresenter.UiEvent.Discussing.Done)
     }
 }
 
 private fun ConversationPresenter.UiState.pick(count: Int) {
-    repeat(count) { dispatch(SessionEvent.PickCard(it + 1)) }
+    repeat(count) { eventSink(ConversationPresenter.UiEvent.Selection.ToggleCard(it + 1)) }
 }
 
 /**

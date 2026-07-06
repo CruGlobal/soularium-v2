@@ -150,9 +150,17 @@ Code under `org.cru.soularium.domain` must not reference Compose, Android, or iO
   `CircuitBindings.providesCircuit`. There is no hand-written switch table.
   Cross-screen navigation goes through `Navigator.goTo(SomeScreen(...))` from inside a
   Presenter.
-- **Presenters** implement Circuit's `Presenter<UiState>`. Each defines a nested
-  `data class UiState(... val eventSink: (UiEvent) -> Unit) : CircuitUiState` and a
-  `sealed interface UiEvent : CircuitUiEvent`. The `@Composable present()` body uses
+- **Presenters** implement Circuit's `Presenter<UiState>`. The default shape is a
+  nested `data class UiState(... val eventSink: (UiEvent) -> Unit) : CircuitUiState`
+  paired with a `sealed interface UiEvent : CircuitUiEvent`. When a single Presenter
+  drives several visually distinct pages (e.g. the conversation flow), `UiState` may
+  instead be a `sealed interface UiState : CircuitUiState` with one `data class`
+  subtype per page; each subtype carries only the props its page renders and exposes
+  the shared `eventSink` (and any other cross-page fields) via interface properties.
+  In that case, `UiEvent` may nest page-specific events under sealed sub-interfaces
+  named after their owning `UiState` subtype (e.g. `UiEvent.Selection.ToggleCard`),
+  with global events at the top level — see `ConversationPresenter` for the
+  canonical example. The `@Composable present()` body uses
   `remember { mutableStateOf(...) }` + `LaunchedEffect`/`produceState` to derive state
   from repositories (collected via `collectAsState()`); user intent flows in through
   `state.eventSink(...)`. Cross-screen navigation is `navigator.goTo(SomeScreen(...))`;

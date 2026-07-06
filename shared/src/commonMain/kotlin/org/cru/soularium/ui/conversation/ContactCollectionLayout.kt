@@ -24,8 +24,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -59,22 +57,10 @@ fun isPhoneValid(phone: String): Boolean {
 /**
  * Contact-collection form shown after a participant completes all five questions.
  * Lets the facilitator optionally record the participant's details for follow-up.
- *
- * The form is stateless beyond local [remember] state — no ViewModel, no DI.
- *
- * @param participantName Pre-filled value for the First Name field.
- * @param onSave          Called with a [ContactInfo] when the user taps Save.
- * @param onSkip          Called when the user taps Skip for Now.
- * @param modifier        Optional modifier forwarded to the root [Surface].
  */
 @Composable
-fun ContactCollectionLayout(
-    participantName: String,
-    onSave: (ContactInfo) -> Unit,
-    onSkip: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    var firstName by remember { mutableStateOf(participantName) }
+fun ContactCollectionLayout(state: ConversationPresenter.UiState.CollectingContact, modifier: Modifier = Modifier) {
+    var firstName by remember { mutableStateOf(state.participantName) }
     var lastName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
@@ -84,8 +70,6 @@ fun ContactCollectionLayout(
 
     val scrollState = rememberScrollState()
 
-    val saveLabel = stringResource(Res.string.action_save)
-    val skipLabel = stringResource(Res.string.action_skip_for_now)
     val invalidPhoneMessage = stringResource(Res.string.contact_invalid_phone)
 
     Surface(
@@ -199,23 +183,24 @@ fun ContactCollectionLayout(
             Button(
                 enabled = !phoneError,
                 onClick = {
-                    onSave(
-                        ContactInfo(
-                            name = firstName,
-                            surname = lastName.ifBlank { null },
-                            email = email.ifBlank { null },
-                            phone = phone.ifBlank { null },
-                            notes = notes.ifBlank { null },
+                    state.eventSink(
+                        ConversationPresenter.UiEvent.CollectingContact.Save(
+                            ContactInfo(
+                                name = firstName,
+                                surname = lastName.ifBlank { null },
+                                email = email.ifBlank { null },
+                                phone = phone.ifBlank { null },
+                                notes = notes.ifBlank { null },
+                            ),
                         ),
                     )
                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
-                    .semantics { contentDescription = saveLabel },
             ) {
                 Text(
-                    text = saveLabel,
+                    text = stringResource(Res.string.action_save),
                     style = MaterialTheme.typography.labelLarge,
                 )
             }
@@ -223,14 +208,13 @@ fun ContactCollectionLayout(
             Spacer(modifier = Modifier.height(12.dp))
 
             OutlinedButton(
-                onClick = onSkip,
+                onClick = { state.eventSink(ConversationPresenter.UiEvent.CollectingContact.Skip) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
-                    .semantics { contentDescription = skipLabel },
             ) {
                 Text(
-                    text = skipLabel,
+                    text = stringResource(Res.string.action_skip_for_now),
                     style = MaterialTheme.typography.labelLarge,
                 )
             }

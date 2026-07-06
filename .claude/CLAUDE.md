@@ -76,7 +76,8 @@ not a system Gradle. Source/target bytecode is JVM 17.
 | Serialization | kotlinx.serialization 1.11.0 |
 | Testing | `kotlin.test` + Kotest assertions + Turbine + `kotlinx-coroutines-test` |
 | Lint | ktlint via `org.jlleitschuh.gradle.ktlint`, `intellij_idea` code style |
-| Crash / analytics | Firebase Crashlytics + Analytics (no-op until config files land) |
+| Logging / crash | Kermit 2.1.0 → Firebase Crashlytics via GitLive `firebase-crashlytics` (inert until config files land) |
+| Analytics | Firebase Analytics (no-op until config files land) |
 | i18n | Crowdin (en, es, fr, pl, zh-rCN) |
 
 ## Architecture: Hexagonal (single shared module)
@@ -103,8 +104,9 @@ must not import from `ui`.
 
 - **Ports** (`domain/ports/`): interfaces the rest of the app depends on —
   `ContentRepository`, `SessionRepository`, `DeviceStateRepository`, `AnalyticsTracker`,
-  `CrashReporter`, `Sharer`. The interfaces live here; implementations live in
-  `org.cru.soularium.data` or in the platform Koin modules.
+  `Sharer`. The interfaces live here; implementations live in
+  `org.cru.soularium.data` or in the platform Koin modules. (Crash/error reporting is not
+  a port — code logs through the global Kermit `Logger`; see "Logging & crash reporting".)
 - **Session state machine** (`domain/session/`): `SessionState` (sealed,
   `@Serializable`), `SessionEvent` (sealed), a **pure** `fun transition(state, event,
   ctx): TransitionResult`, and `Effect` (sealed). `transition()` performs no I/O — side
@@ -184,8 +186,9 @@ Code under `org.cru.soularium.domain` must not reference Compose, Android, or iO
   `SoulariumApplication`; iOS builds it in `MainViewController.kt`.
 - App-wide bindings live in `@BindingContainer @ContributesTo(AppScope::class)`
   interfaces (`DataBindings` for the database/DAOs/`DeviceStateRepository`,
-  `CircuitBindings` for the assembled `Circuit`, `Placeholders` for the no-op
-  analytics/crash). Repository implementations (`SessionRepositoryImpl`,
+  `CircuitBindings` for the assembled `Circuit`, `LoggingBindings` for the Kermit
+  `LogWriter` multibinding). The no-op `AnalyticsTracker` lives in
+  `NoOpAnalyticsTracker.kt`. Repository implementations (`SessionRepositoryImpl`,
   `ContentRepositoryImpl`) are `@Inject @ContributesBinding(AppScope::class)` so they're
   picked up automatically. Add new app-wide types by giving the implementation
   `@Inject` + `@ContributesBinding(AppScope::class)`, or by adding a `@Provides` to one
@@ -198,6 +201,24 @@ Code under `org.cru.soularium.domain` must not reference Compose, Android, or iO
   (see above). Metro generates the matching `Presenter.Factory` + `Ui.Factory` and
   contributes them to the multibindings consumed by `CircuitBindings.providesCircuit`
   — no factory registration is required.
+
+### Logging & crash reporting
+
+There is no `CrashReporter` port. Code logs through the **global Kermit `Logger`** (each
+file keeps a `private val logger = Logger.withTag("<Name>")`); error paths call
+`logger.e(throwable) { "breadcrumb" }`. The global logger is bootstrapped once at startup —
+`SoulariumApplication.onCreate` on Android, `MainViewController` on iOS — by
+`LoggingBindings.Accessors.configureLogging()`, which sets the global minimum severity
+(`logMinSeverity`, default `Severity.Error` — so only `Error`/`Assert` are emitted) and
+installs the Metro-assembled `Set<LogWriter>` onto `Logger`. Writers come from
+multibindings: `CrashlyticsLogWriter`
+(`org.cru.soularium.logging`, `@ContributesIntoSet`) forwards messages + non-fatals to
+Firebase Crashlytics through the GitLive `firebase-crashlytics` KMP SDK, and the platform
+console writer is contributed per-target (`AndroidLoggingBindings` — logcat, debug builds
+only; `IosLoggingBindings` — NSLog). `CrashlyticsLogWriter` is inert (its Firebase calls
+are wrapped defensively) until the `google-services.json` / `GoogleService-Info.plist`
+config files land. Tests exercise presenters without configuring the logger, so log calls
+hit only the default platform writer.
 
 ### Platform abstraction — expect/actual
 
@@ -274,5 +295,8 @@ author may dismiss severity < 7 findings.
 - User-visible strings come from Compose Multiplatform resources
   (`stringResource(Res.string.*)`), never inline literals. Source strings live in
   `shared/src/commonMain/composeResources/values/strings.xml`.
-- Firebase config files (`google-services.json`, `GoogleService-Info.plist`) and
-  `local.properties` are gitignored — never commit them.
+- Firebase config files (`google-services.json` in `androidApp/`,
+  `GoogleService-Info.plist` in `iosApp/`) are committed to the repo — they carry the
+  `soularium-985bf` project's client keys, which are not secrets (they ship inside the
+  distributed app and are guarded by Firebase security rules / App Check). `local.properties`
+  and signing keystores (`*.jks`, `*.keystore`) remain gitignored — never commit those.

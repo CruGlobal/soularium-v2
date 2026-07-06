@@ -8,7 +8,7 @@ import dev.zacsweers.metro.createGraphFactory
 import org.cru.soularium.domain.ports.DeviceStateRepository
 
 @DependencyGraph(AppScope::class)
-interface SoulariumAppGraph {
+interface SoulariumAppGraph : LoggingBindings.Accessors {
     val circuit: Circuit
     val deviceStateRepo: DeviceStateRepository
 

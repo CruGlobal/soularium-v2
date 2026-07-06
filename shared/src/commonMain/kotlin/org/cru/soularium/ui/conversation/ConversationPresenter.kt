@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import co.touchlab.kermit.Logger
 import com.slack.circuit.codegen.annotations.CircuitInject
 import com.slack.circuit.runtime.CircuitUiEvent
 import com.slack.circuit.runtime.CircuitUiState
@@ -23,7 +24,6 @@ import kotlinx.coroutines.sync.withLock
 import org.cru.soularium.domain.ContactInfo
 import org.cru.soularium.domain.newSession
 import org.cru.soularium.domain.ports.AnalyticsTracker
-import org.cru.soularium.domain.ports.CrashReporter
 import org.cru.soularium.domain.ports.SessionRepository
 import org.cru.soularium.domain.ports.Sharer
 import org.cru.soularium.domain.session.Effect
@@ -48,13 +48,14 @@ data class ConversationUiContext(
     val instructionsShown: Boolean = false,
 )
 
+private val logger = Logger.withTag("ConversationPresenter")
+
 @AssistedInject
 class ConversationPresenter(
     @Assisted private val navigator: Navigator,
     @Assisted private val screen: ConversationScreen,
     private val sessionRepository: SessionRepository,
     private val analytics: AnalyticsTracker,
-    private val crashReporter: CrashReporter,
     private val sharer: Sharer,
 ) : Presenter<ConversationPresenter.UiState> {
 
@@ -111,7 +112,7 @@ class ConversationPresenter(
                         ui = ui.copy(participantNames = names)
                     }
                 }
-            }.onFailure { crashReporter.recordNonFatal(it, "loadState on init") }
+            }.onFailure { logger.e(it) { "loadState on init" } }
 
             if (!bootstrapped) {
                 bootstrapped = true
@@ -119,7 +120,7 @@ class ConversationPresenter(
                     val existing =
                         runCatching { sessionRepository.loadSession(screen.sessionId) }
                             .getOrElse {
-                                crashReporter.recordNonFatal(it, "loadSession in ensureStarted")
+                                logger.e(it) { "loadSession in ensureStarted" }
                                 null
                             }
                     if (existing == null) {
@@ -128,7 +129,7 @@ class ConversationPresenter(
                                 session = newSession(screen.sessionId, screen.kind),
                                 initialState = SessionState.NotStarted,
                             )
-                        }.onFailure { crashReporter.recordNonFatal(it, "createSession") }
+                        }.onFailure { logger.e(it) { "createSession" } }
                         val (newState, newUi) = applyDispatch(
                             event = SessionEvent.StartSession(screen.kind),
                             previousState = sessionState,
@@ -149,7 +150,7 @@ class ConversationPresenter(
                 runCatching {
                     repoMutex.withLock { loadSummaries() }
                 }.onSuccess { summaries = it }
-                    .onFailure { crashReporter.recordNonFatal(it, "loadSummaries") }
+                    .onFailure { logger.e(it) { "loadSummaries" } }
             }
             if (sessionState == SessionState.Concluded) {
                 navigator.pop()
@@ -185,7 +186,7 @@ class ConversationPresenter(
                             repoMutex.withLock {
                                 sessionRepository.setBookmarked(screen.sessionId, true)
                             }
-                        }.onFailure { crashReporter.recordNonFatal(it, "bookmarkAndExit") }
+                        }.onFailure { logger.e(it) { "bookmarkAndExit" } }
                         analytics.event("conversation_bookmarked", emptyMap())
                         navigator.pop()
                     }
@@ -197,7 +198,7 @@ class ConversationPresenter(
                             repoMutex.withLock {
                                 sessionRepository.deleteSession(screen.sessionId)
                             }
-                        }.onFailure { crashReporter.recordNonFatal(it, "discardAndExit") }
+                        }.onFailure { logger.e(it) { "discardAndExit" } }
                         navigator.pop()
                     }
                 }
@@ -215,7 +216,7 @@ class ConversationPresenter(
                                 } ?: return@launch
                             sharer.share(text = url)
                             analytics.event("share_initiated", mapOf("channel" to "other"))
-                        }.onFailure { crashReporter.recordNonFatal(it, "shareSummary") }
+                        }.onFailure { logger.e(it) { "shareSummary" } }
                     }
                 }
                 is UiEvent.CollectContact -> {
@@ -299,7 +300,7 @@ class ConversationPresenter(
 
         scope.launch {
             runCatching { repoMutex.withLock { applyEffects(result.effects) } }
-                .onFailure { crashReporter.recordNonFatal(it, "applyEffects after $event") }
+                .onFailure { logger.e(it) { "applyEffects after $event" } }
         }
         return result.next to nextUi
     }

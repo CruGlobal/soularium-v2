@@ -3,6 +3,7 @@ package org.cru.soularium
 import androidx.compose.runtime.ExperimentalComposeApi
 import androidx.compose.ui.window.ComposeUIViewController
 import org.cru.soularium.di.PlatformBindings
+import org.cru.soularium.di.configureLogging
 import org.cru.soularium.di.createSoulariumAppGraph
 import platform.UIKit.UIViewController
 
@@ -12,6 +13,7 @@ import platform.UIKit.UIViewController
 @Suppress("ktlint:standard:function-naming")
 fun MainViewController(): UIViewController {
     val graph = createSoulariumAppGraph(PlatformBindings())
+    graph.configureLogging()
     return ComposeUIViewController(
         configure = {
             // The Xcode project uses a generated Info.plist and can't carry the

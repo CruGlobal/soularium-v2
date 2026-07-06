@@ -21,7 +21,6 @@ import org.cru.soularium.domain.Session
 import org.cru.soularium.domain.SessionId
 import org.cru.soularium.domain.SessionKind
 import org.cru.soularium.domain.ports.AnalyticsTracker
-import org.cru.soularium.domain.ports.CrashReporter
 import org.cru.soularium.domain.ports.SessionRepository
 import org.cru.soularium.domain.ports.ShareResult
 import org.cru.soularium.domain.ports.Sharer
@@ -46,7 +45,6 @@ class ConversationPresenterTest {
         screen = screen,
         sessionRepository = repo,
         analytics = analytics,
-        crashReporter = NoOpCrash,
         sharer = sharer,
     )
 
@@ -250,11 +248,6 @@ private class RecordingAnalytics : AnalyticsTracker {
 private object NoOpAnalytics : AnalyticsTracker {
     override fun screenView(screenName: String) = Unit
     override fun event(name: String, params: Map<String, Any>) = Unit
-}
-
-private object NoOpCrash : CrashReporter {
-    override fun recordNonFatal(throwable: Throwable, breadcrumb: String?) = Unit
-    override fun setKey(key: String, value: String) = Unit
 }
 
 private object NoOpSharer : Sharer {

@@ -69,6 +69,8 @@ kotlin {
             implementation(libs.coil.compose)
             implementation(libs.gtoSupport.parcelize)
             implementation(libs.coroutines.core)
+            implementation(libs.kermit)
+            implementation(libs.gitlive.firebase.crashlytics)
             api(libs.room.runtime)
             implementation(libs.sqlite.bundled)
             implementation(libs.datastore.preferences.core)
@@ -77,6 +79,7 @@ kotlin {
             api(libs.kotlinx.serialization.json)
         }
         androidMain.dependencies {
+            implementation(project.dependencies.platform(libs.firebase.bom))
             implementation(libs.androidx.activity.compose)
         }
         commonTest.dependencies {

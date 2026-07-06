@@ -270,7 +270,16 @@ DI is compile-time via [Metro](https://github.com/ZacSweers/metro). The graph is
 
 Ktlint with the `android_studio` code style (plus `.editorconfig`) enforces most rules — line length, formatter rules, trailing newline — and step 4's pre-flight already covers those. Manual checks:
 
-- [ ] Trailing commas on multi-line signatures/calls, none on single-line ones — ktlint's trailing-comma rules are disabled in `.editorconfig`, so the pre-flight does NOT catch either case
+- [ ] **Trailing commas** — ktlint's trailing-comma rules are disabled in `.editorconfig` (it is a deliberately not-one-size-fits-all choice), so the pre-flight catches none of these; check by hand. The convention:
+  - **Only touch a trailing comma on a line you are already modifying.** If the surrounding code is otherwise unchanged, leave its comma (or lack of one) as-is — do not churn it either direction.
+  - A call or signature flattened onto a **single line** takes **no** trailing comma.
+  - A multi-line **non-`Modifier`** call or signature **does** take a trailing comma on its last argument — this avoids churn when a later argument is added.
+  - A **`Modifier` chain** is placed as the **last** parameter of a composable call and takes **no** trailing comma after its final `.foo()` — this keeps adding a new modifier to the end from churning the previous line. A single-modifier chain may sit on one line (`modifier = Modifier.height(52.dp)`), with or without a comma; a chain of two or more goes one modifier per line with no trailing comma:
+    ```kotlin
+    modifier = Modifier
+        .background(color)
+        .padding(16.dp)
+    ```
 - [ ] Package prefix: `org.cru.soularium` (with `org.cru.soularium.app` reserved for `:androidApp`)
 - [ ] `@Composable` functions may use capitalized names (ktlint rule exempt); other functions are camelCase
 - [ ] Files end with a trailing newline; no trailing whitespace

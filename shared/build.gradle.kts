@@ -20,8 +20,8 @@ kotlin {
     }
     android {
         namespace = "org.cru.soularium"
-        compileSdk = 36
-        minSdk = 24
+        compileSdk = libs.versions.android.sdk.compile.get().toInt()
+        minSdk = libs.versions.android.sdk.min.get().toInt()
         // Opt in to AGP's KMP Android-resources pipeline so the Compose
         // Multiplatform resources plugin can wire its
         // CopyResourcesToAndroidAssetsTask output into the published Android

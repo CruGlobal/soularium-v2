@@ -8,12 +8,12 @@ plugins {
 
 android {
     namespace = "org.cru.soularium.app"
-    compileSdk = 36
+    compileSdk = libs.versions.android.sdk.compile.get().toInt()
 
     defaultConfig {
         applicationId = "org.cru.soularium"
-        minSdk = 24
-        targetSdk = 36
+        minSdk = libs.versions.android.sdk.min.get().toInt()
+        targetSdk = libs.versions.android.sdk.compile.get().toInt()
         versionCode = 1
         versionName = "2.0.0"
     }

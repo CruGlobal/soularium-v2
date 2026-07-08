@@ -233,7 +233,7 @@ DI is compile-time via [Metro](https://github.com/ZacSweers/metro). The graph is
 - [ ] Cross-module Gradle conventions live in `build-logic/src/main/kotlin/*-conventions.gradle.kts` and are applied via `id("<name>-conventions")` (currently `ktlint-conventions`). Module-specific config stays in each module's `build.gradle.kts` using `libs.versions.toml` aliases. Convention plugins must be reusable across modules — flag a new convention plugin used by only one module as a **❌ Must Fix**
 - [ ] All dependency coordinates use `libs.*` aliases from `gradle/libs.versions.toml` — no inline `"group:artifact:version"` strings
 - [ ] New dependencies add entries to `libs.versions.toml` and follow existing naming
-- [ ] `minSdk 24`, `compileSdk 36`, `targetSdk 36`, JVM target 17 — version bumps need explicit justification
+- [ ] `minSdk 24`, `compileSdk 37`, `targetSdk 37`, JVM target 17 — version bumps need explicit justification. The SDK levels live in `gradle/libs.versions.toml` under `android-sdk-compile` / `android-sdk-min` and are read via `libs.versions.android.sdk.*`; `targetSdk` reuses `android-sdk-compile`
 - [ ] Application id stays `org.cru.soularium` (debug builds get the `.dev` suffix automatically); the application id and build types live in `:androidApp`, NOT `:shared`
 - [ ] iOS bundle id stays `org.cru.soularium`
 - [ ] ktlint excludes anything under `build/` (already configured at the root) — no per-module re-enabling of generated-source linting

@@ -1,0 +1,15 @@
+/gradlew     text
+/gradlew.bat -text
+*.gradle     text
+
+.gitignore   text
+*.kt         text
+*.kts        text
+*.pro        text
+*.properties text
+*.xml        text
+*.yml        text
+
+# Paparazzi screenshots
+**/snapshots/images/*.png filter=lfs diff=lfs merge=lfs -text
+**/snapshots/videos/*.png filter=lfs diff=lfs merge=lfs -text

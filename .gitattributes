@@ -1,8 +1,8 @@
 /gradlew     text
-/gradlew.bat -text
 *.gradle     text
 
 .gitignore   text
+*.bat        text
 *.kt         text
 *.kts        text
 *.pro        text

@@ -274,7 +274,7 @@ author may dismiss severity < 7 findings.
   `org.cru.soularium.domain.session`, `org.cru.soularium.data.db`). The Compose-resources
   `Res` accessor is generated at `org.cru.soularium.generated.resources` (configured via
   `compose.resources.packageOfResClass` in `:shared`).
-- Android: `minSdk 24`, `compileSdk`/`targetSdk 36`, JVM target 17, application id
+- Android: `minSdk 24`, `compileSdk`/`targetSdk 37`, JVM target 17, application id
   `org.cru.soularium` (debug builds add a `.dev` suffix). The application id and build
   types live in `:androidApp` — `:shared` is a KMP library with no application id.
 - iOS: bundle id `org.cru.soularium`; the Compose framework is embedded via an Xcode

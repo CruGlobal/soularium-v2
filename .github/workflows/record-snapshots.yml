@@ -1,0 +1,34 @@
+name: Record Snapshots
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  record_snapshots:
+    name: Record Snapshots
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          lfs: 'true'
+      - name: Setup Java JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: "temurin"
+          java-version-file: ".tool-versions"
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+      - name: Record snapshots
+        run: ./gradlew :shared:cleanRecordPaparazzi -Ppaparazzi
+      - name: Commit snapshots
+        run: |
+          git config --global user.name '${{ github.actor }}'
+          git config --global user.email '${{ github.actor }}@users.noreply.github.com'
+          git add .
+          git commit -am "Record updated snapshots" || echo "No changed snapshots"
+          git push

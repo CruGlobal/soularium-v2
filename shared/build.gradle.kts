@@ -1,3 +1,4 @@
+import com.android.build.api.dsl.KotlinMultiplatformAndroidHostTestCompilation
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -11,6 +12,7 @@ plugins {
     alias(libs.plugins.metro)
     alias(libs.plugins.room)
     id("ktlint-conventions")
+    id("paparazzi-conventions")
 }
 
 kotlin {
@@ -42,6 +44,11 @@ kotlin {
             )
         }
         withHostTest {}
+        // Puts the generated R class on the host-test runtime classpath, which Paparazzi
+        // loads to initialize resources at snapshot time.
+        compilations.withType(KotlinMultiplatformAndroidHostTestCompilation::class.java) {
+            isIncludeAndroidResources = true
+        }
     }
     // Compose Multiplatform 1.11.x no longer publishes iosX64 binaries for several
     // artifacts (foundation, components-resources, components-ui-tooling-preview).
@@ -93,7 +100,9 @@ kotlin {
         named("androidHostTest").configure {
             dependencies {
                 implementation(libs.androidx.test.junit)
+                implementation(libs.paparazzi)
                 implementation(libs.robolectric)
+                implementation(libs.testparameterinjector)
             }
         }
     }

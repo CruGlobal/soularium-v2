@@ -4,7 +4,9 @@ plugins {
 }
 
 dependencies {
+    implementation(libs.android.gradle)
     implementation(libs.ktlint.gradle)
+    implementation(libs.paparazzi.gradle)
 }
 
 ktlint {

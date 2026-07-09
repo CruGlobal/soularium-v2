@@ -57,7 +57,6 @@
     <!-- Terms of use -->
     <string name="terms_title">Terms of Use</string>
     <string name="terms_confirm_prompt">By tapping ‘Agree’, you agree to the Soularium app Terms of Use.</string>
-    <string name="terms_review_note">You can review the Terms of Use anytime from Resources.</string>
     <string name="terms_thanks_heading">Thanks!</string>
 
     <!-- Home -->

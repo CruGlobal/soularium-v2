@@ -9,9 +9,6 @@ import org.cru.soularium.domain.SessionKind
 data object IntroScreen : Screen
 
 @Parcelize
-data object TermsScreen : Screen
-
-@Parcelize
 data object HomeScreen : Screen
 
 @Parcelize

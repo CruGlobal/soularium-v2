@@ -184,7 +184,7 @@ The project enforces layering by package convention inside the single `:shared` 
 - [ ] Private sub-composables in the file are marked `private`
 
 **Screen & wiring**
-- [ ] New `Screen` destinations are `@Parcelize` `data object`/`data class` types in `ui/nav/Screens.kt`
+- [ ] New `Screen` destinations are `@Parcelize` `data object`/`data class` types — either in `ui/nav/Screens.kt` or co-located in a self-contained feature package next to its Presenter/Layout (e.g. `ui/terms/TermsScreen.kt`)
 - [ ] Presenter + Layout wired via `@CircuitInject(<Feature>Screen::class, AppScope::class)` codegen — Metro generates the `Presenter.Factory` / `Ui.Factory` and contributes them to the multibindings consumed by `CircuitBindings.providesCircuit`. There is no hand-written factory or switch table
 - [ ] Loading / error / empty states are first-class on every screen that loads data (the app is offline-first, but `DomainError.PersistenceFailed` still needs a path)
 
@@ -222,7 +222,7 @@ DI is compile-time via [Metro](https://github.com/ZacSweers/metro). The graph is
 - [ ] Platform-specific bindings live in `expect class PlatformBindings` actuals. Android actual takes `(context: Context)` and provides it as `@Provides @SingleIn(AppScope::class) internal val context`; iOS actual is empty (Sharer/AnalyticsTracker/CrashReporter impls are common with `@ContributesBinding`)
 - [ ] Set multibindings (`Set<Presenter.Factory>`, `Set<Ui.Factory>`) declared with `@Multibinds(allowEmpty = true)` in `CircuitBindings`; new factories contributed via `@Provides @IntoSet` or `@ContributesIntoSet(AppScope::class)`
 - [ ] New graph accessors on `SoulariumAppGraph` are added ONLY when the consumer is the Compose root (`App.kt` is the only call site today) — everything else takes deps via `@Inject` constructor params, not via the graph
-- [ ] New screens add a `Screen` to `ui/nav/Screens.kt`; the Presenter+Layout `@CircuitInject` annotations drive factory codegen — no manual factory registration. Presenter deps come from the graph via `@Inject` constructor params
+- [ ] New screens declare a `Screen` (in `ui/nav/Screens.kt` or co-located in the feature package, e.g. `ui/terms/TermsScreen.kt`); the Presenter+Layout `@CircuitInject` annotations drive factory codegen — no manual factory registration. Presenter deps come from the graph via `@Inject` constructor params
 - [ ] `createSoulariumAppGraph(PlatformBindings(...))` is called once per entry point — `SoulariumApplication.onCreate()` on Android, `MainViewController()` on iOS — and the graph is passed into `App(graph)` rather than rebuilt per recomposition
 - [ ] No use of Koin, Hilt, Dagger, or Anvil annotations — DI is Metro-only
 

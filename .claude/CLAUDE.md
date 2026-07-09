@@ -142,7 +142,9 @@ Code under `org.cru.soularium.domain` must not reference Compose, Android, or iO
 
 - **Navigation**: `NavGraph.kt` builds a Circuit saveable back stack rooted at a start
   `Screen` and renders the active screen via `NavigableCircuitContent`. Screen
-  destinations are `@Parcelize` `data object`/`data class` types in `ui/nav/Screens.kt`.
+  destinations are `@Parcelize` `data object`/`data class` types. Most live together in
+  `ui/nav/Screens.kt`, but a self-contained feature package may instead co-locate its own
+  `Screen` next to its Presenter/Layout (e.g. `ui/terms/TermsScreen.kt`).
   Presenters and Layouts are wired to their Screen by `@CircuitInject(SomeScreen::class,
   AppScope::class)` — Metro generates the matching `Presenter.Factory` /
   `Ui.Factory` at compile time (enabled by `metro { enableCircuitCodegen.set(true) }` in
@@ -201,7 +203,9 @@ Code under `org.cru.soularium.domain` must not reference Compose, Android, or iO
 - `PlatformBindings` is `expect class PlatformBindings` with Android/iOS actuals.
   The Android actual exposes the `Context` and pulls in `AndroidSharer`; the iOS actual
   pulls in `IosSharer`. Both `Sharer` impls are `@Inject @ContributesBinding(AppScope::class)`.
-- **Adding a screen**: add a `Screen` to `ui/nav/Screens.kt`, then create
+- **Adding a screen**: declare a `Screen` — either in `ui/nav/Screens.kt` or, for a
+  self-contained feature package, co-located in that package (e.g.
+  `ui/terms/TermsScreen.kt`) — then create
   `<Feature>Presenter.kt` and `<Feature>Layout.kt` annotated with `@CircuitInject(...)`
   (see above). Metro generates the matching `Presenter.Factory` + `Ui.Factory` and
   contributes them to the multibindings consumed by `CircuitBindings.providesCircuit`

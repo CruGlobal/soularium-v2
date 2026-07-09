@@ -31,45 +31,41 @@ tokens from `MaterialTheme.colorScheme.*`, `MaterialTheme.typography.*`, and
 
 ```kotlin
 @Composable
-fun SoulariumTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = SoulariumLightColors,
-        typography = soulariumTypography(),
-        content = content,
-    )
-}
+fun SoulariumTheme(
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    content: @Composable () -> Unit,
+) = MaterialTheme(
+    colorScheme = if (darkTheme) SoulariumTheme.darkScheme else SoulariumTheme.lightScheme,
+    typography = soulariumTypography(),
+) { /* provides SoulariumTheme.isDarkThemeActive */ }
 ```
 
 - `SoulariumTheme` is a thin Material3 wrapper. Feature screens must **not** call
   `MaterialTheme(...)` or `SoulariumTheme(...)` themselves.
-- **Light theme only.** Dark mode is a deliberate non-goal for v2 — there is no
-  `darkColorScheme`, and the theme does not branch on `isSystemInDarkTheme()`. Do not add
-  dark-mode branching; if dark mode is ever needed it will be a project-level decision.
+- **Light and dark.** The app ships both `lightColorScheme` and `darkColorScheme`
+  (in `object SoulariumTheme`) and selects between them via `isSystemInDarkTheme()` —
+  it follows the system setting. There is no in-app theme toggle. Read
+  `SoulariumTheme.isDarkThemeActive` inside a `@Composable` when behavior must branch on
+  the active mode; prefer letting `MaterialTheme.colorScheme.*` tokens adapt automatically.
 - `Shapes` are the Material3 defaults — no custom shape set is defined.
 
 ---
 
 ## 3. Color Tokens
 
-`Color.kt` defines the brand palette and maps it onto a Material3 `lightColorScheme()`
-named `SoulariumLightColors`. **Map every color to a `MaterialTheme.colorScheme.*` token**
-— do not introduce ad-hoc top-level `Color` values in screen files.
+`Color.kt` holds a **full Material 3 palette** — every scheme slot in both light and
+dark (`*Light` / `*Dark` internal vals) — generated with the Material 3 Theme Builder
+engine (`material-color-utilities`, color match: false) from Soularium's brand seeds:
 
-### Brand palette (defined in `Color.kt`)
+| Role seed | Hex |
+|---|---|
+| primary | `#F05D2C` |
+| secondary | `#F27619` |
+| tertiary (generated) | key color `#6B5E2F` |
 
-| Name | Hex | Material3 slot |
-|---|---|---|
-| `SoulariumOrange` | `#F05D2C` | `primary` |
-| `SoulariumOrangeLight` | `#F27619` | `secondary` |
-| `SoulariumDark` | `#1A1A1A` | dark neutral |
-| `SoulariumBackground` | `#ECEAEB` | `background` |
-| `SoulariumSurface` | `#FFFFFF` | `surface` |
-| `SoulariumOnSurface` | `#1A1A1A` | `onSurface` |
-| `SoulariumSurfaceVariant` | `#F3F1F2` | `surfaceVariant` |
-| `SoulariumOnSurfaceVariant` | `#595759` | `onSurfaceVariant` |
-| `SoulariumOutline` | `#8C8A8B` | `outline` |
-| `SoulariumOutlineVariant` | `#CFCDCE` | `outlineVariant` |
-| `SoulariumError` | `#BA1A1A` | `error` |
+The generated slots are assembled into `SoulariumTheme.lightScheme` / `darkScheme` in
+`Theme.kt`. To change the brand, edit the seeds and regenerate (script in
+`docs/superpowers/plans/2026-07-09-dark-theme.md`) — do not hand-tune individual slots.
 
 ### Question progression accent
 
@@ -82,8 +78,8 @@ not hardcode these hexes elsewhere.
 1. **Preferred:** reuse the closest Material3 token — the scheme covers more than its
    names suggest (`surfaceVariant`, `outlineVariant`, `secondaryContainer`).
 2. If a genuinely new brand color is needed, add it to `Color.kt` as a named `val` and,
-   if it belongs in the scheme, wire it into `SoulariumLightColors`. Document why no
-   existing token fit.
+   if it belongs in the scheme, wire it into both `SoulariumTheme.lightScheme` and
+   `darkScheme`. Document why no existing token fit.
 3. **Never** inline a `Color(0xFF…)` literal in a screen file — that is a code-review
    blocker. The only acceptable inline `Color` values are `Color.Transparent` and
    `Color.Unspecified` as sentinel arguments.
@@ -276,7 +272,8 @@ persistence failures (`DomainError.PersistenceFailed`) still need a user-facing 
 8. `modifier` is the last parameter, applied first; every public composable forwards it.
 9. State is derived in the Presenter and exposed via `UiState`; Layouts stay stateless.
 10. Loading / error / empty states are first-class.
-11. **No dark-mode branching** — the app is light-only by design.
+11. **Dark mode follows the system** — the theme selects light/dark via
+    `isSystemInDarkTheme()`; do not add an in-app toggle.
 12. Accessibility is required, not optional.
 13. Strings come from `stringResource(Res.string.*)`.
 14. No platform-specific imports in `commonMain` UI — bridge via `expect`/`actual`.

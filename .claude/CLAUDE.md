@@ -183,8 +183,8 @@ Code under `org.cru.soularium.domain` must not reference Compose, Android, or iO
   carries `@CircuitInject(<Feature>Screen::class, AppScope::class)` directly on its
   `@Composable` declaration so Metro generates the matching `Ui.Factory`.
 - **Theme**: `SoulariumTheme { }` (a thin Material3 wrapper) is applied once at the app
-  root. Light theme only (dark mode is a deliberate non-goal for v2). See
-  `.claude/rules/design_system_rules.md`.
+  root. Provides light and dark Material3 color schemes, selected automatically via
+  `isSystemInDarkTheme()`. See `.claude/rules/design_system_rules.md`.
 
 ### Dependency Injection — Metro
 

@@ -195,7 +195,7 @@ Cross-reference `.claude/rules/design_system_rules.md` while reviewing UI code.
 - [ ] No raw `Color(0xFF...)` literals in screen files — use `MaterialTheme.colorScheme.*`. Sentinels `Color.Transparent` and `Color.Unspecified` are allowed
 - [ ] No raw `fontSize` / `fontWeight` on `Text` — use `MaterialTheme.typography.*` slots from `soulariumTypography()`
 - [ ] No per-screen `MaterialTheme(...)` or `SoulariumTheme(...)` wrappers — `SoulariumTheme { }` is applied once at the app root
-- [ ] **No dark-mode branching** — no `isSystemInDarkTheme()` checks, no `darkColorScheme(...)`. The app is light-only by design
+- [ ] **Dark mode follows the system** — theme selection goes through `isSystemInDarkTheme()`; no in-app theme toggle or hardcoded scheme override
 - [ ] Spacing stays on the 4dp grid; `Arrangement.spacedBy(N.dp)` is preferred over per-child padding for sibling spacing
 - [ ] Material3 components used before reaching for primitives (`Button`/`Card`/`Scaffold`/`TopAppBar`, etc.)
 - [ ] Icons come from `androidx.compose.material.icons.Icons.*` — no hand-rolled `ImageVector` paths
@@ -204,7 +204,7 @@ Cross-reference `.claude/rules/design_system_rules.md` while reviewing UI code.
 - [ ] Modifier order: caller `modifier` → size → padding → background/clip → interaction → semantics
 - [ ] `LazyColumn`/`LazyRow` use `key = { it.id }` whenever items can be added/removed/reordered — and the key is non-null
 - [ ] Bundled card drawables loaded via `painterResource(Res.drawable.card_NN)` — not file paths or resource IDs
-- [ ] When a new brand color is genuinely needed, it is added to `ui/theme/Color.kt` and (if appropriate) wired into `SoulariumLightColors` — not inlined in a screen
+- [ ] When a new brand color is genuinely needed, it is added to `ui/theme/Color.kt` and (if appropriate) wired into both `SoulariumTheme.lightScheme` and `darkScheme` — not inlined in a screen
 
 ### Kotlin Multiplatform — expect / actual
 

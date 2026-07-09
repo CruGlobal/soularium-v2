@@ -1,0 +1,4 @@
+[*.{kt,kts}]
+# LocalDarkThemeActive is defined in Theme.kt; allowlist it against the
+# Compose CompositionLocal rule (scoped to the theme package).
+compose_allowed_composition_locals = LocalDarkThemeActive

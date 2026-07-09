@@ -17,6 +17,7 @@ kotlinx-datetime = "0.8.0"
 kotlinx-serialization = "1.11.0"
 ksp = "2.3.9"
 ktlint = "14.2.0"
+markdown-renderer = "0.43.0"
 paparazzi = "2.0.0-alpha05"
 room = "2.8.4"
 sqlite = "2.7.0"
@@ -39,12 +40,15 @@ firebase-analytics = { module = "com.google.firebase:firebase-analytics-ktx" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebase-bom" }
 firebase-crashlytics = { module = "com.google.firebase:firebase-crashlytics-ktx" }
 gtoSupport-androidx-test-junit = { module = "org.ccci.gto.android:gto-support-androidx-test-junit", version.ref = "gtoSupport" }
+gtoSupport-compose = { module = "org.ccci.gto.android:gto-support-compose", version.ref = "gtoSupport" }
 gtoSupport-parcelize = { module = "org.ccci.gto.android:gto-support-parcelize", version.ref = "gtoSupport" }
 kotest-assertions = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 ktlint-gradle = { module = "org.jlleitschuh.gradle:ktlint-gradle", version.ref = "ktlint" }
 ktlint-rules-compose = "io.nlopez.compose.rules:ktlint:0.6.2"
+markdown-renderer = { module = "com.mikepenz:multiplatform-markdown-renderer", version.ref = "markdown-renderer" }
+markdown-renderer-m3 = { module = "com.mikepenz:multiplatform-markdown-renderer-m3", version.ref = "markdown-renderer" }
 okio = "com.squareup.okio:okio:3.17.0"
 paparazzi = { module = "app.cash.paparazzi:paparazzi", version.ref = "paparazzi" }
 paparazzi-gradle = { module = "app.cash.paparazzi:paparazzi-gradle-plugin", version.ref = "paparazzi" }

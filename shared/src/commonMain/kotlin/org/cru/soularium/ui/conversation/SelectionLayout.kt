@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -41,7 +42,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import org.cru.soularium.generated.resources.Res
 import org.cru.soularium.generated.resources.action_confirm
-import org.cru.soularium.generated.resources.cd_card_thumb
 import org.cru.soularium.generated.resources.q1_selection
 import org.cru.soularium.generated.resources.q2_selection
 import org.cru.soularium.generated.resources.q3_selection
@@ -55,13 +55,12 @@ import org.cru.soularium.generated.resources.selection_navigation_instructions
 import org.cru.soularium.generated.resources.selection_round_1_label
 import org.cru.soularium.generated.resources.selection_round_2_label
 import org.cru.soularium.generated.resources.selection_x_selected
-import org.cru.soularium.ui.content.CardImages
+import org.cru.soularium.ui.content.CardAsset
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 private const val CARD_GRID_COLUMNS = 3
-private const val TOTAL_CARDS = 50
 private const val TWO_ROUND_QUESTION_MAX = 2
 
 /**
@@ -122,13 +121,13 @@ fun SelectionLayout(state: ConversationPresenter.UiState.Selection, modifier: Mo
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                items(TOTAL_CARDS) { index ->
-                    val cardId = index + 1
-                    val isSelected = cardId in selectedCardIds
+                items(CardAsset.entries, key = { it.id }) { card ->
                     SelectableCardItem(
-                        cardId = cardId,
-                        isSelected = isSelected,
-                        onToggle = { state.eventSink(ConversationPresenter.UiEvent.Selection.ToggleCard(cardId)) },
+                        card = card,
+                        isSelected = card.id in selectedCardIds,
+                        onToggle = {
+                            state.eventSink(ConversationPresenter.UiEvent.Selection.ToggleCard(card.id))
+                        },
                     )
                 }
             }
@@ -223,8 +222,13 @@ private fun SelectionHeader(
 }
 
 @Composable
-private fun SelectableCardItem(cardId: Int, isSelected: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier) {
-    val cardLabel = stringResource(Res.string.cd_card_thumb, cardId)
+private fun SelectableCardItem(
+    card: CardAsset,
+    isSelected: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val cardLabel = card.contentDescription?.let { stringResource(it) }
 
     val primaryColor = MaterialTheme.colorScheme.primary
     val onPrimaryColor = MaterialTheme.colorScheme.onPrimary
@@ -246,14 +250,14 @@ private fun SelectableCardItem(cardId: Int, isSelected: Boolean, onToggle: () ->
             )
             .clickable(onClick = onToggle)
             .semantics {
-                contentDescription = cardLabel
+                cardLabel?.let { contentDescription = it }
                 selected = isSelected
                 role = Role.Checkbox
             },
         contentAlignment = Alignment.TopEnd,
     ) {
         Image(
-            painter = painterResource(CardImages.thumb(cardId)),
+            painter = painterResource(card.thumbnail ?: card.full),
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize(),

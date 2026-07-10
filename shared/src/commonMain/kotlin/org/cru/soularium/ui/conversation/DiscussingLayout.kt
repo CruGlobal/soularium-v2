@@ -29,7 +29,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import org.cru.soularium.generated.resources.Res
 import org.cru.soularium.generated.resources.action_done
-import org.cru.soularium.generated.resources.cd_card_thumb
 import org.cru.soularium.generated.resources.discuss_instructions
 import org.cru.soularium.generated.resources.image_x_of_y
 import org.cru.soularium.generated.resources.q1_discussion
@@ -37,7 +36,7 @@ import org.cru.soularium.generated.resources.q2_discussion
 import org.cru.soularium.generated.resources.q3_discussion
 import org.cru.soularium.generated.resources.q4_discussion
 import org.cru.soularium.generated.resources.q5_discussion
-import org.cru.soularium.ui.content.CardImages
+import org.cru.soularium.ui.content.CardAsset
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -54,7 +53,7 @@ private const val CARD_ASPECT_RATIO = 3f / 2f
 fun DiscussingLayout(state: ConversationPresenter.UiState.Discussing, modifier: Modifier = Modifier) {
     val questionNumber = state.questionNumber
     val participantName = state.participantName
-    val cardIds = state.cardIds
+    val cards = state.cardIds.map(CardAsset::fromId)
     val discussionPrompt = stringResource(questionDiscussionResource(questionNumber))
 
     Surface(
@@ -107,14 +106,14 @@ fun DiscussingLayout(state: ConversationPresenter.UiState.Discussing, modifier: 
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // Card image(s)
-                if (cardIds.size == 1) {
-                    SingleCardImage(
-                        cardId = cardIds[0],
+                if (cards.size == 1) {
+                    SingleCard(
+                        card = cards[0],
                         modifier = Modifier.fillMaxWidth(),
                     )
                 } else {
                     MultiCardPager(
-                        cardIds = cardIds,
+                        cards = cards,
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
@@ -139,20 +138,20 @@ fun DiscussingLayout(state: ConversationPresenter.UiState.Discussing, modifier: 
 }
 
 @Composable
-private fun SingleCardImage(cardId: Int, modifier: Modifier = Modifier) {
+private fun SingleCard(card: CardAsset, modifier: Modifier = Modifier) {
     Image(
-        painter = painterResource(CardImages.full(cardId)),
-        contentDescription = stringResource(Res.string.cd_card_thumb, cardId),
+        painter = painterResource(card.full),
+        contentDescription = card.contentDescription?.let { stringResource(it) },
         contentScale = ContentScale.Fit,
         modifier = modifier.aspectRatio(CARD_ASPECT_RATIO),
     )
 }
 
 @Composable
-private fun MultiCardPager(cardIds: List<Int>, modifier: Modifier = Modifier) {
-    val pagerState = rememberPagerState(pageCount = { cardIds.size })
+private fun MultiCardPager(cards: List<CardAsset>, modifier: Modifier = Modifier) {
+    val pagerState = rememberPagerState(pageCount = { cards.size })
     val currentPage = pagerState.currentPage
-    val totalPages = cardIds.size
+    val totalPages = cards.size
 
     Column(
         modifier = modifier,
@@ -177,7 +176,7 @@ private fun MultiCardPager(cardIds: List<Int>, modifier: Modifier = Modifier) {
             ) { page ->
                 val cardDesc = stringResource(Res.string.image_x_of_y, page + 1, totalPages)
                 Image(
-                    painter = painterResource(CardImages.full(cardIds[page])),
+                    painter = painterResource(cards[page].full),
                     contentDescription = cardDesc,
                     contentScale = ContentScale.Fit,
                     modifier = Modifier

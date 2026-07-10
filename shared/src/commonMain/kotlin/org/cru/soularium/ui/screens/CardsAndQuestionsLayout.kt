@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -48,7 +49,6 @@ import org.cru.soularium.domain.content.Questions
 import org.cru.soularium.generated.resources.Res
 import org.cru.soularium.generated.resources.action_back
 import org.cru.soularium.generated.resources.cards_and_questions_title
-import org.cru.soularium.generated.resources.cards_card_number
 import org.cru.soularium.generated.resources.cards_question_number
 import org.cru.soularium.generated.resources.cards_tab_cards
 import org.cru.soularium.generated.resources.cards_tab_questions
@@ -57,14 +57,13 @@ import org.cru.soularium.generated.resources.q2_prompt
 import org.cru.soularium.generated.resources.q3_prompt
 import org.cru.soularium.generated.resources.q4_prompt
 import org.cru.soularium.generated.resources.q5_prompt
-import org.cru.soularium.ui.content.CardImages
+import org.cru.soularium.ui.content.CardAsset
 import org.cru.soularium.ui.nav.CardsAndQuestionsScreen
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 private const val CARD_GRID_COLUMNS = 3
-private const val TOTAL_CARDS = 50
 private const val TAB_IMAGES = 0
 private const val TAB_QUESTIONS = 1
 
@@ -167,22 +166,20 @@ private fun CardsGrid(onCardTap: (Int) -> Unit, modifier: Modifier = Modifier) {
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        items(TOTAL_CARDS) { index ->
-            val cardId = index + 1
+        items(CardAsset.entries, key = { it.id }) { card ->
             CardThumbnailItem(
-                cardId = cardId,
-                onTap = { onCardTap(cardId) },
+                card = card,
+                onTap = { onCardTap(card.id) },
             )
         }
     }
 }
 
 @Composable
-private fun CardThumbnailItem(cardId: Int, onTap: () -> Unit, modifier: Modifier = Modifier) {
-    val contentDesc = stringResource(Res.string.cards_card_number, cardId)
+private fun CardThumbnailItem(card: CardAsset, onTap: () -> Unit, modifier: Modifier = Modifier) {
     Image(
-        painter = painterResource(CardImages.thumb(cardId)),
-        contentDescription = contentDesc,
+        painter = painterResource(card.thumbnail ?: card.full),
+        contentDescription = card.contentDescription?.let { stringResource(it) },
         contentScale = ContentScale.Crop,
         modifier = modifier
             .aspectRatio(1f)
@@ -235,7 +232,7 @@ private fun questionPromptRes(questionNumber: Int): StringResource = when (quest
 
 @Composable
 private fun CardFullScreenViewer(cardId: Int, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
-    val contentDesc = stringResource(Res.string.cards_card_number, cardId)
+    val card = CardAsset.fromId(cardId)
     val closeLabel = stringResource(Res.string.action_back)
 
     Box(
@@ -246,8 +243,8 @@ private fun CardFullScreenViewer(cardId: Int, onDismiss: () -> Unit, modifier: M
         contentAlignment = Alignment.Center,
     ) {
         Image(
-            painter = painterResource(CardImages.full(cardId)),
-            contentDescription = contentDesc,
+            painter = painterResource(card.full),
+            contentDescription = card.contentDescription?.let { stringResource(it) },
             contentScale = ContentScale.Fit,
             modifier = Modifier
                 .fillMaxWidth()

@@ -211,7 +211,6 @@
     <string name="cards_and_questions_title">Images &amp; Questions</string>
     <string name="cards_tab_cards">Images</string>
     <string name="cards_tab_questions">Questions</string>
-    <string name="cards_card_number">Image %1$d</string>
     <string name="cards_question_number">Question %1$d</string>
 
     <!-- Settings -->
@@ -231,7 +230,56 @@
     <string name="error_invalid_selection_count">Pick %1$d image(s) to continue (you have %2$d).</string>
 
     <!-- Accessibility content descriptions -->
-    <string name="cd_card_thumb">Image %1$d</string>
+    <string name="card_a11y_description_1">Barbed wire atop a chain-link fence</string>
+    <string name="card_a11y_description_2">Person leaping with an umbrella in the rain</string>
+    <string name="card_a11y_description_3">Small lizard held between fingers</string>
+    <string name="card_a11y_description_4">Elderly couple walking away holding hands</string>
+    <string name="card_a11y_description_5">Mountain lake reflecting snowy peaks</string>
+    <string name="card_a11y_description_6">Man’s head covered in sticky-note reminders</string>
+    <string name="card_a11y_description_7">Teen in ripped jeans and red sneakers</string>
+    <string name="card_a11y_description_8">Painted Italian ceramics with paintbrushes</string>
+    <string name="card_a11y_description_9">Damaged public payphone in the dark</string>
+    <string name="card_a11y_description_10">Close-up of a human eye</string>
+    <string name="card_a11y_description_11">Daddy longlegs spider on a web</string>
+    <string name="card_a11y_description_12">Weathered wooden doors chained shut</string>
+    <string name="card_a11y_description_13">Pale pink cactus flower in bloom</string>
+    <string name="card_a11y_description_14">Smiling family with a young son</string>
+    <string name="card_a11y_description_15">Student walking with a backpack across campus</string>
+    <string name="card_a11y_description_16">Bored young woman shown repeatedly in a living room</string>
+    <string name="card_a11y_description_17">Sun setting over ocean waves on a beach</string>
+    <string name="card_a11y_description_18">Person holding a glowing light in dark woods</string>
+    <string name="card_a11y_description_19">Baby parrot cradled in cupped hands</string>
+    <string name="card_a11y_description_20">Shaven-headed woman sitting alone in a bathroom</string>
+    <string name="card_a11y_description_21">Dark bridge road at dusk with an oncoming headlight</string>
+    <string name="card_a11y_description_22">Blurred silhouette of a figure in swirling light</string>
+    <string name="card_a11y_description_23">Young woman writing in a journal on a park bench</string>
+    <string name="card_a11y_description_24">Close-up of a fishing hook against a blue background</string>
+    <string name="card_a11y_description_25">Two people reaching toward each other, motion-blurred</string>
+    <string name="card_a11y_description_26">Red wine glasses and a carafe on a table</string>
+    <string name="card_a11y_description_27">Person seated alone in a dim church pew</string>
+    <string name="card_a11y_description_28">Silverware sorted in a cutlery drawer</string>
+    <string name="card_a11y_description_29">Shirtless young man gazing at sunlit water</string>
+    <string name="card_a11y_description_30">Bride holding a white rose bouquet in a gown</string>
+    <string name="card_a11y_description_31">Person lying on a wooden church pew</string>
+    <string name="card_a11y_description_32">Feet in checkered sneakers on stairs</string>
+    <string name="card_a11y_description_33">Young girl running with colorful balloons outdoors</string>
+    <string name="card_a11y_description_34">Passenger jet on an airport tarmac</string>
+    <string name="card_a11y_description_35">Man covering his ears while two people shout</string>
+    <string name="card_a11y_description_36">White clock on rumpled bedsheets</string>
+    <string name="card_a11y_description_37">Distant figure at the end of a dark stone tunnel</string>
+    <string name="card_a11y_description_38">Aerial view of a city street with yellow taxis</string>
+    <string name="card_a11y_description_39">Woman with flowers walking through a cemetery</string>
+    <string name="card_a11y_description_40">Extreme close-up of a one dollar bill</string>
+    <string name="card_a11y_description_41">Man sleeping on an urban sidewalk</string>
+    <string name="card_a11y_description_42">Winding paved path through an autumn forest</string>
+    <string name="card_a11y_description_43">Man standing still in a busy subway station</string>
+    <string name="card_a11y_description_44">Woman whispering a secret to another woman</string>
+    <string name="card_a11y_description_45">Knotted rope tied around a cleat</string>
+    <string name="card_a11y_description_46">Person peering through a small door window</string>
+    <string name="card_a11y_description_47">Cappuccino with a smiley face in the foam</string>
+    <string name="card_a11y_description_48">Old red bicycle against a weathered wall</string>
+    <string name="card_a11y_description_49">Green glass bottle lying on the ground</string>
+    <string name="card_a11y_description_50">Young man crouched inside a locker</string>
     <string name="cd_card_selected">Selected</string>
     <string name="cd_card_not_selected">Not selected</string>
     <string name="cd_menu_button">Open menu</string>

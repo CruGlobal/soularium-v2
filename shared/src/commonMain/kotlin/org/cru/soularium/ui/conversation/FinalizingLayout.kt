@@ -28,7 +28,6 @@ import androidx.compose.ui.unit.dp
 import org.cru.soularium.generated.resources.Res
 import org.cru.soularium.generated.resources.action_change_selection
 import org.cru.soularium.generated.resources.action_confirm
-import org.cru.soularium.generated.resources.cd_card_thumb
 import org.cru.soularium.generated.resources.finalizing_review_hint
 import org.cru.soularium.generated.resources.finalizing_title
 import org.cru.soularium.generated.resources.q1_finalizing
@@ -36,7 +35,7 @@ import org.cru.soularium.generated.resources.q2_finalizing
 import org.cru.soularium.generated.resources.q3_finalizing
 import org.cru.soularium.generated.resources.q4_finalizing
 import org.cru.soularium.generated.resources.q5_finalizing
-import org.cru.soularium.ui.content.CardImages
+import org.cru.soularium.ui.content.CardAsset
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -48,7 +47,7 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun FinalizingLayout(state: ConversationPresenter.UiState.Finalizing, modifier: Modifier = Modifier) {
     val questionNumber = state.questionNumber
-    val cardIds = state.cardIds
+    val cards = state.cardIds.map(CardAsset::fromId)
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -104,12 +103,11 @@ fun FinalizingLayout(state: ConversationPresenter.UiState.Finalizing, modifier: 
                 Spacer(modifier = Modifier.height(32.dp))
 
                 // Card images — laid out in a row when there are multiple picks
-                if (cardIds.size == 1) {
-                    val cardId = cardIds.first()
-                    val cardDesc = stringResource(Res.string.cd_card_thumb, cardId)
+                if (cards.size == 1) {
+                    val card = cards.first()
                     Image(
-                        painter = painterResource(CardImages.full(cardId)),
-                        contentDescription = cardDesc,
+                        painter = painterResource(card.full),
+                        contentDescription = card.contentDescription?.let { stringResource(it) },
                         contentScale = ContentScale.Fit,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -120,11 +118,10 @@ fun FinalizingLayout(state: ConversationPresenter.UiState.Finalizing, modifier: 
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        cardIds.forEach { cardId ->
-                            val cardDesc = stringResource(Res.string.cd_card_thumb, cardId)
+                        cards.forEach { card ->
                             Image(
-                                painter = painterResource(CardImages.full(cardId)),
-                                contentDescription = cardDesc,
+                                painter = painterResource(card.full),
+                                contentDescription = card.contentDescription?.let { stringResource(it) },
                                 contentScale = ContentScale.Fit,
                                 modifier = Modifier
                                     .weight(1f)

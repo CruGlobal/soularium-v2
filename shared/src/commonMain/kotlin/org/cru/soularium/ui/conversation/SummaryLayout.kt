@@ -35,15 +35,17 @@ import androidx.compose.ui.unit.dp
 import org.cru.soularium.generated.resources.Res
 import org.cru.soularium.generated.resources.action_done
 import org.cru.soularium.generated.resources.action_share
-import org.cru.soularium.generated.resources.cd_card_thumb
 import org.cru.soularium.generated.resources.contact_save_conversation
 import org.cru.soularium.generated.resources.summary_great_talking
 import org.cru.soularium.generated.resources.summary_share_prompt
 import org.cru.soularium.generated.resources.summary_thats_a_wrap
 import org.cru.soularium.generated.resources.summary_title
-import org.cru.soularium.ui.content.CardImages
+import org.cru.soularium.ui.content.CardAsset
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+
+private const val MOSAIC_COLUMNS = 3
+private const val MOSAIC_MAX_CARDS = 9
 
 /**
  * Holds the data for a single participant's summary card.
@@ -184,7 +186,7 @@ private fun ParticipantSummaryContent(
 
         // 3×3 card mosaic
         CardMosaic(
-            cardIds = participant.cardIds,
+            cards = participant.cardIds.map(CardAsset::fromId),
             modifier = Modifier.fillMaxWidth(),
         )
 
@@ -237,36 +239,31 @@ private fun ParticipantSummaryContent(
  * Empty slots (fewer than 9 picks) are skipped; the grid simply has fewer rows.
  */
 @Composable
-private fun CardMosaic(cardIds: List<Int>, modifier: Modifier = Modifier) {
-    val slots = cardIds.take(9)
-    val rows = (slots.size + 2) / 3
+private fun CardMosaic(cards: List<CardAsset>, modifier: Modifier = Modifier) {
+    val rows = cards.take(MOSAIC_MAX_CARDS).chunked(MOSAIC_COLUMNS)
 
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        for (row in 0 until rows) {
+        rows.forEach { row ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                for (col in 0..2) {
-                    val slotIndex = row * 3 + col
-                    if (slotIndex < slots.size) {
-                        val cardId = slots[slotIndex]
-                        val cardDesc = stringResource(Res.string.cd_card_thumb, cardId)
-                        Image(
-                            painter = painterResource(CardImages.thumb(cardId)),
-                            contentDescription = cardDesc,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .weight(1f)
-                                .aspectRatio(1f),
-                        )
-                    } else {
-                        // Empty placeholder to preserve grid alignment
-                        Spacer(modifier = Modifier.weight(1f))
-                    }
+                row.forEach { card ->
+                    Image(
+                        painter = painterResource(card.thumbnail ?: card.full),
+                        contentDescription = card.contentDescription?.let { stringResource(it) },
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .weight(1f)
+                            .aspectRatio(1f),
+                    )
+                }
+                // Pad a short final row with empty slots to preserve grid alignment
+                repeat(MOSAIC_COLUMNS - row.size) {
+                    Spacer(modifier = Modifier.weight(1f))
                 }
             }
         }

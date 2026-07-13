@@ -6,9 +6,10 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * Persisted session record. Every field pins its wire name via [SerialName]
- * so a Kotlin property rename cannot silently change the stored key and
- * orphan existing sessions on users' phones.
+ * Session record. Persisted via `SessionEntity` Room columns today; the
+ * [SerialName] annotations lock each field's JSON wire key so the format
+ * stays stable if this type is ever serialized to JSON (share links, sync,
+ * export).
  */
 @Serializable
 data class Session(

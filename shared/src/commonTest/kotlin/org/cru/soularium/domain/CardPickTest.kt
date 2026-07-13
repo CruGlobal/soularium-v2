@@ -7,10 +7,10 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 /**
- * CardPick records a single card selection during a conversation and is
- * persisted per participant. The round-trip test asserts the encoder/decoder
- * are symmetrical; the wire-key test locks the JSON key names so a Kotlin
- * field rename can't silently change the stored format.
+ * CardPick records a single card selection during a conversation, persisted
+ * via `CardPickEntity` Room columns today. These tests exercise the JSON
+ * encoder/decoder and lock the wire key names so the format stays stable
+ * if this type is ever serialized to JSON (share links, sync, export).
  */
 class CardPickTest {
     private val json = Json { encodeDefaults = true }
@@ -62,9 +62,10 @@ class CardPickTest {
             ),
         )
 
-        // Renaming a Kotlin field on CardPick without an explicit @SerialName
-        // override would change the auto-derived wire key and fail this
-        // assertion, preventing silent orphaning of stored data.
+        // Locks the JSON wire keys for CardPick. A Kotlin field rename
+        // without an explicit @SerialName override would change the
+        // auto-derived wire key and fail this assertion — protecting the
+        // wire format for any future JSON serialization.
         listOf(
             "\"id\"",
             "\"conversationId\"",

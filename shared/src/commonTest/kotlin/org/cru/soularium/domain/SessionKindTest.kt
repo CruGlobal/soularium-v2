@@ -7,10 +7,10 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 /**
- * SessionKind is embedded in the persisted Session record. The round-trip
- * tests exercise both variants; the wire-value test locks the JSON encoding
- * for each variant so renaming an enum constant can't silently change the
- * stored representation.
+ * SessionKind is stored on the `SessionEntity.kind` column today. These
+ * tests exercise the JSON encoder/decoder and lock the wire values for
+ * each variant so the format stays stable if this type is ever serialized
+ * to JSON (share links, sync, export).
  */
 class SessionKindTest {
     private val json = Json { encodeDefaults = true }
@@ -33,10 +33,10 @@ class SessionKindTest {
 
     @Test
     fun `SessionKind JSON wire values match the persistence contract`() {
-        // Enum variants serialize as JSON string primitives whose value is the
-        // Kotlin constant name (unless overridden with @SerialName). Renaming
-        // SOLO or GROUP without an explicit @SerialName would change the wire
-        // value and orphan stored sessions.
+        // Enum variants serialize as JSON string primitives whose value is
+        // the Kotlin constant name (unless overridden with @SerialName).
+        // Locking these values means a Kotlin rename can't silently change
+        // the wire format for any future JSON serialization.
         assertEquals("\"SOLO\"", json.encodeToString(SessionKind.SOLO))
         assertEquals("\"GROUP\"", json.encodeToString(SessionKind.GROUP))
     }

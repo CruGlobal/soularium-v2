@@ -5,9 +5,10 @@ import kotlinx.serialization.Serializable
 
 /**
  * A single card selected during a conversation, either as a draft or a
- * confirmed pick. Every field pins its wire name via [SerialName] so a
- * Kotlin property rename cannot silently change the stored key and orphan
- * existing pick records.
+ * confirmed pick. Persisted via `CardPickEntity` Room columns today; the
+ * [SerialName] annotations lock each field's JSON wire key so the format
+ * stays stable if this type is ever serialized to JSON (share links, sync,
+ * export).
  */
 @Serializable
 data class CardPick(

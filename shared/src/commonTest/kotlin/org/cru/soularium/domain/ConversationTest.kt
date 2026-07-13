@@ -7,10 +7,11 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 /**
- * Conversation embeds ContactInfo and is persisted as part of the session
- * data. The round-trip test exercises the composition with ContactInfo; the
- * wire-key test locks the JSON key names so a Kotlin field rename on
- * Conversation can't silently change the stored format.
+ * Conversation embeds ContactInfo and is persisted via `ConversationEntity`
+ * Room columns today. These tests exercise the JSON encoder/decoder
+ * (including the ContactInfo composition) and lock the wire key names so
+ * the format stays stable if this type is ever serialized to JSON (share
+ * links, sync, export).
  */
 class ConversationTest {
     private val json = Json { encodeDefaults = true }
@@ -62,9 +63,10 @@ class ConversationTest {
             ),
         )
 
-        // Renaming a Kotlin field on Conversation without an explicit
-        // @SerialName override would change the auto-derived wire key and
-        // fail this assertion, preventing silent orphaning of stored data.
+        // Locks the JSON wire keys for Conversation. A Kotlin field rename
+        // without an explicit @SerialName override would change the
+        // auto-derived wire key and fail this assertion — protecting the
+        // wire format for any future JSON serialization.
         listOf("\"id\"", "\"sessionId\"", "\"displayOrder\"", "\"contact\"").forEach { key ->
             assertTrue(
                 encoded.contains(key),

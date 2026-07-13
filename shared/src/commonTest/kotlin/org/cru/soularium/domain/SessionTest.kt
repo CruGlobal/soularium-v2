@@ -8,11 +8,10 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 /**
- * Session participates in the persistence layer (Room entities and session-state
- * JSON snapshots), so its wire format must stay stable across Kotlin renames.
- * The round-trip tests assert the encoder/decoder are symmetrical; the wire-key
- * test locks the JSON key names so a Kotlin field rename can't silently change
- * the persisted format.
+ * Session is persisted via `SessionEntity` Room columns today. These tests
+ * exercise the JSON encoder/decoder and lock the wire key names so the
+ * format stays stable if this type is ever serialized to JSON (share links,
+ * sync, export).
  */
 class SessionTest {
     private val json = Json { encodeDefaults = true }
@@ -61,10 +60,10 @@ class SessionTest {
             ),
         )
 
-        // These are the exact keys embedded in persisted sessions. Renaming a
-        // Kotlin field on Session without updating the auto-derived wire key
-        // (or without an explicit @SerialName override) would fail this
-        // assertion before it shipped and orphaned stored sessions.
+        // Locks the JSON wire keys for Session. A Kotlin field rename without
+        // an explicit @SerialName override would change the auto-derived wire
+        // key and fail this assertion — protecting the wire format for any
+        // future JSON serialization.
         listOf(
             "\"id\"",
             "\"kind\"",

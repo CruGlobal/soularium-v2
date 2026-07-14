@@ -241,61 +241,81 @@ private fun MenuBottomSheet(
     onSettings: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surface,
     ) {
-        Column(
-            modifier =
-            Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(bottom = 16.dp),
-        ) {
-            MenuRow(
-                icon = Icons.Default.AccountCircle,
-                label = stringResource(Res.string.menu_my_soularium),
-                onClick = onMySoularium,
-            )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            MenuRow(
-                icon = Icons.Default.History,
-                label = stringResource(Res.string.menu_past_conversations),
-                onClick = onPastConversations,
-            )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            MenuRow(
-                icon = Icons.Default.Info,
-                label = stringResource(Res.string.menu_about),
-                onClick = onAbout,
-            )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            MenuRow(
-                icon = Icons.Default.ChatBubble,
-                label = stringResource(Res.string.menu_resources),
-                onClick = onResources,
-            )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            MenuRow(
-                icon = Icons.Default.GridView,
-                label = stringResource(Res.string.menu_cards_and_questions),
-                onClick = onCardsAndQuestions,
-            )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            MenuRow(
-                icon = Icons.Default.Settings,
-                label = stringResource(Res.string.menu_settings),
-                onClick = onSettings,
-            )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            MenuRow(
-                icon = Icons.Default.Close,
-                label = stringResource(Res.string.menu_close),
-                onClick = onDismiss,
-            )
-        }
+        MenuBottomSheetContent(
+            onMySoularium = onMySoularium,
+            onPastConversations = onPastConversations,
+            onAbout = onAbout,
+            onResources = onResources,
+            onCardsAndQuestions = onCardsAndQuestions,
+            onSettings = onSettings,
+            onClose = onDismiss,
+        )
+    }
+}
+
+@Composable
+internal fun MenuBottomSheetContent(
+    onMySoularium: () -> Unit,
+    onPastConversations: () -> Unit,
+    onAbout: () -> Unit,
+    onResources: () -> Unit,
+    onCardsAndQuestions: () -> Unit,
+    onSettings: () -> Unit,
+    onClose: () -> Unit,
+) {
+    Column(
+        modifier =
+        Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(bottom = 16.dp),
+    ) {
+        MenuRow(
+            icon = Icons.Default.AccountCircle,
+            label = stringResource(Res.string.menu_my_soularium),
+            onClick = onMySoularium,
+        )
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        MenuRow(
+            icon = Icons.Default.History,
+            label = stringResource(Res.string.menu_past_conversations),
+            onClick = onPastConversations,
+        )
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        MenuRow(
+            icon = Icons.Default.Info,
+            label = stringResource(Res.string.menu_about),
+            onClick = onAbout,
+        )
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        MenuRow(
+            icon = Icons.Default.ChatBubble,
+            label = stringResource(Res.string.menu_resources),
+            onClick = onResources,
+        )
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        MenuRow(
+            icon = Icons.Default.GridView,
+            label = stringResource(Res.string.menu_cards_and_questions),
+            onClick = onCardsAndQuestions,
+        )
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        MenuRow(
+            icon = Icons.Default.Settings,
+            label = stringResource(Res.string.menu_settings),
+            onClick = onSettings,
+        )
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        MenuRow(
+            icon = Icons.Default.Close,
+            label = stringResource(Res.string.menu_close),
+            onClick = onClose,
+        )
     }
 }
 

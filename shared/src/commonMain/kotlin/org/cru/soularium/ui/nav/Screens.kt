@@ -15,9 +15,6 @@ data object HomeScreen : Screen
 data object PastConversationsScreen : Screen
 
 @Parcelize
-data object AboutScreen : Screen
-
-@Parcelize
 data object ResourcesScreen : Screen
 
 @Parcelize

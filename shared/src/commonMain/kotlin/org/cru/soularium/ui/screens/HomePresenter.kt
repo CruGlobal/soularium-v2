@@ -12,7 +12,7 @@ import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
 import org.cru.soularium.domain.SessionId
 import org.cru.soularium.domain.SessionKind
-import org.cru.soularium.ui.nav.AboutScreen
+import org.cru.soularium.ui.about.AboutScreen
 import org.cru.soularium.ui.nav.CardsAndQuestionsScreen
 import org.cru.soularium.ui.nav.ConversationScreen
 import org.cru.soularium.ui.nav.HomeScreen

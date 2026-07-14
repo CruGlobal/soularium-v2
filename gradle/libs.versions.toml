@@ -18,6 +18,7 @@ kotlinx-serialization = "1.11.0"
 kover = "0.9.8"
 ksp = "2.3.10"
 ktlint = "14.2.0"
+ktor = "3.5.1"
 markdown-renderer = "0.43.0"
 paparazzi = "2.0.0-alpha05"
 room = "2.8.4"
@@ -32,6 +33,7 @@ circuit-foundation = { module = "com.slack.circuit:circuit-foundation", version.
 circuit-runtime-presenter = { module = "com.slack.circuit:circuit-runtime-presenter", version.ref = "circuit" }
 circuit-runtime-ui = { module = "com.slack.circuit:circuit-runtime-ui", version.ref = "circuit" }
 circuit-test = { module = "com.slack.circuit:circuit-test", version.ref = "circuit" }
+circuitx-navigation = { module = "com.slack.circuit:circuitx-navigation", version.ref = "circuit" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
 coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coil" }
 coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
@@ -49,6 +51,7 @@ kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serializa
 kover-gradle = { module = "org.jetbrains.kotlinx:kover-gradle-plugin", version.ref = "kover" }
 ktlint-gradle = { module = "org.jlleitschuh.gradle:ktlint-gradle", version.ref = "ktlint" }
 ktlint-rules-compose = "io.nlopez.compose.rules:ktlint:0.6.2"
+ktor-http = { module = "io.ktor:ktor-http", version.ref = "ktor" }
 markdown-renderer = { module = "com.mikepenz:multiplatform-markdown-renderer", version.ref = "markdown-renderer" }
 markdown-renderer-m3 = { module = "com.mikepenz:multiplatform-markdown-renderer-m3", version.ref = "markdown-renderer" }
 okio = "com.squareup.okio:okio:3.17.0"

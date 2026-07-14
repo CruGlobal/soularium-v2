@@ -22,7 +22,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -33,10 +32,8 @@ import org.cru.soularium.generated.resources.Res
 import org.cru.soularium.generated.resources.action_back
 import org.cru.soularium.generated.resources.resource_cru_header
 import org.cru.soularium.generated.resources.resource_cru_label
-import org.cru.soularium.generated.resources.resource_feedback_email
 import org.cru.soularium.generated.resources.resource_feedback_header
 import org.cru.soularium.generated.resources.resource_feedback_label
-import org.cru.soularium.generated.resources.resource_feedback_subject
 import org.cru.soularium.generated.resources.resource_mysoularium_header
 import org.cru.soularium.generated.resources.resource_mysoularium_label
 import org.cru.soularium.generated.resources.resource_privacy_header
@@ -46,25 +43,15 @@ import org.cru.soularium.generated.resources.resource_terms_label
 import org.cru.soularium.generated.resources.resources_title
 import org.jetbrains.compose.resources.stringResource
 
-private const val URL_MYSOULARIUM = "https://mysoularium.com"
-private const val URL_CRU_SOULARIUM =
-    "https://www.cru.org/us/en/train-and-grow/share-the-gospel/evangelism-principles/soularium.html"
-private const val URL_PRIVACY_POLICY = "https://www.cru.org/about/privacy.html"
-
 /**
- * Resources screen — a scrolling [Column] of tappable rows. Each row either
- * opens an external URI (web or mailto) via [LocalUriHandler] or triggers an
- * in-app callback (e.g. navigate to Terms of Use).
+ * Resources screen — a scrolling [Column] of tappable rows. Each row emits an
+ * intent event; the presenter resolves it to the screen to open (an external
+ * link or an in-app destination such as Terms of Use).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @CircuitInject(ResourcesScreen::class, AppScope::class)
 @Composable
 fun ResourcesLayout(state: ResourcesPresenter.UiState, modifier: Modifier = Modifier) {
-    val uriHandler = LocalUriHandler.current
-
-    val feedbackEmail = stringResource(Res.string.resource_feedback_email)
-    val feedbackSubject = stringResource(Res.string.resource_feedback_subject)
-
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -95,23 +82,19 @@ fun ResourcesLayout(state: ResourcesPresenter.UiState, modifier: Modifier = Modi
             ResourceRow(
                 header = stringResource(Res.string.resource_mysoularium_header),
                 label = stringResource(Res.string.resource_mysoularium_label),
-                onTap = { uriHandler.openUri(URL_MYSOULARIUM) },
+                onTap = { state.eventSink(ResourcesPresenter.UiEvent.OpenMySoularium) },
             )
             ResourceDivider()
             ResourceRow(
                 header = stringResource(Res.string.resource_cru_header),
                 label = stringResource(Res.string.resource_cru_label),
-                onTap = { uriHandler.openUri(URL_CRU_SOULARIUM) },
+                onTap = { state.eventSink(ResourcesPresenter.UiEvent.OpenCruSoularium) },
             )
             ResourceDivider()
             ResourceRow(
                 header = stringResource(Res.string.resource_feedback_header),
                 label = stringResource(Res.string.resource_feedback_label),
-                onTap = {
-                    uriHandler.openUri(
-                        "mailto:$feedbackEmail?subject=${encodeMailtoParam(feedbackSubject)}",
-                    )
-                },
+                onTap = { state.eventSink(ResourcesPresenter.UiEvent.SendFeedback) },
             )
             ResourceDivider()
             ResourceRow(
@@ -123,7 +106,7 @@ fun ResourcesLayout(state: ResourcesPresenter.UiState, modifier: Modifier = Modi
             ResourceRow(
                 header = stringResource(Res.string.resource_privacy_header),
                 label = stringResource(Res.string.resource_privacy_label),
-                onTap = { uriHandler.openUri(URL_PRIVACY_POLICY) },
+                onTap = { state.eventSink(ResourcesPresenter.UiEvent.OpenPrivacyPolicy) },
             )
             ResourceDivider()
         }
@@ -164,16 +147,3 @@ private fun ResourceDivider(modifier: Modifier = Modifier) {
         color = MaterialTheme.colorScheme.outlineVariant,
     )
 }
-
-/**
- * Minimal percent-encoding for mailto query parameter values.
- * Encodes space, +, &, =, ?, # which would otherwise break mailto URI parsing.
- */
-private fun encodeMailtoParam(value: String): String = value
-    .replace("%", "%25")
-    .replace("+", "%2B")
-    .replace("&", "%26")
-    .replace("=", "%3D")
-    .replace("?", "%3F")
-    .replace("#", "%23")
-    .replace(" ", "%20")

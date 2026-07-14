@@ -1,4 +1,4 @@
-package org.cru.soularium.ui.screens
+package org.cru.soularium.ui.resources
 
 import androidx.compose.runtime.Composable
 import com.slack.circuit.codegen.annotations.CircuitInject
@@ -10,13 +10,11 @@ import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
-import org.cru.soularium.ui.nav.ResourcesScreen
 import org.cru.soularium.ui.terms.TermsScreen
 
 @AssistedInject
 class ResourcesPresenter(@Assisted private val navigator: Navigator) : Presenter<ResourcesPresenter.UiState> {
-
-    data class UiState(val eventSink: (UiEvent) -> Unit) : CircuitUiState
+    data class UiState(val eventSink: (UiEvent) -> Unit = {}) : CircuitUiState
 
     sealed interface UiEvent : CircuitUiEvent {
         data object Back : UiEvent

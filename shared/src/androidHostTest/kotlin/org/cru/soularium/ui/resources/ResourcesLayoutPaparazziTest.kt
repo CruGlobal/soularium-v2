@@ -1,4 +1,4 @@
-package org.cru.soularium.ui.screens
+package org.cru.soularium.ui.resources
 
 import app.cash.paparazzi.DeviceConfig
 import com.android.resources.NightMode

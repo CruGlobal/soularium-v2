@@ -10,7 +10,7 @@ import org.ccci.gto.support.androidx.test.junit.runners.AndroidJUnit4
 import org.ccci.gto.support.androidx.test.junit.runners.RunOnAndroidWith
 import org.cru.soularium.domain.ports.FakeDeviceStateRepository
 import org.cru.soularium.ui.nav.IntroScreen
-import org.cru.soularium.ui.terms.TermsScreen
+import org.cru.soularium.ui.resources.terms.TermsScreen
 
 @RunOnAndroidWith(AndroidJUnit4::class)
 class IntroPresenterTest {

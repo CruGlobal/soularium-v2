@@ -1,4 +1,4 @@
-package org.cru.soularium.ui.terms
+package org.cru.soularium.ui.resources.terms
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState

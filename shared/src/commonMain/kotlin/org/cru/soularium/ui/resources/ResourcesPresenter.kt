@@ -10,7 +10,7 @@ import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
-import org.cru.soularium.ui.terms.TermsScreen
+import org.cru.soularium.ui.resources.terms.TermsScreen
 
 @AssistedInject
 class ResourcesPresenter(@Assisted private val navigator: Navigator) : Presenter<ResourcesPresenter.UiState> {

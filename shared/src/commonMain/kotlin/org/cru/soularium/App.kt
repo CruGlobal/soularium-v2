@@ -10,8 +10,8 @@ import org.cru.soularium.domain.DeviceState
 import org.cru.soularium.ui.nav.HomeScreen
 import org.cru.soularium.ui.nav.IntroScreen
 import org.cru.soularium.ui.nav.NavGraph
+import org.cru.soularium.ui.resources.terms.TermsScreen
 import org.cru.soularium.ui.screens.SplashScreen
-import org.cru.soularium.ui.terms.TermsScreen
 import org.cru.soularium.ui.theme.SoulariumTheme
 
 @Composable

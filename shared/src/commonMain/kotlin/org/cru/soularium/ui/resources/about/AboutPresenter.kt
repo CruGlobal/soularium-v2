@@ -1,4 +1,4 @@
-package org.cru.soularium.ui.about
+package org.cru.soularium.ui.resources.about
 
 import androidx.compose.runtime.Composable
 import com.slack.circuit.codegen.annotations.CircuitInject

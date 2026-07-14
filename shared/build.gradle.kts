@@ -13,6 +13,7 @@ plugins {
     alias(libs.plugins.metro)
     alias(libs.plugins.room)
     id("ktlint-conventions")
+    id("kover-conventions")
     id("paparazzi-conventions")
 }
 

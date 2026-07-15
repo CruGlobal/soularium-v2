@@ -1,11 +1,16 @@
 package org.cru.soularium.ui.home
 
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.SheetState
+import androidx.compose.material3.SheetValue
+import androidx.compose.ui.Modifier
 import app.cash.paparazzi.DeviceConfig
 import com.android.resources.NightMode
 import com.google.testing.junit.testparameterinjector.TestParameter
 import com.google.testing.junit.testparameterinjector.TestParameterInjector
+import com.slack.circuit.overlay.OverlayEffect
 import org.cru.soularium.ui.test.BasePaparazziTest
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -15,27 +20,29 @@ class HomeLayoutPaparazziTest(
     @TestParameter(valuesProvider = DeviceConfigProvider::class) deviceConfig: DeviceConfig,
     @TestParameter nightMode: NightMode,
 ) : BasePaparazziTest(deviceConfig = deviceConfig, nightMode = nightMode) {
-    // Default state: hero + primary/secondary CTAs, menu button in the top-right corner.
     @Test
     fun `HomeLayout() - menu closed`() = snapshot {
-        HomeLayout(state = HomePresenter.UiState(eventSink = {}))
+        HomeLayout(state = HomePresenter.UiState())
     }
 
-    // Menu-open state: snapshot the menu rows directly. The production MenuBottomSheet
-    // wraps this same content in an animated ModalBottomSheet, which Paparazzi cannot
-    // render in a single frame.
     @Test
+    @OptIn(ExperimentalMaterial3Api::class)
     fun `HomeLayout() - menu open`() = snapshot {
-        Surface(color = MaterialTheme.colorScheme.surface) {
-            MenuBottomSheetContent(
-                onMySoularium = {},
-                onPastConversations = {},
-                onAbout = {},
-                onResources = {},
-                onCardsAndQuestions = {},
-                onSettings = {},
-                onClose = {},
-            )
+        Box(modifier = Modifier.fillMaxSize()) {
+            HomeLayout(state = HomePresenter.UiState())
+            OverlayEffect {
+                show(
+                    HomeMenuOverlay(
+                        sheetState = SheetState(
+                            skipPartiallyExpanded = true,
+                            positionalThreshold = { 0f },
+                            velocityThreshold = { 0f },
+                            initialValue = SheetValue.Expanded,
+                            skipHiddenState = true,
+                        ),
+                    ),
+                )
+            }
         }
     }
 }

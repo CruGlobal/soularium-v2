@@ -17,7 +17,7 @@ dependencyResolutionManagement {
         mavenCentral()
         maven("https://cruglobal.jfrog.io/artifactory/maven-mobile/") {
             content {
-                includeGroup("org.ccci.gto.android")
+                includeGroupAndSubgroups("org.ccci.gto.android")
             }
         }
     }

@@ -8,6 +8,7 @@ import com.slack.circuit.backstack.rememberSaveableBackStack
 import com.slack.circuit.foundation.CircuitCompositionLocals
 import com.slack.circuit.foundation.NavigableCircuitContent
 import com.slack.circuit.foundation.rememberCircuitNavigator
+import com.slack.circuit.overlay.ContentWithOverlays
 import com.slack.circuit.runtime.screen.Screen
 import com.slack.circuitx.navigation.intercepting.rememberInterceptingNavigator
 import org.cru.soularium.di.SoulariumAppGraph
@@ -35,13 +36,15 @@ fun App(graph: SoulariumAppGraph) {
             else -> {
                 val backStack = rememberSaveableBackStack(remember { initial })
                 CircuitCompositionLocals(graph.circuit) {
-                    NavigableCircuitContent(
-                        navigator = rememberInterceptingNavigator(
-                            navigator = rememberCircuitNavigator(backStack) {},
-                            interceptors = listOf(rememberExternalScreenInterceptor()),
-                        ),
-                        backStack = backStack,
-                    )
+                    ContentWithOverlays {
+                        NavigableCircuitContent(
+                            navigator = rememberInterceptingNavigator(
+                                navigator = rememberCircuitNavigator(backStack) {},
+                                interceptors = listOf(rememberExternalScreenInterceptor()),
+                            ),
+                            backStack = backStack,
+                        )
+                    }
                 }
             }
         }

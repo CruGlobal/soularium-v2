@@ -63,9 +63,11 @@ kotlin {
                 implementation(compose.materialIconsExtended)
                 implementation(compose.runtime)
                 implementation(libs.circuit.foundation)
+                implementation(libs.circuit.overlay)
                 implementation(libs.circuit.runtime.presenter)
                 implementation(libs.circuit.runtime.ui)
                 implementation(libs.circuitx.navigation)
+                implementation(libs.circuitx.overlays)
                 implementation(libs.ktor.http)
                 implementation(libs.coil.compose)
                 implementation(libs.coroutines.core)
@@ -90,8 +92,10 @@ kotlin {
             dependencies {
                 implementation(kotlin("test"))
                 implementation(libs.circuit.test)
+                implementation(libs.compose.ui.test)
                 implementation(libs.coroutines.test)
                 implementation(libs.gtoSupport.androidx.test.junit)
+                implementation(libs.gtoSupport.circuit.test)
                 implementation(libs.kotest.assertions)
                 implementation(libs.turbine)
             }
@@ -99,6 +103,7 @@ kotlin {
 
         named("androidHostTest").configure {
             dependencies {
+                implementation(libs.androidx.compose.ui.test.manifest)
                 implementation(libs.androidx.test.junit)
                 implementation(libs.paparazzi)
                 implementation(libs.robolectric)

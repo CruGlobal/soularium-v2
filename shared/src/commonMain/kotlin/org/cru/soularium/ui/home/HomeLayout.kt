@@ -40,8 +40,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -79,9 +77,6 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun HomeLayout(state: HomePresenter.UiState, modifier: Modifier = Modifier) {
     var showMenu by remember { mutableStateOf(false) }
-    val menuButtonLabel = stringResource(Res.string.cd_menu_button)
-    val startLabel = stringResource(Res.string.cta_start_conversation)
-    val createLabel = stringResource(Res.string.cta_create_my_soularium)
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -100,14 +95,11 @@ fun HomeLayout(state: HomePresenter.UiState, modifier: Modifier = Modifier) {
             ) {
                 IconButton(
                     onClick = { showMenu = true },
-                    modifier =
-                    Modifier
-                        .size(48.dp)
-                        .semantics { contentDescription = menuButtonLabel },
+                    modifier = Modifier.size(48.dp),
                 ) {
                     Icon(
                         imageVector = Icons.Default.Menu,
-                        contentDescription = null,
+                        contentDescription = stringResource(Res.string.cd_menu_button),
                         tint = MaterialTheme.colorScheme.onBackground,
                     )
                 }
@@ -160,11 +152,10 @@ fun HomeLayout(state: HomePresenter.UiState, modifier: Modifier = Modifier) {
                     modifier =
                     Modifier
                         .fillMaxWidth()
-                        .height(52.dp)
-                        .semantics { contentDescription = startLabel },
+                        .height(52.dp),
                 ) {
                     Text(
-                        text = startLabel,
+                        text = stringResource(Res.string.cta_start_conversation),
                         style = MaterialTheme.typography.labelLarge,
                     )
                 }
@@ -185,11 +176,10 @@ fun HomeLayout(state: HomePresenter.UiState, modifier: Modifier = Modifier) {
                     modifier =
                     Modifier
                         .fillMaxWidth()
-                        .height(52.dp)
-                        .semantics { contentDescription = createLabel },
+                        .height(52.dp),
                 ) {
                     Text(
-                        text = createLabel,
+                        text = stringResource(Res.string.cta_create_my_soularium),
                         style = MaterialTheme.typography.labelLarge,
                     )
                 }
@@ -322,10 +312,7 @@ internal fun MenuBottomSheetContent(
 private fun MenuRow(icon: ImageVector, label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Surface(
         onClick = onClick,
-        modifier =
-        modifier
-            .fillMaxWidth()
-            .semantics { contentDescription = label },
+        modifier = modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surface,
     ) {
         Row(

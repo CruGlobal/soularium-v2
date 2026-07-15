@@ -16,3 +16,7 @@ plugins {
 tasks.named("ktlintCheck") {
     dependsOn(gradle.includedBuild("build-logic").task(":ktlintCheck"))
 }
+
+tasks.named("ktlintFormat") {
+    dependsOn(gradle.includedBuild("build-logic").task(":ktlintFormat"))
+}

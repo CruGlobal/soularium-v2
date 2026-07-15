@@ -26,12 +26,16 @@ Use the branch name and commit log as the "title" in the review header.
 
 3. Identify all changed files and categorize them (domain, data, ui, platform actuals, build config, tests, resources).
 
-4. Pre-flight checks — run ktlint and lint, recording results for the review:
+4. Pre-flight checks — run ktlint, lint, and the iOS simulator test suite, recording results for the review:
 ```
 ./gradlew ktlintCheck
 ./gradlew lint
+./gradlew :shared:iosSimulatorArm64Test
 ```
 Any failures are reported as **❌ Must Fix** items in the review output. They do not stop the rest of the review.
+Run `:shared:iosSimulatorArm64Test` even when the diff looks Android-only: Kotlin/Native compiles and runs
+differently from the Android host, and tests have failed on iOS while passing on Android (ktlint and lint never
+exercise the iOS target). Requires a macOS host — if the review runs on Linux, note that the iOS suite was skipped.
 
 5. Review each category using the checklist below. When reviewing Compose UI code, also load `.claude/rules/design_system_rules.md` — it defines the authoritative conventions for color tokens, typography, spacing, icons, components, and accessibility.
 
@@ -230,7 +234,7 @@ DI is compile-time via [Metro](https://github.com/ZacSweers/metro). The graph is
 
 - [ ] `:shared` stays a KMP library via `com.android.kotlin.multiplatform.library` — do NOT introduce `com.android.application` or `com.android.library` into `:shared` (AGP 9 forbids mixing with the KMP plugin)
 - [ ] `:androidApp` stays a pure `com.android.application` shell — does NOT apply the Kotlin Multiplatform plugin
-- [ ] Cross-module Gradle conventions live in `build-logic/src/main/kotlin/*-conventions.gradle.kts` and are applied via `id("<name>-conventions")` (currently `ktlint-conventions`). Module-specific config stays in each module's `build.gradle.kts` using `libs.versions.toml` aliases. Convention plugins must be reusable across modules — flag a new convention plugin used by only one module as a **❌ Must Fix**
+- [ ] Cross-module Gradle conventions live in `build-logic/src/main/kotlin/*-conventions.gradle.kts` and are applied via `id("<name>-conventions")` (currently `ktlint-conventions`, `kover-conventions`, `paparazzi-conventions`). Module-specific config stays in each module's `build.gradle.kts` using `libs.versions.toml` aliases. A convention plugin whose only current consumer is `:shared` is intentional — the project deliberately factors reusable build logic into `build-logic` even before a second consumer exists (see `kover-conventions`). Do NOT flag a single-consumer convention plugin as a defect on that basis alone
 - [ ] All dependency coordinates use `libs.*` aliases from `gradle/libs.versions.toml` — no inline `"group:artifact:version"` strings
 - [ ] New dependencies add entries to `libs.versions.toml` and follow existing naming
 - [ ] `minSdk 24`, `compileSdk 37`, `targetSdk 37`, JVM target 17 — version bumps need explicit justification. The SDK levels live in `gradle/libs.versions.toml` under `android-sdk-compile` / `android-sdk-min` and are read via `libs.versions.android.sdk.*`; `targetSdk` reuses `android-sdk-compile`
@@ -248,7 +252,7 @@ DI is compile-time via [Metro](https://github.com/ZacSweers/metro). The graph is
 
 ### Testing
 
-- [ ] Tests live in `commonTest` — no Android instrumented tests, no Compose-UI instrumented tests
+- [ ] Unit tests (domain, presenter, data) live in `commonTest`; Paparazzi screenshot tests live in `androidHostTest`. There are still no on-device Android instrumented tests and no Compose-UI interaction tests
 - [ ] Frameworks: `kotlin.test` (`@Test`, `@BeforeTest`, `@AfterTest`), Kotest assertions (`io.kotest.matchers.*`), Turbine for `Flow` assertions, `kotlinx-coroutines-test` (`runTest`, `TestDispatcher`, `advanceUntilIdle`) — no JUnit4, no `runBlocking`, no manual `collect` + coroutine coordination
 - [ ] Presenter tests are written with Circuit's `circuit-test` (`FakeNavigator`, `presenter.test { awaitItem().eventSink(...) }`)
 - [ ] Presenter tests are annotated `@RunOnAndroidWith(AndroidJUnit4::class)` so the Android-host variant runs them under Robolectric — required because the Compose Runtime's Android artifact touches `android.util.Log` on its error path. Pure domain tests are unannotated
@@ -256,6 +260,15 @@ DI is compile-time via [Metro](https://github.com/ZacSweers/metro). The graph is
 - [ ] Coroutine tests use `runTest { }` with an injected `TestDispatcher`; Flow tests use Turbine (`flow.test { awaitItem() }`)
 - [ ] Test function names are backtick-quoted descriptive sentences (e.g. `` `solo session completes from start through summary` ``)
 - [ ] The pure session state machine (`transition()`) has exhaustive case coverage; share-URL generation and other pure utilities have explicit edge-case tests
+
+**Paparazzi screenshot tests**
+- [ ] New/changed `<Feature>Layout` composables have a matching `<Feature>LayoutPaparazziTest` in `shared/src/androidHostTest/` (screenshot tests live here, not `commonTest`)
+- [ ] Test class extends `BasePaparazziTest` (`ui/test/`) and is rendered through the base `snapshot { }` helper (which applies `SoulariumTheme` + inspection mode)
+- [ ] Screens are snapshotted via their stateless `<Feature>Layout` with a hand-built `UiState` — never by constructing the Presenter
+- [ ] The device (`DeviceConfigProvider`) × `nightMode` `@TestParameter` matrix under `@RunWith(TestParameterInjector::class)` is the general pattern for covering both devices and light/dark. A test class that omits it (single device / single mode) is a **Minor Issue** (⚠️) — raise it so the author can decide whether the extra coverage is worth adding, not a blocker
+- [ ] `maxPercentDifference = 0.0` is not overridden without justification
+- [ ] The full layout and each major UI state of the screen are snapshotted (e.g. menu shown, empty list, agreed/not-agreed), driven **entirely through the screen's `UiState`**. A snapshot that reaches past `UiState` to render a sub-composable directly is an anti-pattern — make the state reachable via `UiState` instead. Fine-grained component permutations (empty vs filled text field, etc.) do NOT need a screen-level snapshot; an individual component may optionally get its own component-level Paparazzi test to cover its fine-grained states, but that is not required
+- [ ] Snapshot PNGs are produced via the record-snapshots GitHub Actions workflow (tracked in Git LFS) — not recorded locally and hand-committed
 
 ### Kotlin Code Quality
 
@@ -286,11 +299,7 @@ Ktlint with the `android_studio` code style (plus `.editorconfig`) enforces most
 
 ### Deprecated API Usage
 
-Scan changed files for `@Deprecated` usages. Flag each as a **Minor Issue** (⚠️) with a suggested replacement. To surface deprecated usages introduced or touched in the diff:
-
-```bash
-./gradlew :shared:testAndroidHostTest 2>&1 | grep -i "deprecat"
-```
+Scan changed files for `@Deprecated` usages. Flag each as a **Minor Issue** (⚠️) with a suggested replacement. The step-4 pre-flight `./gradlew lint` already surfaces deprecation warnings — read its output rather than re-running the test compile.
 
 ### PR Hygiene
 

@@ -129,13 +129,25 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
       - name: Run Android Unit Tests
-        run: ./gradlew :shared:testAndroidHostTest
+        run: ./gradlew :shared:testAndroidHostTest :shared:koverXmlReport
+      - name: Codecov
+        uses: codecov/codecov-action@v7
+        with:
+          fail_ci_if_error: true
+          token: ${{ secrets.CODECOV_TOKEN }}
+          verbose: true
       - name: Archive test results
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: android-unit-test-results
           path: "**/build/reports/tests/"
+      - name: Archive kover results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: kover-results
+          path: "**/build/reports/kover/"
 
   paparazzi_tests:
     name: Paparazzi Screenshot Tests
@@ -153,13 +165,21 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
       - name: Run Paparazzi Screenshot Tests
-        run: ./gradlew :shared:verifyPaparazzi -Ppaparazzi
+        run: ./gradlew :shared:verifyPaparazzi :shared:koverXmlReport -Ppaparazzi
+      - name: Codecov
+        uses: codecov/codecov-action@v7
+        with:
+          fail_ci_if_error: true
+          token: ${{ secrets.CODECOV_TOKEN }}
+          verbose: true
       - name: Archive Paparazzi results
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: paparazzi-results
-          path: "**/build/paparazzi/failures/"
+          path: |
+            **/build/paparazzi/failures/
+            **/build/reports/kover/
 
   ios_tests:
     name: iOS Unit Tests

@@ -12,6 +12,7 @@ plugins {
     id("kotlin-parcelize")
     alias(libs.plugins.metro)
     alias(libs.plugins.room)
+    id("kover-conventions")
     id("ktlint-conventions")
     id("paparazzi-conventions")
 }

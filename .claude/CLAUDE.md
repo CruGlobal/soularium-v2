@@ -21,20 +21,25 @@ implementation plan, and `HANDOFF.md` (current state).
 ```
 shared/        → :shared — KMP library (Android via com.android.kotlin.multiplatform.library
                           + iOS framework). Domain models + session state machine, Room +
-                          DataStore persistence, Compose UI, Circuit Presenters, navigation, Koin
-                          wiring, and Android/iOS actuals — all in one module.
+                          DataStore persistence, Compose UI, Circuit Presenters, navigation, Metro
+                          DI wiring, and Android/iOS actuals — all in one module.
 androidApp/    → :androidApp — Pure Android application (com.android.application). Hosts
                               MainActivity + SoulariumApplication + AndroidManifest;
                               depends on :shared.
 iosApp/        → Native iOS shell (SwiftUI) hosting the Compose framework.
+build-logic/   → Composite build with the ktlint/kover/paparazzi convention plugins.
+shared/schemas/ → Exported Room schema JSON (one per @Database version).
 gradle/libs.versions.toml → Version catalog (single source of dependency versions).
 .github/workflows/ → build.yml, crowdin-upload.yml, crowdin-download.yml
 docs/superpowers/  → design spec, implementation plan, HANDOFF.md
 ```
 
-There is **no** `build-logic/`, no Gradle convention plugins, and no `feature/`/`module/`/`ui/`
-modules. Each module's `build.gradle.kts` configures itself directly using
-`libs.versions.toml` aliases. AGP 9 forbids mixing the Kotlin Multiplatform plugin with
+There are no `feature/`/`module/`/`ui/` modules — just `:shared` and `:androidApp`.
+Cross-module build logic lives in a `build-logic/` composite build with a small set of
+convention plugins (`ktlint-conventions`, `kover-conventions`, `paparazzi-conventions`,
+plus a shared `Project.kt`); each module's `build.gradle.kts` still configures its own
+targets/dependencies directly using `libs.versions.toml` aliases. AGP 9 forbids mixing
+the Kotlin Multiplatform plugin with
 `com.android.application` (or `com.android.library`) in the same Gradle subproject — that
 is why `:shared` is a KMP library (via `com.android.kotlin.multiplatform.library`) and
 `:androidApp` is a separate Android-only shell that depends on it.
@@ -66,16 +71,16 @@ not a system Gradle. Source/target bytecode is JVM 17.
 
 | Concern | Choice |
 |---|---|
-| Language / UI | Kotlin 2.4.0, Compose Multiplatform 1.11.1, Material3 |
-| Build | Gradle (Kotlin DSL) 9.x, AGP 9.2.1, `libs.versions.toml` |
-| DI | Koin 4.0.0 |
+| Language / UI | Kotlin 2.4.10, Compose Multiplatform 1.11.1, Material3 |
+| Build | Gradle (Kotlin DSL) 9.x, AGP 9.3.0, `libs.versions.toml` |
+| DI | Metro 1.3.2 (compile-time DI) |
 | Persistence | Room 2.8.4 (KMP, via KSP) + DataStore Preferences |
 | UI architecture / navigation | Circuit 0.34.0 (Presenter + UI, saveable back stack) |
 | Async | kotlinx.coroutines 1.11.0 + Flow |
 | Images | Coil 3 |
 | Serialization | kotlinx.serialization 1.11.0 |
 | Testing | `kotlin.test` + Kotest assertions + Turbine + `kotlinx-coroutines-test` |
-| Lint | ktlint via `org.jlleitschuh.gradle.ktlint`, `intellij_idea` code style |
+| Lint | ktlint via `org.jlleitschuh.gradle.ktlint`, `android_studio` code style |
 | Crash / analytics | Firebase Crashlytics + Analytics (no-op until config files land) |
 | i18n | Crowdin (en, es, fr, pl, zh-rCN) |
 
@@ -88,7 +93,7 @@ not a system Gradle. Source/target bytecode is JVM 17.
 :shared      (KMP library — Android + iOS targets)
               ├── org.cru.soularium.domain — pure models, ports, session state machine
               ├── org.cru.soularium.data   — Room + DataStore + repository impls
-              └── org.cru.soularium.ui     — Compose UI, Circuit Presenters, navigation, Koin
+              └── org.cru.soularium.ui     — Compose UI, Circuit Presenters, navigation, Metro DI
 ```
 
 `:androidApp` depends on `:shared`; `:shared` depends on nothing else in this repo.
@@ -104,7 +109,7 @@ must not import from `ui`.
 - **Ports** (`domain/ports/`): interfaces the rest of the app depends on —
   `ContentRepository`, `SessionRepository`, `DeviceStateRepository`, `AnalyticsTracker`,
   `CrashReporter`, `Sharer`. The interfaces live here; implementations live in
-  `org.cru.soularium.data` or in the platform Koin modules.
+  `org.cru.soularium.data` or in the platform Metro binding containers (`PlatformBindings`).
 - **Session state machine** (`domain/session/`): `SessionState` (sealed,
   `@Serializable`), `SessionEvent` (sealed), a **pure** `fun transition(state, event,
   ctx): TransitionResult`, and `Effect` (sealed). `transition()` performs no I/O — side
@@ -225,8 +230,9 @@ signatures. `commonMain` must contain no Android- or iOS-specific imports.
 - Frameworks: `kotlin.test` (`@Test`, `@BeforeTest`, `@AfterTest`), Kotest assertions
   (`kotest-assertions-core`), Turbine for `Flow` assertions, `kotlinx-coroutines-test`
   (`runTest`, `TestDispatcher`, `advanceUntilIdle`).
-- All tests live in `commonTest`. There is no Android instrumentation and no Compose-UI
-  instrumented tests. Presenters are exercised via Circuit's `circuit-test` library
+- Unit tests (domain, data, presenter) live in `commonTest`; Paparazzi screenshot tests
+  live in `androidHostTest`. There is no on-device Android instrumentation and no
+  Compose-UI interaction tests. Presenters are exercised via Circuit's `circuit-test` library
   (`FakeNavigator`, `presenter.test { awaitItem().eventSink(...) }`). Presenter tests are
   annotated `@RunOnAndroidWith(AndroidJUnit4::class)` so the Android-host variant runs
   them under Robolectric — required because the Compose Runtime's Android artifact
@@ -241,15 +247,30 @@ signatures. `commonMain` must contain no Android- or iOS-specific imports.
   `` `solo session completes from start through summary` ``.
 - The pure session state machine (`transition()`) and pure utilities (e.g. share-URL
   generation) should have exhaustive tests; Presenters should have behavior tests.
+- **Paparazzi screenshot tests** (in `androidHostTest`) cover each `<Feature>Layout` by
+  rendering its stateless composable with a hand-built `UiState`. They extend
+  `BasePaparazziTest` and run a device × light/dark (`nightMode`) matrix. Because
+  layoutlib and Robolectric can't share a JVM, they are excluded from
+  `testAndroidHostTest` unless `-Ppaparazzi` is passed (`:shared:verifyPaparazzi`).
+  Snapshot PNGs are tracked in Git LFS and recorded via the record-snapshots GitHub
+  Actions workflow — not recorded locally.
 
 ## CI & Workflows
 
 - `build.yml` — build + test on every PR and push to `main`/`feature/*`/`release/*`.
   Runs the Android APK build (ubuntu-latest), the iOS framework link
-  (`linkDebugFrameworkIosSimulatorArm64`, macos-26), `ktlintCheck`, Android `lint`,
-  Android host tests (`:shared:testAndroidHostTest`), and iOS simulator tests
-  (`:shared:iosSimulatorArm64Test`). JDK is read from `.tool-versions`. No secrets
-  required.
+  (`linkDebugFrameworkIosSimulatorArm64`, macos-26), `ktlintCheck` (which also lints the
+  `build-logic` composite build via a root-task dependency),
+  Android `lint`, Android host tests (`:shared:testAndroidHostTest`), Paparazzi
+  screenshot verification (`:shared:verifyPaparazzi -Ppaparazzi`), and iOS simulator
+  tests (`:shared:iosSimulatorArm64Test`). The host-test and Paparazzi jobs also produce
+  Kover XML coverage that is uploaded to Codecov. JDK is read from `.tool-versions`. No
+  secrets required (Codecov uses an org-level token).
+- `git-lfs-validation.yml` — runs `git lfs fsck --pointers` on every PR and push to
+  `main`/`feature/*`/`release/*` to catch Paparazzi snapshots committed without Git LFS.
+- `record-snapshots.yml` — manual (`workflow_dispatch`) job that regenerates Paparazzi
+  snapshots (`:shared:cleanRecordPaparazzi -Ppaparazzi`) and commits them back to the
+  branch. This is how snapshots are recorded — never locally.
 - `crowdin-upload.yml` — pushes source strings to Crowdin on every push to `main`.
 - `crowdin-download.yml` — weekly pull of translations from Crowdin, opens a PR.
   Both need the `CROWDIN_PERSONAL_TOKEN` repository secret (inert until set). The
@@ -265,7 +286,7 @@ author may dismiss severity < 7 findings.
 ## Code Style
 
 - Max line length: 120 characters.
-- ktlint with the `intellij_idea` code style (set in `.editorconfig`).
+- ktlint with the `android_studio` code style (set in `.editorconfig`).
 - `@Composable` functions are exempt from function-naming rules; other functions are
   camelCase.
 - Trailing commas are used and encouraged.

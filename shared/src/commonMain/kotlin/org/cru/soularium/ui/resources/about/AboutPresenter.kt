@@ -1,4 +1,4 @@
-package org.cru.soularium.ui.screens
+package org.cru.soularium.ui.resources.about
 
 import androidx.compose.runtime.Composable
 import com.slack.circuit.codegen.annotations.CircuitInject
@@ -10,30 +10,26 @@ import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
-import org.cru.soularium.ui.nav.ResourcesScreen
-import org.cru.soularium.ui.terms.TermsScreen
 
 @AssistedInject
-class ResourcesPresenter(@Assisted private val navigator: Navigator) : Presenter<ResourcesPresenter.UiState> {
+class AboutPresenter(@Assisted private val navigator: Navigator) : Presenter<AboutPresenter.UiState> {
 
-    data class UiState(val eventSink: (UiEvent) -> Unit) : CircuitUiState
+    data class UiState(val eventSink: (UiEvent) -> Unit = {}) : CircuitUiState
 
     sealed interface UiEvent : CircuitUiEvent {
         data object Back : UiEvent
-        data object OpenTerms : UiEvent
     }
 
     @Composable
     override fun present(): UiState = UiState { event ->
         when (event) {
             UiEvent.Back -> navigator.pop()
-            UiEvent.OpenTerms -> navigator.goTo(TermsScreen)
         }
     }
 
-    @CircuitInject(ResourcesScreen::class, AppScope::class)
+    @CircuitInject(AboutScreen::class, AppScope::class)
     @AssistedFactory
     fun interface Factory {
-        fun create(navigator: Navigator): ResourcesPresenter
+        fun create(navigator: Navigator): AboutPresenter
     }
 }

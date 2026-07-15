@@ -189,13 +189,10 @@
     <string name="resources_title">Resources</string>
     <string name="resource_mysoularium_header">MYSOULARIUM.COM</string>
     <string name="resource_mysoularium_label">Go deeper in your Soularium experience.</string>
-    <string name="resource_mysoularium_url">https://mysoularium.com</string>
     <string name="resource_cru_header">SOULARIUM ON CRU.ORG</string>
     <string name="resource_cru_label">Videos and free resources. Buy the print version.</string>
-    <string name="resource_cru_url">https://www.cru.org/us/en/train-and-grow/share-the-gospel/evangelism-principles/soularium.html</string>
     <string name="resource_feedback_header">GIVE US YOUR FEEDBACK</string>
     <string name="resource_feedback_label">Help make Soularium better.</string>
-    <string name="resource_feedback_email">Soularium@cru.org</string>
     <string name="resource_feedback_subject">Feedback — Soularium mobile</string>
     <string name="resource_share_header">SHARE THIS APP</string>
     <string name="resource_share_label">Who else should know about Soularium?</string>
@@ -205,7 +202,6 @@
     <string name="resource_terms_label">Review the legal terms related to this app.</string>
     <string name="resource_privacy_header">PRIVACY POLICY</string>
     <string name="resource_privacy_label">Review the privacy policy related to this app.</string>
-    <string name="resource_privacy_url">https://www.cru.org/about/privacy.html</string>
 
     <!-- Cards and questions reference -->
     <string name="cards_and_questions_title">Images &amp; Questions</string>

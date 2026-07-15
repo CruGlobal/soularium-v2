@@ -1,4 +1,4 @@
-package org.cru.soularium.ui.terms
+package org.cru.soularium.ui.resources.terms
 
 import com.slack.circuit.test.FakeNavigator
 import com.slack.circuit.test.test

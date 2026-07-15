@@ -65,6 +65,8 @@ kotlin {
                 implementation(libs.circuit.foundation)
                 implementation(libs.circuit.runtime.presenter)
                 implementation(libs.circuit.runtime.ui)
+                implementation(libs.circuitx.navigation)
+                implementation(libs.ktor.http)
                 implementation(libs.coil.compose)
                 implementation(libs.coroutines.core)
                 implementation(libs.datastore.preferences.core)

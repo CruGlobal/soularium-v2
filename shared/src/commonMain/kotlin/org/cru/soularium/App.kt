@@ -4,14 +4,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import com.slack.circuit.backstack.rememberSaveableBackStack
+import com.slack.circuit.foundation.CircuitCompositionLocals
+import com.slack.circuit.foundation.NavigableCircuitContent
+import com.slack.circuit.foundation.rememberCircuitNavigator
 import com.slack.circuit.runtime.screen.Screen
+import com.slack.circuitx.navigation.intercepting.rememberInterceptingNavigator
 import org.cru.soularium.di.SoulariumAppGraph
 import org.cru.soularium.domain.DeviceState
+import org.cru.soularium.ui.external.rememberExternalScreenInterceptor
 import org.cru.soularium.ui.nav.HomeScreen
 import org.cru.soularium.ui.nav.IntroScreen
-import org.cru.soularium.ui.nav.NavGraph
+import org.cru.soularium.ui.resources.terms.TermsScreen
 import org.cru.soularium.ui.screens.SplashScreen
-import org.cru.soularium.ui.terms.TermsScreen
 import org.cru.soularium.ui.theme.SoulariumTheme
 
 @Composable
@@ -28,10 +33,16 @@ fun App(graph: SoulariumAppGraph) {
         when (val initial = startScreen) {
             null -> SplashScreen()
             else -> {
-                // Capture the first resolved screen so later device-state
-                // changes (e.g. agreeing to terms) don't rebuild the back stack.
-                val initialScreen = remember { initial }
-                NavGraph(circuit = graph.circuit, startScreen = initialScreen)
+                val backStack = rememberSaveableBackStack(remember { initial })
+                CircuitCompositionLocals(graph.circuit) {
+                    NavigableCircuitContent(
+                        navigator = rememberInterceptingNavigator(
+                            navigator = rememberCircuitNavigator(backStack) {},
+                            interceptors = listOf(rememberExternalScreenInterceptor()),
+                        ),
+                        backStack = backStack,
+                    )
+                }
             }
         }
     }

@@ -1,4 +1,4 @@
-package org.cru.soularium.ui.screens
+package org.cru.soularium.ui.resources.about
 
 import app.cash.paparazzi.DeviceConfig
 import com.android.resources.NightMode
@@ -9,12 +9,12 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(TestParameterInjector::class)
-class ResourcesLayoutPaparazziTest(
+class AboutLayoutPaparazziTest(
     @TestParameter(valuesProvider = DeviceConfigProvider::class) deviceConfig: DeviceConfig,
     @TestParameter nightMode: NightMode,
 ) : BasePaparazziTest(deviceConfig = deviceConfig, nightMode = nightMode) {
     @Test
-    fun `ResourcesLayout()`() = snapshot {
-        ResourcesLayout(state = ResourcesPresenter.UiState(eventSink = {}))
+    fun `AboutLayout()`() = snapshot {
+        AboutLayout(state = AboutPresenter.UiState(eventSink = {}))
     }
 }

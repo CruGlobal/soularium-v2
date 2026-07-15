@@ -1,4 +1,4 @@
-package org.cru.soularium.ui.screens
+package org.cru.soularium.ui.resources.about
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -38,7 +38,6 @@ import org.cru.soularium.generated.resources.about_title
 import org.cru.soularium.generated.resources.about_what_is_body
 import org.cru.soularium.generated.resources.about_what_is_heading
 import org.cru.soularium.generated.resources.action_back
-import org.cru.soularium.ui.nav.AboutScreen
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -49,10 +48,7 @@ import org.jetbrains.compose.resources.stringResource
 @CircuitInject(AboutScreen::class, AppScope::class)
 @Composable
 fun AboutLayout(state: AboutPresenter.UiState, modifier: Modifier = Modifier) {
-    val backLabel = stringResource(Res.string.action_back)
-
     Scaffold(
-        modifier = modifier,
         topBar = {
             TopAppBar(
                 title = {
@@ -68,7 +64,7 @@ fun AboutLayout(state: AboutPresenter.UiState, modifier: Modifier = Modifier) {
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = backLabel,
+                            contentDescription = stringResource(Res.string.action_back),
                         )
                     }
                 },
@@ -79,6 +75,7 @@ fun AboutLayout(state: AboutPresenter.UiState, modifier: Modifier = Modifier) {
                 ),
             )
         },
+        modifier = modifier,
     ) { innerPadding ->
         Column(
             modifier = Modifier

@@ -13,7 +13,7 @@ import com.slack.circuitx.navigation.intercepting.rememberInterceptingNavigator
 import org.cru.soularium.di.SoulariumAppGraph
 import org.cru.soularium.domain.DeviceState
 import org.cru.soularium.ui.external.rememberExternalScreenInterceptor
-import org.cru.soularium.ui.nav.HomeScreen
+import org.cru.soularium.ui.home.HomeScreen
 import org.cru.soularium.ui.nav.IntroScreen
 import org.cru.soularium.ui.resources.terms.TermsScreen
 import org.cru.soularium.ui.screens.SplashScreen

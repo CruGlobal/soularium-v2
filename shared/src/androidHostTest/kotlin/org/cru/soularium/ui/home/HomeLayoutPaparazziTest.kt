@@ -1,4 +1,4 @@
-package org.cru.soularium.ui.screens
+package org.cru.soularium.ui.home
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface

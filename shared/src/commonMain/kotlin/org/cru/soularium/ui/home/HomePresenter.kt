@@ -1,4 +1,4 @@
-package org.cru.soularium.ui.screens
+package org.cru.soularium.ui.home
 
 import androidx.compose.runtime.Composable
 import com.slack.circuit.codegen.annotations.CircuitInject
@@ -14,7 +14,6 @@ import org.cru.soularium.domain.SessionId
 import org.cru.soularium.domain.SessionKind
 import org.cru.soularium.ui.nav.CardsAndQuestionsScreen
 import org.cru.soularium.ui.nav.ConversationScreen
-import org.cru.soularium.ui.nav.HomeScreen
 import org.cru.soularium.ui.nav.PastConversationsScreen
 import org.cru.soularium.ui.nav.SettingsScreen
 import org.cru.soularium.ui.resources.ResourcesScreen

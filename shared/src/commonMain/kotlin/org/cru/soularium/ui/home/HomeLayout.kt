@@ -1,4 +1,4 @@
-package org.cru.soularium.ui.screens
+package org.cru.soularium.ui.home
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -65,7 +65,6 @@ import org.cru.soularium.generated.resources.menu_my_soularium
 import org.cru.soularium.generated.resources.menu_past_conversations
 import org.cru.soularium.generated.resources.menu_resources
 import org.cru.soularium.generated.resources.menu_settings
-import org.cru.soularium.ui.nav.HomeScreen
 import org.jetbrains.compose.resources.stringResource
 
 /**

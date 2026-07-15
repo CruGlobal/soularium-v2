@@ -6,7 +6,7 @@ import com.slack.circuitx.navigation.intercepting.NavigationInterceptor
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
-import org.cru.soularium.ui.nav.HomeScreen
+import org.cru.soularium.ui.home.HomeScreen
 
 class ExternalScreenInterceptorTest {
     private val uriHandler = RecordingUriHandler()

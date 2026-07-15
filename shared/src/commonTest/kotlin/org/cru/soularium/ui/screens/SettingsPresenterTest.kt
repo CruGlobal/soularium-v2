@@ -9,7 +9,7 @@ import org.ccci.gto.support.androidx.test.junit.runners.AndroidJUnit4
 import org.ccci.gto.support.androidx.test.junit.runners.RunOnAndroidWith
 import org.cru.soularium.domain.DeviceState
 import org.cru.soularium.domain.ports.FakeDeviceStateRepository
-import org.cru.soularium.ui.nav.HomeScreen
+import org.cru.soularium.ui.home.HomeScreen
 import org.cru.soularium.ui.nav.SettingsScreen
 
 @RunOnAndroidWith(AndroidJUnit4::class)

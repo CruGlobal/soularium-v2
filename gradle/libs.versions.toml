@@ -2,7 +2,7 @@
 agp = "9.3.0"
 android-sdk-compile = "37"
 android-sdk-min = "24"
-circuit = "0.34.0"
+circuit = "0.35.1"
 coil = "3.5.0"
 compose-multiplatform = "1.11.1"
 coroutines = "1.11.0"

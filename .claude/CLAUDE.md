@@ -231,13 +231,18 @@ signatures. `commonMain` must contain no Android- or iOS-specific imports.
   (`kotest-assertions-core`), Turbine for `Flow` assertions, `kotlinx-coroutines-test`
   (`runTest`, `TestDispatcher`, `advanceUntilIdle`).
 - Unit tests (domain, data, presenter) live in `commonTest`; Paparazzi screenshot tests
-  live in `androidHostTest`. There is no on-device Android instrumentation and no
-  Compose-UI interaction tests. Presenters are exercised via Circuit's `circuit-test` library
+  live in `androidHostTest`. There is no on-device Android instrumentation — everything
+  runs host-side. Presenters are exercised via Circuit's `circuit-test` library
   (`FakeNavigator`, `presenter.test { awaitItem().eventSink(...) }`). Presenter tests are
   annotated `@RunOnAndroidWith(AndroidJUnit4::class)` so the Android-host variant runs
   them under Robolectric — required because the Compose Runtime's Android artifact
   touches `android.util.Log` from its error path. The iOS-simulator variant runs the
   same tests unannotated. Pure domain code (no Compose) has no such requirement.
+- **Compose UI interaction tests** live in `commonTest` and use `runComposeUiTest` (the
+  `androidx.compose.ui.test.v2` API, from the `compose-ui-test` catalog entry) with
+  `@RunOnAndroidWith(AndroidJUnit4::class)`. They render a composable, drive it
+  (`onNode(...).performClick()`, `mainClock` for animation control) and assert. See
+  `HomeMenuOverlayTest`.
 - Test doubles are plain in-memory classes defined in the test sources (e.g.
   `InMemorySessionRepository`, `FakeSessionRepository`, `RecordingSharer`). There are no
   `test-fixtures` modules.

@@ -18,9 +18,9 @@ import org.cru.soularium.domain.SessionKind
 import org.cru.soularium.ui.nav.CardsAndQuestionsScreen
 import org.cru.soularium.ui.nav.ConversationScreen
 import org.cru.soularium.ui.nav.PastConversationsScreen
-import org.cru.soularium.ui.nav.SettingsScreen
 import org.cru.soularium.ui.resources.ResourcesScreen
 import org.cru.soularium.ui.resources.about.AboutScreen
+import org.cru.soularium.ui.settings.SettingsScreen
 
 @AssistedInject
 class HomePresenter(@Assisted private val navigator: Navigator) : Presenter<HomePresenter.UiState> {

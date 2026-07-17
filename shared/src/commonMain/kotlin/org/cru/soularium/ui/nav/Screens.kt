@@ -15,9 +15,6 @@ data object PastConversationsScreen : Screen
 data object CardsAndQuestionsScreen : Screen
 
 @Parcelize
-data object SettingsScreen : Screen
-
-@Parcelize
 data class ConversationScreen(
     /** Backing string id — value-class types aren't directly parcelable. */
     val sessionIdValue: String,

@@ -1,4 +1,4 @@
-package org.cru.soularium.ui.screens
+package org.cru.soularium.ui.settings
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -23,7 +23,6 @@ import org.cru.soularium.generated.resources.locale_es
 import org.cru.soularium.generated.resources.locale_fr
 import org.cru.soularium.generated.resources.locale_pl
 import org.cru.soularium.generated.resources.locale_zh_hans
-import org.cru.soularium.ui.nav.SettingsScreen
 import org.jetbrains.compose.resources.StringResource
 
 /**

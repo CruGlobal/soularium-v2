@@ -8,6 +8,7 @@ import app.cash.paparazzi.Paparazzi
 import app.cash.paparazzi.detectEnvironment
 import com.android.resources.NightMode
 import com.google.testing.junit.testparameterinjector.TestParameterValuesProvider
+import com.slack.circuit.overlay.ContentWithOverlays
 import java.io.File
 import org.cru.soularium.ui.theme.SoulariumTheme
 import org.jetbrains.compose.resources.PreviewContextConfigurationEffect
@@ -51,6 +52,8 @@ abstract class BasePaparazziTest(
         CompositionLocalProvider(LocalInspectionMode provides true) {
             PreviewContextConfigurationEffect()
         }
-        SoulariumTheme(content = content)
+        SoulariumTheme {
+            ContentWithOverlays(content = content)
+        }
     }
 }

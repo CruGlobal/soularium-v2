@@ -1,6 +1,9 @@
-package org.cru.soularium.ui.screens
+package org.cru.soularium.ui.home
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import com.slack.circuit.codegen.annotations.CircuitInject
 import com.slack.circuit.runtime.CircuitUiEvent
 import com.slack.circuit.runtime.CircuitUiState
@@ -14,7 +17,6 @@ import org.cru.soularium.domain.SessionId
 import org.cru.soularium.domain.SessionKind
 import org.cru.soularium.ui.nav.CardsAndQuestionsScreen
 import org.cru.soularium.ui.nav.ConversationScreen
-import org.cru.soularium.ui.nav.HomeScreen
 import org.cru.soularium.ui.nav.PastConversationsScreen
 import org.cru.soularium.ui.nav.SettingsScreen
 import org.cru.soularium.ui.resources.ResourcesScreen
@@ -23,7 +25,10 @@ import org.cru.soularium.ui.resources.about.AboutScreen
 @AssistedInject
 class HomePresenter(@Assisted private val navigator: Navigator) : Presenter<HomePresenter.UiState> {
 
-    data class UiState(val eventSink: (UiEvent) -> Unit) : CircuitUiState
+    data class UiState(
+        val showMenu: MutableState<Boolean> = mutableStateOf(false),
+        val eventSink: (UiEvent) -> Unit = {},
+    ) : CircuitUiState
 
     sealed interface UiEvent : CircuitUiEvent {
         data object StartGroupConversation : UiEvent
@@ -36,12 +41,12 @@ class HomePresenter(@Assisted private val navigator: Navigator) : Presenter<Home
     }
 
     @Composable
-    override fun present(): UiState = UiState { event ->
+    override fun present() = UiState(
+        showMenu = rememberSaveable { mutableStateOf(false) },
+    ) { event ->
         when (event) {
-            UiEvent.StartGroupConversation ->
-                navigator.goTo(ConversationScreen(SessionId.random(), SessionKind.GROUP))
-            UiEvent.StartSoloConversation ->
-                navigator.goTo(ConversationScreen(SessionId.random(), SessionKind.SOLO))
+            UiEvent.StartGroupConversation -> navigator.goTo(ConversationScreen(SessionId.random(), SessionKind.GROUP))
+            UiEvent.StartSoloConversation -> navigator.goTo(ConversationScreen(SessionId.random(), SessionKind.SOLO))
             UiEvent.OpenPastConversations -> navigator.goTo(PastConversationsScreen)
             UiEvent.OpenAbout -> navigator.goTo(AboutScreen)
             UiEvent.OpenResources -> navigator.goTo(ResourcesScreen)

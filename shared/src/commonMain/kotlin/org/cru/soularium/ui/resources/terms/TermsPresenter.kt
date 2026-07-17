@@ -16,7 +16,7 @@ import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
 import kotlinx.coroutines.launch
 import org.cru.soularium.domain.ports.DeviceStateRepository
-import org.cru.soularium.ui.nav.HomeScreen
+import org.cru.soularium.ui.home.HomeScreen
 
 @AssistedInject
 class TermsPresenter(@Assisted private val navigator: Navigator, private val deviceStateRepo: DeviceStateRepository) :

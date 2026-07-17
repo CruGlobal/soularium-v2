@@ -202,6 +202,7 @@ Cross-reference `.claude/rules/design_system_rules.md` while reviewing UI code.
 - [ ] **Dark mode follows the system** — theme selection goes through `isSystemInDarkTheme()`; no in-app theme toggle or hardcoded scheme override
 - [ ] Spacing stays on the 4dp grid; `Arrangement.spacedBy(N.dp)` is preferred over per-child padding for sibling spacing
 - [ ] Material3 components used before reaching for primitives (`Button`/`Card`/`Scaffold`/`TopAppBar`, etc.)
+- [ ] No composable argument is passed a value equal to that parameter's own default — e.g. `shape = BottomSheetDefaults.ExpandedShape` on a `ModalBottomSheet`, or a color/elevation/`contentPadding` that already matches the component default. Redundant explicit defaults add noise and drift as the library's defaults change; flag each as a **Minor Issue** (⚠️) and suggest dropping the argument. (Passing a value that only *coincidentally* equals the default but is semantically load-bearing — documenting intent — is fine; use judgment.)
 - [ ] Icons come from `androidx.compose.material.icons.Icons.*` — no hand-rolled `ImageVector` paths
 - [ ] Every `Icon`/`Image` has a meaningful `contentDescription`, or `null` only when adjacent text already conveys the meaning
 - [ ] Touch targets ≥ 48dp (wrap small icons in `IconButton` or use `Modifier.minimumInteractiveComponentSize()`)
@@ -252,7 +253,7 @@ DI is compile-time via [Metro](https://github.com/ZacSweers/metro). The graph is
 
 ### Testing
 
-- [ ] Unit tests (domain, presenter, data) live in `commonTest`; Paparazzi screenshot tests live in `androidHostTest`. There are still no on-device Android instrumented tests and no Compose-UI interaction tests
+- [ ] Unit tests (domain, presenter, data) live in `commonTest`; Paparazzi screenshot tests live in `androidHostTest`. There are still no on-device Android instrumented tests. Compose-UI interaction tests using `runComposeUiTest` (the `androidx.compose.ui.test.v2` API) are allowed in `commonTest`, annotated `@RunOnAndroidWith(AndroidJUnit4::class)` — see `HomeMenuOverlayTest`
 - [ ] Frameworks: `kotlin.test` (`@Test`, `@BeforeTest`, `@AfterTest`), Kotest assertions (`io.kotest.matchers.*`), Turbine for `Flow` assertions, `kotlinx-coroutines-test` (`runTest`, `TestDispatcher`, `advanceUntilIdle`) — no JUnit4, no `runBlocking`, no manual `collect` + coroutine coordination
 - [ ] Presenter tests are written with Circuit's `circuit-test` (`FakeNavigator`, `presenter.test { awaitItem().eventSink(...) }`)
 - [ ] Presenter tests are annotated `@RunOnAndroidWith(AndroidJUnit4::class)` so the Android-host variant runs them under Robolectric — required because the Compose Runtime's Android artifact touches `android.util.Log` on its error path. Pure domain tests are unannotated

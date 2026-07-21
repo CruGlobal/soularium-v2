@@ -44,7 +44,7 @@ compose-components-resources = { module = "org.jetbrains.compose.components:comp
 compose-components-ui-tooling-preview = { module = "org.jetbrains.compose.components:components-ui-tooling-preview", version.ref = "compose-components" }
 compose-foundation = "org.jetbrains.compose.foundation:foundation:1.11.1"
 compose-material-icons-extended = "org.jetbrains.compose.material:material-icons-extended:1.7.3"
-compose-material3 = "org.jetbrains.compose.material3:material3:1.9.0"
+compose-material3 = "org.jetbrains.compose.material3:material3:1.11.0-alpha07"
 compose-runtime = "org.jetbrains.compose.runtime:runtime:1.11.1"
 compose-ui-test = "org.jetbrains.compose.ui:ui-test:1.11.1"
 coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }

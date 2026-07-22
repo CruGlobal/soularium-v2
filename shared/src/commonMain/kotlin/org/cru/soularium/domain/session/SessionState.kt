@@ -48,8 +48,11 @@ enum class QuestionActivity {
     @SerialName("showing_instructions")
     ShowingInstructions,
 
+    // Kotlin variant was renamed from SelectingRound1 after the two-round flow was
+    // collapsed into one; the @SerialName is preserved so persisted sessions still
+    // deserialize.
     @SerialName("selecting_round_1")
-    SelectingRound1,
+    Selecting,
 
     @SerialName("finalizing")
     Finalizing,

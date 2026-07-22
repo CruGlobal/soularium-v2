@@ -395,7 +395,7 @@ class ConversationPresenter(
                 QuestionActivity.ShowingInstructions ->
                     UiState.Instructions(showExitDialog, eventSink)
 
-                QuestionActivity.SelectingRound1 ->
+                QuestionActivity.Selecting ->
                     UiState.Selection(
                         questionNumber = sessionState.questionNumber,
                         selectedCardIds = ui.draftPicks,
@@ -572,7 +572,7 @@ class ConversationPresenter(
 
 /**
  * A session bookmarked mid-question persists an in-progress activity
- * (SelectingRound1, Finalizing, Discussing), but the volatile draft picks
+ * (Selecting, Finalizing, Discussing), but the volatile draft picks
  * behind it are not persisted. Snap back to the question prompt on resume so
  * the user restarts that question cleanly instead of landing on an empty
  * selection.

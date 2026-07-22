@@ -89,19 +89,19 @@ private fun transitionInQuestion(
                 ) {
                     QuestionActivity.ShowingInstructions
                 } else {
-                    QuestionActivity.SelectingRound1
+                    QuestionActivity.Selecting
                 }
             val next = state.copy(activity = targetActivity)
             TransitionResult(next = next, effects = listOf(Effect.PersistState(next)))
         }
 
         SessionEvent.DismissInstructions -> {
-            val next = state.copy(activity = QuestionActivity.SelectingRound1)
+            val next = state.copy(activity = QuestionActivity.Selecting)
             TransitionResult(next = next, effects = listOf(Effect.PersistState(next)))
         }
 
         SessionEvent.ConfirmSelection -> {
-            if (state.activity != QuestionActivity.SelectingRound1) {
+            if (state.activity != QuestionActivity.Selecting) {
                 return TransitionResult(
                     next = state,
                     error = DomainError.InvalidStateTransition(state.toString(), event::class.simpleName ?: "?"),

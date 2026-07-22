@@ -133,7 +133,7 @@ class ConversationPresenterTest {
     }
 
     @Test
-    fun `fresh session shows instructions then DismissInstructions reaches SelectingRound1`() = runTest {
+    fun `fresh session shows instructions then DismissInstructions reaches Selecting`() = runTest {
         val repo = FakeSessionRepository().apply {
             preloadedState = SessionState.InQuestion(1, 0, QuestionActivity.ShowingPrompt)
             preloadedConversations[sessionId] = listOf(
@@ -155,7 +155,7 @@ class ConversationPresenterTest {
     @Test
     fun `DismissInstructions suppresses the Instructions page for the rest of the session`() = runTest {
         // After the first dismissal, BeginSelection on a fresh prompt must skip
-        // the Instructions page entirely and land on SelectingRound1.
+        // the Instructions page entirely and land on Selecting.
         val repo = FakeSessionRepository().apply {
             preloadedState = SessionState.InQuestion(2, 0, QuestionActivity.ShowingPrompt)
         }

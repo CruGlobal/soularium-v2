@@ -1,57 +1,53 @@
 package org.cru.soularium.ui.settings
 
+import androidx.compose.ui.text.intl.Locale
 import com.slack.circuit.test.FakeNavigator
 import com.slack.circuit.test.test
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlinx.coroutines.test.runTest
 import org.ccci.gto.support.androidx.test.junit.runners.AndroidJUnit4
 import org.ccci.gto.support.androidx.test.junit.runners.RunOnAndroidWith
-import org.cru.soularium.domain.DeviceState
-import org.cru.soularium.domain.ports.FakeDeviceStateRepository
-import org.cru.soularium.ui.home.HomeScreen
+import org.cru.soularium.domain.settings.FakeLanguageRepository
 
 @RunOnAndroidWith(AndroidJUnit4::class)
 class SettingsPresenterTest {
-    // Two-screen stack so pop() has somewhere to land.
-    private val navigator = FakeNavigator(HomeScreen, SettingsScreen)
-    private val deviceStateRepo = FakeDeviceStateRepository()
-    private val presenter = SettingsPresenter(navigator, deviceStateRepo)
+    private val navigator = FakeNavigator(SettingsScreen)
+    private val languageRepo = FakeLanguageRepository()
+    private val presenter = SettingsPresenter(navigator, languageRepo)
 
     @Test
-    fun `initial selected locale reflects device state`() = runTest {
-        deviceStateRepo.update(DeviceState(locale = "fr"))
+    fun `UiState - selectedLanguage - reflects stored language`() = runTest {
+        val locale = Locale("fr")
+        languageRepo.setAppLanguage(locale)
         presenter.test {
-            // collectAsState emits its initial DeviceState() default before the
-            // repository flow's first value arrives — consume until we see FR.
-            awaitStable { it.selectedLocale == AppLocale.FR }
-            cancelAndIgnoreRemainingEvents()
+            assertEquals(locale, awaitItem().selectedLanguage)
         }
     }
 
     @Test
-    fun `SelectLocale persists the chosen locale and reflects it`() = runTest {
+    fun `UiState - selectedLanguage - null when no stored language`() = runTest {
         presenter.test {
-            val initial = awaitStable { it.selectedLocale == AppLocale.EN }
-            initial.eventSink(SettingsPresenter.UiEvent.SelectLocale(AppLocale.ES))
-            awaitStable { it.selectedLocale == AppLocale.ES }
-            cancelAndIgnoreRemainingEvents()
+            assertNull(awaitItem().selectedLanguage)
         }
-        assertEquals("es", deviceStateRepo.snapshot().locale)
     }
 
     @Test
-    fun `Back pops the navigator`() = runTest {
+    fun `UiEvent - SelectLanguage - persists and updates the selection`() = runTest {
+        val locale = Locale("es")
+        presenter.test {
+            awaitItem().eventSink(SettingsPresenter.UiEvent.SelectLanguage(Locale("es")))
+            assertEquals(locale, awaitItem().selectedLanguage)
+        }
+        assertEquals(locale, languageRepo.appLanguage.value)
+    }
+
+    @Test
+    fun `UiEvent - Back - pops the navigator`() = runTest {
         presenter.test {
             awaitItem().eventSink(SettingsPresenter.UiEvent.Back)
-            cancelAndIgnoreRemainingEvents()
+            navigator.awaitPop()
         }
-        assertEquals(SettingsScreen, navigator.awaitPop().poppedScreen)
     }
-}
-
-private suspend fun <T> app.cash.turbine.ReceiveTurbine<T>.awaitStable(predicate: (T) -> Boolean): T {
-    var item = awaitItem()
-    while (!predicate(item)) item = awaitItem()
-    return item
 }

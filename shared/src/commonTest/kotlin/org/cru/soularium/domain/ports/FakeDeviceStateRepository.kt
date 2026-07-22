@@ -23,8 +23,4 @@ internal class FakeDeviceStateRepository(initial: DeviceState = DeviceState()) :
     override suspend fun markTosAgreed() {
         state.update { it.copy(hasSeenIntro = true, agreedToTos = true) }
     }
-
-    override suspend fun setLocale(locale: String) {
-        state.update { it.copy(locale = locale) }
-    }
 }

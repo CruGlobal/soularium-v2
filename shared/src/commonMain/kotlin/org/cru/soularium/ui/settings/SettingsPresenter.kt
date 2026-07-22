@@ -5,6 +5,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.text.intl.Locale
 import com.slack.circuit.codegen.annotations.CircuitInject
 import com.slack.circuit.runtime.CircuitUiEvent
 import com.slack.circuit.runtime.CircuitUiState
@@ -15,72 +16,42 @@ import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
 import kotlinx.coroutines.launch
-import org.cru.soularium.domain.DeviceState
-import org.cru.soularium.domain.ports.DeviceStateRepository
-import org.cru.soularium.generated.resources.Res
-import org.cru.soularium.generated.resources.locale_en
-import org.cru.soularium.generated.resources.locale_es
-import org.cru.soularium.generated.resources.locale_fr
-import org.cru.soularium.generated.resources.locale_pl
-import org.cru.soularium.generated.resources.locale_zh_hans
-import org.jetbrains.compose.resources.StringResource
-
-/**
- * Supported app locales. Each entry carries its IETF [code] (persisted in
- * device state) and maps to its display-name string resource.
- *
- * The chosen locale is persisted via the device-state store. Runtime
- * application of a non-system locale still depends on a Compose-resources
- * locale-override API (CMP 1.8+); until then the picker records the
- * preference and reflects it in the UI.
- */
-enum class AppLocale(val code: String) {
-    EN("en"),
-    ES("es"),
-    FR("fr"),
-    PL("pl"),
-    ZH_HANS("zh-Hans"),
-    ;
-
-    val labelRes: StringResource
-        get() =
-            when (this) {
-                EN -> Res.string.locale_en
-                ES -> Res.string.locale_es
-                FR -> Res.string.locale_fr
-                PL -> Res.string.locale_pl
-                ZH_HANS -> Res.string.locale_zh_hans
-            }
-
-    companion object {
-        /** Maps a stored locale code back to an [AppLocale], defaulting to [EN]. */
-        fun fromCode(code: String?): AppLocale = entries.firstOrNull { it.code == code } ?: EN
-    }
-}
+import org.cru.soularium.domain.settings.LanguageRepository
+import org.cru.soularium.ui.util.getDisplayName
 
 @AssistedInject
-class SettingsPresenter(
-    @Assisted private val navigator: Navigator,
-    private val deviceStateRepo: DeviceStateRepository,
-) : Presenter<SettingsPresenter.UiState> {
+class SettingsPresenter(@Assisted private val navigator: Navigator, private val languageRepo: LanguageRepository) :
+    Presenter<SettingsPresenter.UiState> {
 
-    data class UiState(val selectedLocale: AppLocale, val eventSink: (UiEvent) -> Unit) : CircuitUiState
+    /**
+     * @param selectedLanguage the active app language, or null when following the system default.
+     * @param supportedLanguages the languages the app ships translations for, in display order.
+     */
+    data class UiState(
+        val selectedLanguage: Locale?,
+        val supportedLanguages: List<Locale>,
+        val eventSink: (UiEvent) -> Unit,
+    ) : CircuitUiState
 
     sealed interface UiEvent : CircuitUiEvent {
         data object Back : UiEvent
-        data class SelectLocale(val locale: AppLocale) : UiEvent
+
+        /** Select one of the supported [locale]s. */
+        data class SelectLanguage(val locale: Locale) : UiEvent
     }
 
     @Composable
     override fun present(): UiState {
         val scope = rememberCoroutineScope()
-        val deviceState by remember { deviceStateRepo.deviceState }.collectAsState(DeviceState())
+        val supportedLanguages = remember { languageRepo.supportedLanguages.sortedBy { it.getDisplayName(it) } }
+
         return UiState(
-            selectedLocale = AppLocale.fromCode(deviceState.locale),
+            selectedLanguage = languageRepo.appLanguage.collectAsState().value,
+            supportedLanguages = supportedLanguages,
         ) { event ->
             when (event) {
                 UiEvent.Back -> navigator.pop()
-                is UiEvent.SelectLocale -> scope.launch { deviceStateRepo.setLocale(event.locale.code) }
+                is UiEvent.SelectLanguage -> scope.launch { languageRepo.setAppLanguage(event.locale) }
             }
         }
     }

@@ -5,16 +5,32 @@
     <application
         android:name=".SoulariumApplication"
         android:label="Soularium"
+        android:localeConfig="@xml/locales_config"
         android:supportsRtl="true"
-        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        android:theme="@style/Theme.AppCompat.DayNight.NoActionBar">
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|uiMode">
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|locale|layoutDirection|keyboardHidden|uiMode">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Persists the per-app language choice on API < 33 (API 33+ uses the system store). -->
+        <service
+            android:name="androidx.appcompat.app.AppLocalesMetadataHolderService"
+            android:enabled="false"
+            android:exported="false">
+            <meta-data
+                android:name="autoStoreLocales"
+                android:value="true" />
+        </service>
+
+        <!-- Points gto-support's LocaleConfigCompat at the locale-config resource for API < 33. -->
+        <meta-data
+            android:name="org.ccci.gto.android.common.androidx.core.LocaleConfig"
+            android:resource="@xml/locales_config" />
     </application>
 </manifest>

@@ -4,8 +4,8 @@ import kotlinx.coroutines.flow.Flow
 import org.cru.soularium.domain.DeviceState
 
 /**
- * Persistent per-device key/value state — first-launch flags and locale —
- * backed by DataStore rather than the session database.
+ * Persistent per-device first-launch flags, backed by DataStore rather than the
+ * session database.
  */
 interface DeviceStateRepository {
     /** Emits the current [DeviceState] and every subsequent change. */
@@ -16,7 +16,4 @@ interface DeviceStateRepository {
 
     /** Records that the Terms of Use have been accepted (implies intro seen). */
     suspend fun markTosAgreed()
-
-    /** Persists the user's chosen locale code (e.g. `en`, `zh-Hans`). */
-    suspend fun setLocale(locale: String)
 }

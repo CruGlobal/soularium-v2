@@ -212,11 +212,6 @@
     <!-- Settings -->
     <string name="settings_title">Settings</string>
     <string name="settings_language">Language</string>
-    <string name="locale_en">English</string>
-    <string name="locale_es">Español</string>
-    <string name="locale_fr">Français</string>
-    <string name="locale_pl">Polski</string>
-    <string name="locale_zh_hans">中文（简体）</string>
 
     <!-- Errors / snackbars -->
     <string name="error_persist_failed">Couldn’t save your conversation. Please try again.</string>

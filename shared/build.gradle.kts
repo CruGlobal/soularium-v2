@@ -3,7 +3,7 @@ import dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi
 
 plugins {
     id("soularium-kmp.module-conventions")
-    alias(libs.plugins.kotlin.serialization)
+    id("serialization-conventions")
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.ksp)
@@ -47,7 +47,6 @@ kotlin {
                 implementation(projects.module.model)
 
                 api(libs.circuit.codegen.annotations)
-                api(libs.kotlinx.serialization.json)
                 api(libs.room.runtime)
                 implementation(libs.circuit.foundation)
                 implementation(libs.circuit.overlay)
@@ -67,6 +66,7 @@ kotlin {
                 implementation(libs.gtoSupport.compose)
                 implementation(libs.gtoSupport.parcelize)
                 implementation(libs.kotlinx.datetime)
+                implementation(libs.kotlinx.serialization.json)
                 implementation(libs.ktor.http)
                 implementation(libs.markdown.renderer)
                 implementation(libs.markdown.renderer.m3)

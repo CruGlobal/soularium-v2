@@ -285,43 +285,18 @@ private suspend fun ReceiveTurbine<ConversationPresenter.UiState>.playAllTurns(
         }
         val landed = if (afterBegin is ConversationPresenter.UiState.Instructions) {
             afterBegin.eventSink(ConversationPresenter.UiEvent.Instructions.Dismiss)
-            awaitStable {
-                (it as? ConversationPresenter.UiState.Selection)?.round == 1
-            }
+            awaitStable { it is ConversationPresenter.UiState.Selection }
         } else {
             afterBegin
         } as ConversationPresenter.UiState.Selection
 
-        val round1Count = if (question.selectionRounds == 2) {
-            question.requiredImageCount + 1
-        } else {
-            question.requiredImageCount
+        landed.pick(question.requiredImageCount)
+        val afterSelection = awaitStable {
+            (it as? ConversationPresenter.UiState.Selection)?.selectedCardIds?.size == question.requiredImageCount
         }
-        landed.pick(round1Count)
-        val afterRound1 = awaitStable {
-            (it as? ConversationPresenter.UiState.Selection)?.selectedCardIds?.size == round1Count
-        }
-        afterRound1.eventSink(ConversationPresenter.UiEvent.Selection.Confirm)
+        afterSelection.eventSink(ConversationPresenter.UiEvent.Selection.Confirm)
 
-        // afterConfirm is either SelectingRound2 (two-round Q) or Finalizing (one-round Q).
-        val afterConfirm = awaitStable {
-            (it as? ConversationPresenter.UiState.Selection)?.round == 2 ||
-                it is ConversationPresenter.UiState.Finalizing
-        }
-        val readyForFinalize =
-            if (afterConfirm is ConversationPresenter.UiState.Selection) {
-                afterConfirm.pick(question.requiredImageCount)
-                val r2 = awaitStable {
-                    (it as? ConversationPresenter.UiState.Selection)?.selectedCardIds?.size ==
-                        question.requiredImageCount
-                }
-                r2.eventSink(ConversationPresenter.UiEvent.Selection.Confirm)
-                awaitStable { it is ConversationPresenter.UiState.Finalizing }
-            } else {
-                // One-round question: afterConfirm is already Finalizing — no extra dispatch
-                // happened, so no new emission to await; reuse the captured state.
-                afterConfirm
-            }
+        val readyForFinalize = awaitStable { it is ConversationPresenter.UiState.Finalizing }
         readyForFinalize.eventSink(ConversationPresenter.UiEvent.Finalizing.Confirm)
         awaitStable { it is ConversationPresenter.UiState.Discussing }
             .eventSink(ConversationPresenter.UiEvent.Discussing.Done)

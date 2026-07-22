@@ -49,11 +49,8 @@ import org.cru.soularium.generated.resources.q4_selection
 import org.cru.soularium.generated.resources.q5_selection
 import org.cru.soularium.generated.resources.selection_choose_1
 import org.cru.soularium.generated.resources.selection_choose_3
-import org.cru.soularium.generated.resources.selection_choose_wide
 import org.cru.soularium.generated.resources.selection_finish_picks
 import org.cru.soularium.generated.resources.selection_navigation_instructions
-import org.cru.soularium.generated.resources.selection_round_1_label
-import org.cru.soularium.generated.resources.selection_round_2_label
 import org.cru.soularium.generated.resources.selection_x_selected
 import org.cru.soularium.ui.content.CardAsset
 import org.jetbrains.compose.resources.StringResource
@@ -61,29 +58,22 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 private const val CARD_GRID_COLUMNS = 3
-private const val TWO_ROUND_QUESTION_MAX = 2
+
+// Questions 1 and 2 ask for three cards; questions 3–5 ask for one.
+private const val THREE_CARD_QUESTION_MAX = 2
 
 /**
- * Core image-selection screen for a single selection round. Selection state and
- * confirm-validity are driven entirely by the presenter via
- * [ConversationPresenter.UiState.Selection].
+ * Core image-selection screen. Selection state and confirm-validity are driven
+ * entirely by the presenter via [ConversationPresenter.UiState.Selection].
  */
 @Composable
 fun SelectionLayout(state: ConversationPresenter.UiState.Selection, modifier: Modifier = Modifier) {
     val questionNumber = state.questionNumber
-    val round = state.round
     val selectedCardIds = state.selectedCardIds
     val isConfirmEnabled = state.isConfirmEnabled
-    val isTwoRoundQuestion = questionNumber <= TWO_ROUND_QUESTION_MAX
     val selectionPrompt = stringResource(questionSelectionRes(questionNumber))
-    // Round 1 of a two-round question is a *wide* pick (>= requiredImageCount + 1);
-    // round 2 narrows to exactly the required count. One-round questions pick one.
     val chooseLabel = stringResource(
-        when {
-            !isTwoRoundQuestion -> Res.string.selection_choose_1
-            round >= 2 -> Res.string.selection_choose_3
-            else -> Res.string.selection_choose_wide
-        },
+        if (questionNumber <= THREE_CARD_QUESTION_MAX) Res.string.selection_choose_3 else Res.string.selection_choose_1,
     )
     val selectedCountLabel = stringResource(Res.string.selection_x_selected, selectedCardIds.size)
 
@@ -100,8 +90,6 @@ fun SelectionLayout(state: ConversationPresenter.UiState.Selection, modifier: Mo
         ) {
             // Header section
             SelectionHeader(
-                isTwoRoundQuestion = isTwoRoundQuestion,
-                round = round,
                 selectionPrompt = selectionPrompt,
                 chooseLabel = chooseLabel,
                 selectedCountLabel = selectedCountLabel,
@@ -170,8 +158,6 @@ fun SelectionLayout(state: ConversationPresenter.UiState.Selection, modifier: Mo
 
 @Composable
 private fun SelectionHeader(
-    isTwoRoundQuestion: Boolean,
-    round: Int,
     selectionPrompt: String,
     chooseLabel: String,
     selectedCountLabel: String,
@@ -181,20 +167,6 @@ private fun SelectionHeader(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        if (isTwoRoundQuestion) {
-            Text(
-                text = stringResource(
-                    if (round >= 2) {
-                        Res.string.selection_round_2_label
-                    } else {
-                        Res.string.selection_round_1_label
-                    },
-                ),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
-            )
-        }
-
         Text(
             text = selectionPrompt,
             style = MaterialTheme.typography.titleMedium,

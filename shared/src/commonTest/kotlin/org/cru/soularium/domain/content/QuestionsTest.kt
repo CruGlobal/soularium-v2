@@ -11,20 +11,16 @@ class QuestionsTest {
     }
 
     @Test
-    fun `Q1 and Q2 require 3 final picks across 2 rounds`() {
+    fun `Q1 and Q2 require 3 picks`() {
         listOf(1, 2).forEach { n ->
-            val q = Questions.byNumber(n)
-            assertEquals(3, q.requiredImageCount)
-            assertEquals(2, q.selectionRounds)
+            assertEquals(3, Questions.byNumber(n).requiredImageCount)
         }
     }
 
     @Test
-    fun `Q3 Q4 Q5 require 1 pick in 1 round`() {
+    fun `Q3 Q4 Q5 require 1 pick`() {
         listOf(3, 4, 5).forEach { n ->
-            val q = Questions.byNumber(n)
-            assertEquals(1, q.requiredImageCount)
-            assertEquals(1, q.selectionRounds)
+            assertEquals(1, Questions.byNumber(n).requiredImageCount)
         }
     }
 

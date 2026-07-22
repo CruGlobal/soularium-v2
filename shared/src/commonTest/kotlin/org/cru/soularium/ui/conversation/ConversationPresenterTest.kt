@@ -147,10 +147,7 @@ class ConversationPresenterTest {
             prompt.eventSink(ConversationPresenter.UiEvent.QuestionPrompt.BeginSelection)
             awaitStableState { it is ConversationPresenter.UiState.Instructions }
                 .eventSink(ConversationPresenter.UiEvent.Instructions.Dismiss)
-            val round1 = awaitStableState {
-                (it as? ConversationPresenter.UiState.Selection)?.round == 1
-            } as ConversationPresenter.UiState.Selection
-            assertEquals(1, round1.round)
+            awaitStableState { it is ConversationPresenter.UiState.Selection }
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -167,13 +164,11 @@ class ConversationPresenterTest {
             firstPrompt.eventSink(ConversationPresenter.UiEvent.QuestionPrompt.BeginSelection)
             val instructions = awaitStableState { it is ConversationPresenter.UiState.Instructions }
             instructions.eventSink(ConversationPresenter.UiEvent.Instructions.Dismiss)
-            val round1 = awaitStableState {
-                (it as? ConversationPresenter.UiState.Selection)?.round == 1
-            }
+            val selection = awaitStableState { it is ConversationPresenter.UiState.Selection }
 
             // Re-fire BeginSelection: with instructions already dismissed, the
             // presenter must skip the Instructions page entirely.
-            round1.eventSink(ConversationPresenter.UiEvent.QuestionPrompt.BeginSelection)
+            selection.eventSink(ConversationPresenter.UiEvent.QuestionPrompt.BeginSelection)
             val seen = mutableListOf<ConversationPresenter.UiState>()
             repeat(2) {
                 runCatching { seen += awaitItem() }

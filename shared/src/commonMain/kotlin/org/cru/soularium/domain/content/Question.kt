@@ -2,7 +2,6 @@ package org.cru.soularium.domain.content
 
 data class Question(
     val number: Int,
-    val selectionRounds: Int,
     val requiredImageCount: Int,
     val promptKey: String,
     val selectionKey: String,
@@ -11,7 +10,6 @@ data class Question(
 ) {
     init {
         require(number in 1..5) { "Question number must be 1..5, was $number" }
-        require(selectionRounds in 1..2) { "Selection rounds must be 1 or 2, was $selectionRounds" }
         require(requiredImageCount in 1..3) { "Required image count must be 1..3, was $requiredImageCount" }
     }
 }

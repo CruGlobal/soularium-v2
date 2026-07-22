@@ -21,7 +21,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.cru.soularium.domain.ContactInfo
-import org.cru.soularium.domain.content.Question
 import org.cru.soularium.domain.content.Questions
 import org.cru.soularium.domain.newSession
 import org.cru.soularium.domain.ports.AnalyticsTracker
@@ -48,7 +47,6 @@ private const val TOTAL_QUESTIONS = 5
 internal data class ConversationUiContext(
     val participantNames: List<String> = emptyList(),
     val draftPicks: List<Int> = emptyList(),
-    val roundFinals: List<Int> = emptyList(),
     val instructionsShown: Boolean = false,
 )
 
@@ -94,7 +92,6 @@ class ConversationPresenter(
 
         data class Selection(
             val questionNumber: Int,
-            val round: Int,
             val selectedCardIds: List<Int>,
             val isConfirmEnabled: Boolean,
             override val showExitDialog: Boolean,
@@ -398,23 +395,14 @@ class ConversationPresenter(
                 QuestionActivity.ShowingInstructions ->
                     UiState.Instructions(showExitDialog, eventSink)
 
-                QuestionActivity.SelectingRound1,
-                QuestionActivity.SelectingRound2,
-                -> {
-                    val isRound2 = sessionState.activity == QuestionActivity.SelectingRound2
+                QuestionActivity.SelectingRound1 ->
                     UiState.Selection(
                         questionNumber = sessionState.questionNumber,
-                        round = if (isRound2) 2 else 1,
                         selectedCardIds = ui.draftPicks,
-                        isConfirmEnabled = isSelectionValid(
-                            question,
-                            sessionState.activity,
-                            ui.draftPicks.size,
-                        ),
+                        isConfirmEnabled = ui.draftPicks.size == question.requiredImageCount,
                         showExitDialog = showExitDialog,
                         eventSink = eventSink,
                     )
-                }
 
                 QuestionActivity.Finalizing ->
                     UiState.Finalizing(
@@ -462,7 +450,6 @@ class ConversationPresenter(
             SessionContext(
                 participantNames = ui.participantNames,
                 currentDraftPicks = ui.draftPicks,
-                currentRoundFinalPicks = ui.roundFinals,
                 showInstructionsForThisSession = !ui.instructionsShown,
             )
         val result = transition(previousState, event, ctx)
@@ -487,7 +474,7 @@ class ConversationPresenter(
                 nextUi = nextUi.copy(participantNames = effect.names)
             }
         }
-        nextUi = resetDraftIfNeeded(previous = previousState, next = result.next, ui = nextUi)
+        nextUi = resetDraftIfNeeded(next = result.next, ui = nextUi)
 
         scope.launch {
             runCatching { repoMutex.withLock { applyEffects(result.effects) } }
@@ -517,23 +504,14 @@ class ConversationPresenter(
     /**
      * Draft picks are kept all the way through the Finalizing and Discussing
      * activities so those screens can display them; they are cleared only when
-     * a fresh turn begins (a new ShowingPrompt). Round 1 picks are shifted into
-     * [ConversationUiContext.roundFinals] when narrowing to round 2.
+     * a fresh turn begins (a new ShowingPrompt).
      */
-    private fun resetDraftIfNeeded(
-        previous: SessionState,
-        next: SessionState,
-        ui: ConversationUiContext,
-    ): ConversationUiContext {
-        val prevQ = previous as? SessionState.InQuestion
+    private fun resetDraftIfNeeded(next: SessionState, ui: ConversationUiContext): ConversationUiContext {
         val nextQ = next as? SessionState.InQuestion
-        return when {
-            nextQ?.activity == QuestionActivity.ShowingPrompt ->
-                ui.copy(draftPicks = emptyList(), roundFinals = emptyList())
-            prevQ?.activity == QuestionActivity.SelectingRound1 &&
-                nextQ?.activity == QuestionActivity.SelectingRound2 ->
-                ui.copy(roundFinals = ui.draftPicks, draftPicks = emptyList())
-            else -> ui
+        return if (nextQ?.activity == QuestionActivity.ShowingPrompt) {
+            ui.copy(draftPicks = emptyList())
+        } else {
+            ui
         }
     }
 
@@ -593,24 +571,8 @@ class ConversationPresenter(
 }
 
 /**
- * Mirrors the count rules enforced by the transition function: round 1 of a
- * two-round question needs a wide set, every other round needs exactly the
- * required count.
- */
-private fun isSelectionValid(question: Question, activity: QuestionActivity, count: Int): Boolean = when (activity) {
-    QuestionActivity.SelectingRound1 ->
-        if (question.selectionRounds == 2) {
-            count >= question.requiredImageCount + 1
-        } else {
-            count == question.requiredImageCount
-        }
-    QuestionActivity.SelectingRound2 -> count == question.requiredImageCount
-    else -> false
-}
-
-/**
  * A session bookmarked mid-question persists an in-progress activity
- * (SelectingRound1/2, Finalizing, Discussing), but the volatile draft picks
+ * (SelectingRound1, Finalizing, Discussing), but the volatile draft picks
  * behind it are not persisted. Snap back to the question prompt on resume so
  * the user restarts that question cleanly instead of landing on an empty
  * selection.

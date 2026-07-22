@@ -51,9 +51,6 @@ enum class QuestionActivity {
     @SerialName("selecting_round_1")
     SelectingRound1,
 
-    @SerialName("selecting_round_2")
-    SelectingRound2,
-
     @SerialName("finalizing")
     Finalizing,
 

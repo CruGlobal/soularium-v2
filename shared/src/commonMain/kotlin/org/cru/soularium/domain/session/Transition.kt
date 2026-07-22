@@ -84,18 +84,12 @@ private fun transitionInQuestion(
     return when (event) {
         SessionEvent.BeginSelection -> {
             val targetActivity =
-                when {
-                    ctx.showInstructionsForThisSession &&
-                        state.activity == QuestionActivity.ShowingPrompt ->
-                        QuestionActivity.ShowingInstructions
-                    // "Change Selection" from Finalizing returns to the
-                    // narrowing round for a two-round question (so the user
-                    // re-picks the final set with their picks intact), or to
-                    // round 1 for a one-round question.
-                    state.activity == QuestionActivity.Finalizing &&
-                        question.selectionRounds == 2 ->
-                        QuestionActivity.SelectingRound2
-                    else -> QuestionActivity.SelectingRound1
+                if (ctx.showInstructionsForThisSession &&
+                    state.activity == QuestionActivity.ShowingPrompt
+                ) {
+                    QuestionActivity.ShowingInstructions
+                } else {
+                    QuestionActivity.SelectingRound1
                 }
             val next = state.copy(activity = targetActivity)
             TransitionResult(next = next, effects = listOf(Effect.PersistState(next)))
@@ -107,40 +101,22 @@ private fun transitionInQuestion(
         }
 
         SessionEvent.ConfirmSelection -> {
-            val targetActivity =
-                when (state.activity) {
-                    QuestionActivity.SelectingRound1 -> {
-                        val needed = question.requiredImageCount + if (question.selectionRounds == 2) 1 else 0
-                        if (ctx.currentDraftPicks.size < needed) {
-                            return TransitionResult(
-                                next = state,
-                                error = DomainError.InvalidSelectionCount(needed, ctx.currentDraftPicks.size),
-                            )
-                        }
-                        if (question.selectionRounds == 2) {
-                            QuestionActivity.SelectingRound2
-                        } else {
-                            QuestionActivity.Finalizing
-                        }
-                    }
-                    QuestionActivity.SelectingRound2 -> {
-                        if (ctx.currentDraftPicks.size != question.requiredImageCount) {
-                            return TransitionResult(
-                                next = state,
-                                error = DomainError.InvalidSelectionCount(
-                                    question.requiredImageCount,
-                                    ctx.currentDraftPicks.size,
-                                ),
-                            )
-                        }
-                        QuestionActivity.Finalizing
-                    }
-                    else -> return TransitionResult(
-                        next = state,
-                        error = DomainError.InvalidStateTransition(state.toString(), event::class.simpleName ?: "?"),
-                    )
-                }
-            val next = state.copy(activity = targetActivity)
+            if (state.activity != QuestionActivity.SelectingRound1) {
+                return TransitionResult(
+                    next = state,
+                    error = DomainError.InvalidStateTransition(state.toString(), event::class.simpleName ?: "?"),
+                )
+            }
+            if (ctx.currentDraftPicks.size != question.requiredImageCount) {
+                return TransitionResult(
+                    next = state,
+                    error = DomainError.InvalidSelectionCount(
+                        question.requiredImageCount,
+                        ctx.currentDraftPicks.size,
+                    ),
+                )
+            }
+            val next = state.copy(activity = QuestionActivity.Finalizing)
             TransitionResult(
                 next = next,
                 effects =
@@ -150,18 +126,17 @@ private fun transitionInQuestion(
                         questionNumber = state.questionNumber,
                         participantIndex = state.activeParticipantIndex,
                         cardIds = ctx.currentDraftPicks,
-                        isFinal = targetActivity == QuestionActivity.Finalizing,
+                        isFinal = true,
                     ),
                 ),
             )
         }
 
         SessionEvent.ConfirmFinal -> {
-            val source = ctx.currentDraftPicks.ifEmpty { ctx.currentRoundFinalPicks }
-            if (source.size != question.requiredImageCount) {
+            if (ctx.currentDraftPicks.size != question.requiredImageCount) {
                 return TransitionResult(
                     next = state,
-                    error = DomainError.InvalidSelectionCount(question.requiredImageCount, source.size),
+                    error = DomainError.InvalidSelectionCount(question.requiredImageCount, ctx.currentDraftPicks.size),
                 )
             }
             val next = state.copy(activity = QuestionActivity.Discussing)
@@ -173,7 +148,7 @@ private fun transitionInQuestion(
                     Effect.PersistPicks(
                         questionNumber = state.questionNumber,
                         participantIndex = state.activeParticipantIndex,
-                        cardIds = source,
+                        cardIds = ctx.currentDraftPicks,
                         isFinal = true,
                     ),
                     Effect.LogAnalytics(

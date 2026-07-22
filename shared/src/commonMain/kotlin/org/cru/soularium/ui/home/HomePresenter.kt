@@ -13,8 +13,8 @@ import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
-import org.cru.soularium.domain.SessionId
 import org.cru.soularium.domain.SessionKind
+import org.cru.soularium.model.SessionId
 import org.cru.soularium.ui.nav.CardsAndQuestionsScreen
 import org.cru.soularium.ui.nav.ConversationScreen
 import org.cru.soularium.ui.nav.PastConversationsScreen

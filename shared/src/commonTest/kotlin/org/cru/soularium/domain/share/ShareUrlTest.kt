@@ -4,11 +4,11 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import org.cru.soularium.domain.CardPick
-import org.cru.soularium.domain.CardPickId
 import org.cru.soularium.domain.ContactInfo
 import org.cru.soularium.domain.Conversation
-import org.cru.soularium.domain.ConversationId
-import org.cru.soularium.domain.SessionId
+import org.cru.soularium.model.CardPickId
+import org.cru.soularium.model.ConversationId
+import org.cru.soularium.model.SessionId
 
 class ShareUrlTest {
     private val conv =

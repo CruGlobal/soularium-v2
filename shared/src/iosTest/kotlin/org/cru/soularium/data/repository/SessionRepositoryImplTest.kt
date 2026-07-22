@@ -8,10 +8,10 @@ import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
 import org.cru.soularium.data.db.SoulariumDatabase
 import org.cru.soularium.data.db.inMemorySoulariumDatabase
-import org.cru.soularium.domain.SessionId
 import org.cru.soularium.domain.SessionKind
 import org.cru.soularium.domain.newSession
 import org.cru.soularium.domain.session.SessionState
+import org.cru.soularium.model.SessionId
 
 class SessionRepositoryImplTest {
     private fun newRepo(): Pair<SoulariumDatabase, SessionRepositoryImpl> {

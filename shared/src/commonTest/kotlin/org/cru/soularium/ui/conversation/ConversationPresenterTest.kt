@@ -16,9 +16,7 @@ import org.ccci.gto.support.androidx.test.junit.runners.RunOnAndroidWith
 import org.cru.soularium.domain.CardPick
 import org.cru.soularium.domain.ContactInfo
 import org.cru.soularium.domain.Conversation
-import org.cru.soularium.domain.ConversationId
 import org.cru.soularium.domain.Session
-import org.cru.soularium.domain.SessionId
 import org.cru.soularium.domain.SessionKind
 import org.cru.soularium.domain.newSession
 import org.cru.soularium.domain.ports.AnalyticsTracker
@@ -28,6 +26,8 @@ import org.cru.soularium.domain.ports.ShareResult
 import org.cru.soularium.domain.ports.Sharer
 import org.cru.soularium.domain.session.QuestionActivity
 import org.cru.soularium.domain.session.SessionState
+import org.cru.soularium.model.ConversationId
+import org.cru.soularium.model.SessionId
 import org.cru.soularium.ui.nav.ConversationScreen
 
 @RunOnAndroidWith(AndroidJUnit4::class)

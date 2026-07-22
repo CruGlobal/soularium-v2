@@ -15,12 +15,9 @@ import kotlinx.coroutines.test.runTest
 import org.ccci.gto.support.androidx.test.junit.runners.AndroidJUnit4
 import org.ccci.gto.support.androidx.test.junit.runners.RunOnAndroidWith
 import org.cru.soularium.domain.CardPick
-import org.cru.soularium.domain.CardPickId
 import org.cru.soularium.domain.ContactInfo
 import org.cru.soularium.domain.Conversation
-import org.cru.soularium.domain.ConversationId
 import org.cru.soularium.domain.Session
-import org.cru.soularium.domain.SessionId
 import org.cru.soularium.domain.SessionKind
 import org.cru.soularium.domain.content.Questions
 import org.cru.soularium.domain.ports.AnalyticsTracker
@@ -29,6 +26,9 @@ import org.cru.soularium.domain.ports.SessionRepository
 import org.cru.soularium.domain.ports.ShareResult
 import org.cru.soularium.domain.ports.Sharer
 import org.cru.soularium.domain.session.SessionState
+import org.cru.soularium.model.CardPickId
+import org.cru.soularium.model.ConversationId
+import org.cru.soularium.model.SessionId
 import org.cru.soularium.ui.nav.ConversationScreen
 import org.cru.soularium.ui.screens.PastConversationsPresenter
 

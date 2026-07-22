@@ -2,8 +2,8 @@ package org.cru.soularium.ui.nav
 
 import com.slack.circuit.runtime.screen.Screen
 import org.ccci.gto.android.common.parcelize.Parcelize
-import org.cru.soularium.domain.SessionId
 import org.cru.soularium.domain.SessionKind
+import org.cru.soularium.model.SessionId
 
 @Parcelize
 data object IntroScreen : Screen

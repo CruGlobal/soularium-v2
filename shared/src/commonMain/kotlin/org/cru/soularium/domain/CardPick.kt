@@ -1,6 +1,8 @@
 package org.cru.soularium.domain
 
 import kotlinx.serialization.Serializable
+import org.cru.soularium.model.CardPickId
+import org.cru.soularium.model.ConversationId
 
 @Serializable
 data class CardPick(

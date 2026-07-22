@@ -41,7 +41,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.slack.circuit.codegen.annotations.CircuitInject
 import dev.zacsweers.metro.AppScope
-import org.cru.soularium.domain.SessionId
 import org.cru.soularium.domain.SessionKind
 import org.cru.soularium.generated.resources.Res
 import org.cru.soularium.generated.resources.action_back
@@ -56,6 +55,7 @@ import org.cru.soularium.generated.resources.past_kind_solo
 import org.cru.soularium.generated.resources.past_tab_bookmarked
 import org.cru.soularium.generated.resources.past_tab_completed
 import org.cru.soularium.generated.resources.past_title
+import org.cru.soularium.model.SessionId
 import org.cru.soularium.ui.nav.PastConversationsScreen
 import org.jetbrains.compose.resources.stringResource
 

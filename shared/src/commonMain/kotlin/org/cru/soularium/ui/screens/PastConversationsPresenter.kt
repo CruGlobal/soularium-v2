@@ -17,11 +17,11 @@ import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
 import kotlinx.coroutines.launch
 import org.cru.soularium.domain.Session
-import org.cru.soularium.domain.SessionId
 import org.cru.soularium.domain.SessionKind
 import org.cru.soularium.domain.ports.CrashReporter
 import org.cru.soularium.domain.ports.SessionRepository
 import org.cru.soularium.domain.startedAtLocalDate
+import org.cru.soularium.model.SessionId
 import org.cru.soularium.ui.nav.ConversationScreen
 import org.cru.soularium.ui.nav.PastConversationsScreen
 

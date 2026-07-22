@@ -4,8 +4,8 @@ import app.cash.paparazzi.DeviceConfig
 import com.android.resources.NightMode
 import com.google.testing.junit.testparameterinjector.TestParameter
 import com.google.testing.junit.testparameterinjector.TestParameterInjector
-import org.cru.soularium.domain.SessionId
 import org.cru.soularium.domain.SessionKind
+import org.cru.soularium.model.SessionId
 import org.cru.soularium.ui.test.BasePaparazziTest
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -32,13 +32,13 @@ class PastConversationsLayoutPaparazziTest(
             state = PastConversationsPresenter.UiState(
                 completed = listOf(
                     PastConversationItem(
-                        sessionId = SessionId.fromString("11111111-1111-4111-8111-111111111111"),
+                        sessionId = SessionId.random(),
                         kind = SessionKind.GROUP,
                         formattedDate = "Jul 10, 2026",
                         participantNames = listOf("Ada", "Grace", "Alan"),
                     ),
                     PastConversationItem(
-                        sessionId = SessionId.fromString("22222222-2222-4222-8222-222222222222"),
+                        sessionId = SessionId.random(),
                         kind = SessionKind.SOLO,
                         formattedDate = "Jun 28, 2026",
                         participantNames = listOf("Ada"),
@@ -46,7 +46,7 @@ class PastConversationsLayoutPaparazziTest(
                 ),
                 bookmarked = listOf(
                     PastConversationItem(
-                        sessionId = SessionId.fromString("33333333-3333-4333-8333-333333333333"),
+                        sessionId = SessionId.random(),
                         kind = SessionKind.GROUP,
                         formattedDate = "Jul 12, 2026",
                         participantNames = listOf("Riley", "Sam"),

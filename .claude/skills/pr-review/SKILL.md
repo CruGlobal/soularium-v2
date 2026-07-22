@@ -137,7 +137,7 @@ To dismiss a finding so it won't appear in future reviews, say:
 
 The project enforces layering by package convention inside the single `:shared` module:
 
-- [ ] Code in `org.cru.soularium.domain` does NOT import from `data`, `ui`, `platform`, `analytics`, or `di` packages — domain is pure Kotlin only
+- [ ] Code in `org.cru.soularium.domain` does NOT depend on our `ui` layer. It may use data types and platform APIs (a domain port's Android/iOS `actual` may use e.g. `Context`), but not our UI logic
 - [ ] Code in `org.cru.soularium.data` does NOT import from `ui`
 - [ ] No Android (`android.*`, `androidx.*`) or iOS (`platform.*`, `kotlinx.cinterop`) imports in `commonMain` — bridge via `expect`/`actual`
 - [ ] `:androidApp` depends on `:shared`; `:shared` has no dependency on `:androidApp`
@@ -226,7 +226,7 @@ DI is compile-time via [Metro](https://github.com/ZacSweers/metro). The graph is
 - [ ] Non-constructor-injectable types (Room database/DAOs, factory-built domain services like `createDeviceStateRepository()`) go through `@Provides` inside a `@BindingContainer @ContributesTo(AppScope::class)` interface — see `DataBindings.kt`
 - [ ] Platform-specific bindings live in `expect class PlatformBindings` actuals. Android actual takes `(context: Context)` and provides it as `@Provides @SingleIn(AppScope::class) internal val context`; iOS actual is empty (Sharer/AnalyticsTracker/CrashReporter impls are common with `@ContributesBinding`)
 - [ ] Set multibindings (`Set<Presenter.Factory>`, `Set<Ui.Factory>`) declared with `@Multibinds(allowEmpty = true)` in `CircuitBindings`; new factories contributed via `@Provides @IntoSet` or `@ContributesIntoSet(AppScope::class)`
-- [ ] New graph accessors on `SoulariumAppGraph` are added ONLY when the consumer is the Compose root (`App.kt` is the only call site today) — everything else takes deps via `@Inject` constructor params, not via the graph
+- [ ] The `SoulariumAppGraph` interface is NOT extended with new accessor properties. Code that needs to pull a value out of the graph defines its own `@ContributesTo(AppScope::class)` accessor interface (e.g. `AppGraphAccessor { val languageRepository: LanguageRepository }`, merged in as a graph supertype) and reads it from a graph instance via Metro's `asContribution<Accessor>()` — see `RecomposeOnAppLanguageChange` reaching the graph through `LocalSoulariumAppGraph.current`. Constructor-injectable consumers (Presenters, impls) still take deps via `@Inject`; the contributed-accessor path is for consumers that can't be — e.g. composables. The pre-existing `circuit`/`deviceStateRepo` accessors on `SoulariumAppGraph` are grandfathered.
 - [ ] New screens declare a `Screen` (in `ui/nav/Screens.kt` or co-located in the feature package, e.g. `ui/terms/TermsScreen.kt`); the Presenter+Layout `@CircuitInject` annotations drive factory codegen — no manual factory registration. Presenter deps come from the graph via `@Inject` constructor params
 - [ ] `createSoulariumAppGraph(PlatformBindings(...))` is called once per entry point — `SoulariumApplication.onCreate()` on Android, `MainViewController()` on iOS — and the graph is passed into `App(graph)` rather than rebuilt per recomposition
 - [ ] No use of Koin, Hilt, Dagger, or Anvil annotations — DI is Metro-only
@@ -259,7 +259,7 @@ DI is compile-time via [Metro](https://github.com/ZacSweers/metro). The graph is
 - [ ] Presenter tests are annotated `@RunOnAndroidWith(AndroidJUnit4::class)` so the Android-host variant runs them under Robolectric — required because the Compose Runtime's Android artifact touches `android.util.Log` on its error path. Pure domain tests are unannotated
 - [ ] Test doubles are plain in-memory classes in the test sources (e.g. `InMemorySessionRepository`, `RecordingSharer`) — no `mockk`, no `test-fixtures` modules
 - [ ] Coroutine tests use `runTest { }` with an injected `TestDispatcher`; Flow tests use Turbine (`flow.test { awaitItem() }`)
-- [ ] Test function names are backtick-quoted descriptive sentences (e.g. `` `solo session completes from start through summary` ``)
+- [ ] Test function names are backtick-quoted. Presenter tests use the structured form `UiEvent - <Event> - <behavior>` (event handling) or `UiState - <field> - <behavior>` (state derivation) — e.g. `` `UiEvent - Back - pops the navigator` ``. Other tests use a descriptive sentence, e.g. `` `solo session completes from start through summary` ``
 - [ ] The pure session state machine (`transition()`) has exhaustive case coverage; share-URL generation and other pure utilities have explicit edge-case tests
 
 **Paparazzi screenshot tests**

@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.SerializationException
 import org.ccci.gto.support.androidx.test.junit.runners.AndroidJUnit4
 import org.ccci.gto.support.androidx.test.junit.runners.RunOnAndroidWith
 import org.cru.soularium.domain.CardPick
@@ -19,6 +20,7 @@ import org.cru.soularium.domain.ConversationId
 import org.cru.soularium.domain.Session
 import org.cru.soularium.domain.SessionId
 import org.cru.soularium.domain.SessionKind
+import org.cru.soularium.domain.newSession
 import org.cru.soularium.domain.ports.AnalyticsTracker
 import org.cru.soularium.domain.ports.CrashReporter
 import org.cru.soularium.domain.ports.SessionRepository
@@ -211,19 +213,43 @@ class ConversationPresenterTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
+
+    @Test
+    fun `existing session with unreadable state snapshot restarts cleanly instead of stalling`() = runTest {
+        // Simulates a mid-upgrade resume where the persisted state_snapshot_json
+        // contains an enum value that no longer exists in this build (e.g. a
+        // removed QuestionActivity variant). The row exists, but decode throws.
+        // Recovery must cascade-delete the broken session (so its conversation
+        // and pick children don't linger as orphans) then restart cleanly.
+        val repo = FakeSessionRepository().apply {
+            preloadedSession = newSession(sessionId, SessionKind.SOLO)
+            loadStateError = SerializationException("unknown enum value")
+        }
+        presenter(repo).test {
+            awaitStableState { it is ConversationPresenter.UiState.AddingParticipants }
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertEquals(listOf(sessionId), repo.deletedSessions)
+    }
 }
 
 private class FakeSessionRepository : SessionRepository {
     var preloadedState: SessionState? = null
+    var preloadedSession: Session? = null
+    var loadStateError: Throwable? = null
     val preloadedConversations = mutableMapOf<SessionId, List<Conversation>>()
     var lastUpsertedParticipants: List<String>? = null
     val persistedStates = mutableListOf<Pair<SessionId, SessionState>>()
+    val deletedSessions = mutableListOf<SessionId>()
 
     override suspend fun createSession(session: Session, initialState: SessionState): SessionId = session.id
 
-    override suspend fun loadSession(id: SessionId): Session? = null
+    override suspend fun loadSession(id: SessionId): Session? = preloadedSession
 
-    override suspend fun loadState(id: SessionId): SessionState? = preloadedState
+    override suspend fun loadState(id: SessionId): SessionState? {
+        loadStateError?.let { throw it }
+        return preloadedState
+    }
 
     override suspend fun persistState(id: SessionId, state: SessionState) {
         persistedStates += id to state
@@ -262,7 +288,9 @@ private class FakeSessionRepository : SessionRepository {
     override fun observeBookmarkedSessions(): Flow<List<Session>> =
         MutableStateFlow<List<Session>>(emptyList()).asStateFlow()
 
-    override suspend fun deleteSession(id: SessionId) = Unit
+    override suspend fun deleteSession(id: SessionId) {
+        deletedSessions += id
+    }
 
     override suspend fun loadConversations(sessionId: SessionId): List<Conversation> =
         preloadedConversations[sessionId].orEmpty()

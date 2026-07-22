@@ -202,19 +202,24 @@ class ConversationPresenter(
         // rehydrate participant names, and bootstrap if this is a brand-new
         // session id.
         LaunchedEffect(screen.sessionId) {
-            runCatching {
-                val loaded = sessionRepository.loadState(screen.sessionId)
-                if (loaded != null) {
-                    sessionState = snapBackToPromptIfMidQuestion(loaded)
-                    val names =
-                        sessionRepository.loadConversations(screen.sessionId)
-                            .sortedBy { it.displayOrder }
-                            .map { it.contact.name }
+            var loadStateFailed = false
+            val loaded = runCatching { sessionRepository.loadState(screen.sessionId) }
+                .onFailure {
+                    loadStateFailed = true
+                    crashReporter.recordNonFatal(it, "loadState on init")
+                }
+                .getOrNull()
+            if (loaded != null) {
+                sessionState = snapBackToPromptIfMidQuestion(loaded)
+                runCatching {
+                    val names = sessionRepository.loadConversations(screen.sessionId)
+                        .sortedBy { it.displayOrder }
+                        .map { it.contact.name }
                     if (names.isNotEmpty()) {
                         ui = ui.copy(participantNames = names)
                     }
-                }
-            }.onFailure { crashReporter.recordNonFatal(it, "loadState on init") }
+                }.onFailure { crashReporter.recordNonFatal(it, "loadConversations on init") }
+            }
 
             if (!bootstrapped) {
                 bootstrapped = true
@@ -225,23 +230,34 @@ class ConversationPresenter(
                                 crashReporter.recordNonFatal(it, "loadSession in ensureStarted")
                                 null
                             }
-                    if (existing == null) {
+                    // If a session row exists but its state_snapshot_json could not be
+                    // deserialized (schema change, corruption, etc.), the session is
+                    // unrecoverable. Cascade-delete the row and its conversation/pick
+                    // children so we don't leave orphans behind, then fall through to
+                    // createSession + StartSession for a clean restart.
+                    if (existing != null && loadStateFailed) {
+                        runCatching { sessionRepository.deleteSession(screen.sessionId) }
+                            .onFailure {
+                                crashReporter.recordNonFatal(it, "deleteSession during recovery")
+                            }
+                    }
+                    if (existing == null || loadStateFailed) {
                         runCatching {
                             sessionRepository.createSession(
                                 session = newSession(screen.sessionId, screen.kind),
                                 initialState = SessionState.NotStarted,
                             )
                         }.onFailure { crashReporter.recordNonFatal(it, "createSession") }
-                        val (newState, newUi) = applyDispatch(
-                            event = SessionEvent.StartSession(screen.kind),
-                            previousState = sessionState,
-                            ui = ui,
-                            scope = scope,
-                            repoMutex = repoMutex,
-                        )
-                        sessionState = newState
-                        ui = newUi
                     }
+                    val (newState, newUi) = applyDispatch(
+                        event = SessionEvent.StartSession(screen.kind),
+                        previousState = sessionState,
+                        ui = ui,
+                        scope = scope,
+                        repoMutex = repoMutex,
+                    )
+                    sessionState = newState
+                    ui = newUi
                 }
             }
         }

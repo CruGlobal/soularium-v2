@@ -85,6 +85,8 @@ kotlin {
         androidMain {
             dependencies {
                 implementation(libs.androidx.activity.compose)
+                implementation(libs.androidx.appcompat)
+                implementation(libs.gtoSupport.androidx.core)
             }
         }
 

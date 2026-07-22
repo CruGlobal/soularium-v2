@@ -11,8 +11,7 @@ conversation tool: a facilitator and one or more participants move through 5 que
 selecting from 50 bundled card images, and the app generates a shareable summary link.
 
 There are no accounts, no auth, no cloud sync, and no GraphQL/network API — content is
-bundled and persistence is local. See `docs/superpowers/` for the design spec, the
-implementation plan, and `HANDOFF.md` (current state).
+bundled and persistence is local.
 
 ## Repository Layout
 
@@ -30,8 +29,8 @@ iosApp/        → Native iOS shell (SwiftUI) hosting the Compose framework.
 build-logic/   → Composite build with the ktlint/kover/paparazzi convention plugins.
 shared/schemas/ → Exported Room schema JSON (one per @Database version).
 gradle/libs.versions.toml → Version catalog (single source of dependency versions).
-.github/workflows/ → build.yml, crowdin-upload.yml, crowdin-download.yml
-docs/superpowers/  → design spec, implementation plan, HANDOFF.md
+.github/workflows/ → build.yml, git-lfs-validation.yml, record-snapshots.yml,
+                     crowdin-upload.yml, crowdin-download.yml
 ```
 
 There are no `feature/`/`module/`/`ui/` modules — just `:shared` and `:androidApp`.
@@ -69,16 +68,19 @@ not a system Gradle. Source/target bytecode is JVM 17.
 
 ## Technology Stack
 
+Exact versions are pinned in `gradle/libs.versions.toml` — the single source of truth;
+this table names the choices, not their versions.
+
 | Concern | Choice |
 |---|---|
-| Language / UI | Kotlin 2.4.10, Compose Multiplatform 1.11.1, Material3 |
-| Build | Gradle (Kotlin DSL) 9.x, AGP 9.3.0, `libs.versions.toml` |
-| DI | Metro 1.3.2 (compile-time DI) |
-| Persistence | Room 2.8.4 (KMP, via KSP) + DataStore Preferences |
-| UI architecture / navigation | Circuit 0.34.0 (Presenter + UI, saveable back stack) |
-| Async | kotlinx.coroutines 1.11.0 + Flow |
+| Language / UI | Kotlin, Compose Multiplatform, Material3 |
+| Build | Gradle (Kotlin DSL), AGP, `libs.versions.toml` |
+| DI | Metro (compile-time DI) |
+| Persistence | Room (KMP, via KSP) + DataStore Preferences |
+| UI architecture / navigation | Circuit (Presenter + UI, saveable back stack) |
+| Async | kotlinx.coroutines + Flow |
 | Images | Coil 3 |
-| Serialization | kotlinx.serialization 1.11.0 |
+| Serialization | kotlinx.serialization |
 | Testing | `kotlin.test` + Kotest assertions + Turbine + `kotlinx-coroutines-test` |
 | Lint | ktlint via `org.jlleitschuh.gradle.ktlint`, `android_studio` code style |
 | Crash / analytics | Firebase Crashlytics + Analytics (no-op until config files land) |
@@ -121,7 +123,11 @@ must not import from `ui`.
 - **Errors**: `DomainError` sealed interface. There is no `Result<T>` wrapper —
   transition errors surface via `TransitionResult.error`.
 
-Code under `org.cru.soularium.domain` must not reference Compose, Android, or iOS APIs.
+Domain code stays independent of the `data` and `ui` layers, but it **may** use platform
+APIs — a domain port can have Android/iOS `actual` implementations that use them (e.g.
+`domain.settings.AndroidLanguageRepository` uses `Context`). Domain avoids Compose UI, with
+one exception: lightweight multiplatform value types such as Compose's `Locale`
+(`androidx.compose.ui.text.intl.Locale`), treated as a data model.
 
 ### Data layer (`org.cru.soularium.data`)
 
@@ -138,14 +144,15 @@ Code under `org.cru.soularium.domain` must not reference Compose, Android, or iO
   breaks already-persisted sessions — treat such changes as schema changes.
 - Exported Room schema JSON lives in `shared/schemas/`. A `@Database` version
   bump must ship a matching schema JSON and migration.
-- Device flags (intro seen, ToS agreed, locale) persist via DataStore Preferences, not
-  Room.
+- Device flags (intro seen, ToS agreed) persist via DataStore Preferences, not Room. The
+  app language is not stored here — it is the platform per-app language setting, read
+  through `LanguageRepository`.
 - Repositories map Room entities ↔ domain models; the mapping must be total (no `!!` on
   optional columns).
 
 ### UI layer (`org.cru.soularium.ui`)
 
-- **Navigation**: `NavGraph.kt` builds a Circuit saveable back stack rooted at a start
+- **Navigation**: `App.kt` builds a Circuit saveable back stack rooted at a start
   `Screen` and renders the active screen via `NavigableCircuitContent`. Screen
   destinations are `@Parcelize` `data object`/`data class` types. Most live together in
   `ui/nav/Screens.kt`, but a self-contained feature package may instead co-locate its own
@@ -221,7 +228,9 @@ Code under `org.cru.soularium.domain` must not reference Compose, Android, or iO
 KMP platform seams use `expect`/`actual`: `PlatformBindings`, `Sharer`
 (`AndroidSharer` → `Intent.ACTION_SEND`; `IosSharer` → `UIActivityViewController`),
 `PlatformBackHandler` (Android → `BackHandler`; iOS → no-op), `getDatabaseBuilder()`,
-`createDeviceStateDataStore()`, `SoulariumDatabaseConstructor`. Every `expect`
+and `SoulariumDatabaseConstructor`. (The device-state `DataStore` is not an `expect`/`actual`
+— the common `preferenceDataStoreAt(producePath)` helper builds it and each platform's
+`@Provides providesDeviceStateDataStore` supplies the path.) Every `expect`
 declaration needs an `actual` for **both** `androidMain` and `iosMain`, with matching
 signatures. `commonMain` must contain no Android- or iOS-specific imports.
 
@@ -248,8 +257,12 @@ signatures. `commonMain` must contain no Android- or iOS-specific imports.
   `test-fixtures` modules.
 - Coroutine tests use `runTest { }` with an injected `TestDispatcher` — never
   `runBlocking`. Flow tests use Turbine (`flow.test { awaitItem() }`).
-- Test functions use backtick-quoted descriptive names, e.g.
-  `` `solo session completes from start through summary` ``.
+- Test functions use backtick-quoted names. **Presenter tests** name each case by the
+  thing under test, `<subject> - <name> - <behavior>`: `UiEvent - <Event> - <behavior>`
+  for event handling and `UiState - <field> - <behavior>` for state derivation — e.g.
+  `` `UiEvent - Back - pops the navigator` `` and
+  `` `UiState - selectedLanguage - reflects stored language` ``. Other tests use a
+  descriptive sentence, e.g. `` `solo session completes from start through summary` ``.
 - The pure session state machine (`transition()`) and pure utilities (e.g. share-URL
   generation) should have exhaustive tests; Presenters should have behavior tests.
 - **Paparazzi screenshot tests** (in `androidHostTest`) cover each `<Feature>Layout` by
@@ -297,6 +310,9 @@ author may dismiss severity < 7 findings.
 - Trailing commas are used and encouraged.
 - ktlint must not lint generated sources — the root `build.gradle.kts` already excludes
   anything under a `build/` directory.
+- New `CompositionLocal`s must be added to `compose_allowed_composition_locals` in a
+  scoped `.editorconfig` (see `di/.editorconfig`, `settings/.editorconfig`); otherwise the
+  `compose-rules` ktlint `compositionlocal-allowlist` rule fails the build.
 
 ## Key Conventions
 
@@ -309,6 +325,12 @@ author may dismiss severity < 7 findings.
   types live in `:androidApp` — `:shared` is a KMP library with no application id.
 - iOS: bundle id `org.cru.soularium`; the Compose framework is embedded via an Xcode
   run-script phase.
+- iOS `Info.plist` is generated (`GENERATE_INFOPLIST_FILE = YES`), with keys set via
+  `INFOPLIST_KEY_*`. A physical `Info.plist` (e.g. to declare `CFBundleLocalizations`) must
+  live at `iosApp/Info.plist` — **outside** the file-system-synchronized source group
+  `iosApp/iosApp/` — and be referenced via `INFOPLIST_FILE`. A plist placed inside that
+  folder is auto-added as a bundle resource and fails the build with "Multiple commands
+  produce Info.plist".
 - User-visible strings come from Compose Multiplatform resources
   (`stringResource(Res.string.*)`), never inline literals. Source strings live in
   `shared/src/commonMain/composeResources/values/strings.xml`.

@@ -1,5 +1,6 @@
-package org.cru.soularium.ui.screens
+package org.cru.soularium.ui.settings
 
+import androidx.compose.ui.text.intl.Locale
 import app.cash.paparazzi.DeviceConfig
 import com.android.resources.NightMode
 import com.google.testing.junit.testparameterinjector.TestParameter
@@ -17,7 +18,8 @@ class SettingsLayoutPaparazziTest(
     fun `SettingsLayout()`() = snapshot {
         SettingsLayout(
             state = SettingsPresenter.UiState(
-                selectedLocale = AppLocale.EN,
+                selectedLanguage = Locale("en"),
+                supportedLanguages = listOf(Locale("en"), Locale("es"), Locale("fr"), Locale("pl"), Locale("zh-Hans")),
                 eventSink = {},
             ),
         )

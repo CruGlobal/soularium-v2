@@ -4,7 +4,6 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import org.cru.soularium.domain.DeviceState
@@ -17,7 +16,6 @@ internal class DeviceStateRepositoryImpl(private val dataStore: DataStore<Prefer
             DeviceState(
                 hasSeenIntro = prefs[HAS_SEEN_INTRO] ?: false,
                 agreedToTos = prefs[AGREED_TO_TOS] ?: false,
-                locale = prefs[LAST_KNOWN_LOCALE],
             )
         }
 
@@ -32,13 +30,8 @@ internal class DeviceStateRepositoryImpl(private val dataStore: DataStore<Prefer
         }
     }
 
-    override suspend fun setLocale(locale: String) {
-        dataStore.edit { it[LAST_KNOWN_LOCALE] = locale }
-    }
-
     private companion object {
         val HAS_SEEN_INTRO = booleanPreferencesKey("has_seen_intro")
         val AGREED_TO_TOS = booleanPreferencesKey("agreed_to_tos")
-        val LAST_KNOWN_LOCALE = stringPreferencesKey("last_known_locale")
     }
 }

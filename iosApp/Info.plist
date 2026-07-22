@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  Languages the app supports, surfaced in the iOS Settings per-app language screen.
+	  This is the source of truth for the iOS supported-language list — IosLanguageRepository
+	  reads it at runtime via NSBundle.localizations. Declared explicitly because translations
+	  live in the Compose framework, not iOS .lproj bundles. Each tag needs a matching label in
+	  SettingsLayout.labelResFor. All other Info.plist keys are still generated
+	  (GENERATE_INFOPLIST_FILE = YES).
+	-->
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>es</string>
+		<string>fr</string>
+		<string>pl</string>
+		<string>zh-Hans</string>
+	</array>
+</dict>
+</plist>

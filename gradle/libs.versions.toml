@@ -12,6 +12,7 @@ firebase-bom = "34.16.0"
 firebase-crashlytics-gradle = "3.0.7"
 google-services = "4.5.0"
 gtoSupport = "4.6.0-SNAPSHOT"
+jvm = "17"
 kotest = "6.2.3"
 kotlin = "2.4.10"
 kotlinx-datetime = "0.8.0"
@@ -60,6 +61,8 @@ gtoSupport-circuit-test = { module = "org.ccci.gto.android.testing:gto-support-c
 gtoSupport-compose = { module = "org.ccci.gto.android:gto-support-compose", version.ref = "gtoSupport" }
 gtoSupport-parcelize = { module = "org.ccci.gto.android:gto-support-parcelize", version.ref = "gtoSupport" }
 kotest-assertions = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest" }
+kotlin-gradle = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 kover-gradle = { module = "org.jetbrains.kotlinx:kover-gradle-plugin", version.ref = "kover" }
@@ -80,6 +83,7 @@ turbine = "app.cash.turbine:turbine:1.2.1"
 
 [bundles]
 ktlint-rulesets = ["ktlint-rules-compose"]
+test-framework = ["kotlin-test"]
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

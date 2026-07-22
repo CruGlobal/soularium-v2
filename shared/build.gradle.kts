@@ -1,19 +1,15 @@
 import com.android.build.api.dsl.KotlinMultiplatformAndroidHostTestCompilation
 import dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
-    alias(libs.plugins.kotlin.multiplatform)
+    id("soularium-kmp.module-conventions")
     alias(libs.plugins.kotlin.serialization)
-    alias(libs.plugins.android.kotlin.multiplatform.library)
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.ksp)
     id("kotlin-parcelize")
     alias(libs.plugins.metro)
     alias(libs.plugins.room)
-    id("kover-conventions")
-    id("ktlint-conventions")
     id("paparazzi-conventions")
 }
 
@@ -24,19 +20,14 @@ kotlin {
     android {
         namespace = "org.cru.soularium"
 
-        compileSdk = libs.versions.android.sdk.compile.get().toInt()
-        minSdk = libs.versions.android.sdk.min.get().toInt()
-
         androidResources.enable = true
         compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_17)
             freeCompilerArgs.addAll(
                 "-P",
                 "plugin:org.jetbrains.kotlin.parcelize:additionalAnnotation=" +
                     "org.ccci.gto.android.common.parcelize.Parcelize",
             )
         }
-        withHostTest {}
 
         compilations.withType(KotlinMultiplatformAndroidHostTestCompilation::class.java) {
             isIncludeAndroidResources = true
@@ -53,6 +44,8 @@ kotlin {
     sourceSets {
         commonMain {
             dependencies {
+                implementation(projects.module.model)
+
                 api(libs.circuit.codegen.annotations)
                 api(libs.kotlinx.serialization.json)
                 api(libs.room.runtime)
@@ -92,7 +85,6 @@ kotlin {
 
         commonTest {
             dependencies {
-                implementation(kotlin("test"))
                 implementation(libs.circuit.test)
                 implementation(libs.compose.ui.test)
                 implementation(libs.coroutines.test)

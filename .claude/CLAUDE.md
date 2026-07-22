@@ -19,29 +19,40 @@ bundled and persistence is local.
 
 ```
 shared/        → :shared — KMP library (Android via com.android.kotlin.multiplatform.library
-                          + iOS framework). Domain models + session state machine, Room +
-                          DataStore persistence, Compose UI, Circuit Presenters, navigation, Metro
-                          DI wiring, and Android/iOS actuals — all in one module.
+                          + iOS framework). Session state machine, Room + DataStore
+                          persistence, Compose UI, Circuit Presenters, navigation, Metro
+                          DI wiring, and Android/iOS actuals — all in one module. Depends
+                          on :module:model.
+module/model/  → :module:model — KMP library (Android + iOS), the home for shared,
+                              dependency-free @Serializable domain models. Currently empty
+                              (models still live in :shared/domain pending migration).
+                              Depended on by :shared.
 androidApp/    → :androidApp — Pure Android application (com.android.application). Hosts
                               MainActivity + SoulariumApplication + AndroidManifest;
                               depends on :shared.
 iosApp/        → Native iOS shell (SwiftUI) hosting the Compose framework.
-build-logic/   → Composite build with the ktlint/kover/paparazzi convention plugins.
+build-logic/   → Composite build with the convention plugins (ktlint/kover/paparazzi +
+                              soularium-kmp.module-conventions).
 shared/schemas/ → Exported Room schema JSON (one per @Database version).
 gradle/libs.versions.toml → Version catalog (single source of dependency versions).
 .github/workflows/ → build.yml, git-lfs-validation.yml, record-snapshots.yml,
                      crowdin-upload.yml, crowdin-download.yml
 ```
 
-There are no `feature/`/`module/`/`ui/` modules — just `:shared` and `:androidApp`.
-Cross-module build logic lives in a `build-logic/` composite build with a small set of
-convention plugins (`ktlint-conventions`, `kover-conventions`, `paparazzi-conventions`,
-plus a shared `Project.kt`); each module's `build.gradle.kts` still configures its own
-targets/dependencies directly using `libs.versions.toml` aliases. AGP 9 forbids mixing
-the Kotlin Multiplatform plugin with
-`com.android.application` (or `com.android.library`) in the same Gradle subproject — that
-is why `:shared` is a KMP library (via `com.android.kotlin.multiplatform.library`) and
-`:androidApp` is a separate Android-only shell that depends on it.
+The app modules are `:shared`, `:module:model`, and `:androidApp`. Cross-module build
+logic lives in a `build-logic/` composite build. Both KMP library modules
+(`:shared`, `:module:model`) share their target/Android/iOS setup through the
+`soularium-kmp.module-conventions` precompiled plugin (applies `kotlin("multiplatform")` +
+`com.android.kotlin.multiplatform.library`, sets `compileSdk`/`minSdk`/JVM 17, `withHostTest`,
+and the `iosArm64`/`iosSimulatorArm64` targets, plus `ktlint-conventions` + `kover-conventions`).
+The other convention plugins are `ktlint-conventions`, `kover-conventions`, and
+`paparazzi-conventions` (shared `Project.kt` helper). Each module's `build.gradle.kts` still
+declares its own `namespace`, extra plugins, and dependencies using `libs.versions.toml`
+aliases, and inter-module dependencies use the type-safe project accessors
+(`projects.module.model`, enabled via `TYPESAFE_PROJECT_ACCESSORS` in `settings.gradle.kts`).
+`:shared` and `:module:model` are KMP libraries (via
+`com.android.kotlin.multiplatform.library`) and `:androidApp` is a separate Android-only
+shell that depends on `:shared`.
 
 ## Build & Development Commands
 
@@ -93,14 +104,21 @@ this table names the choices, not their versions.
      │  depends on
      ▼
 :shared      (KMP library — Android + iOS targets)
-              ├── org.cru.soularium.domain — pure models, ports, session state machine
-              ├── org.cru.soularium.data   — Room + DataStore + repository impls
-              └── org.cru.soularium.ui     — Compose UI, Circuit Presenters, navigation, Metro DI
+     │        ├── org.cru.soularium.domain — pure models, ports, session state machine
+     │        ├── org.cru.soularium.data   — Room + DataStore + repository impls
+     │        └── org.cru.soularium.ui     — Compose UI, Circuit Presenters, navigation, Metro DI
+     │  depends on
+     ▼
+:module:model (KMP library — Android + iOS targets)
+              └── org.cru.soularium.model — home for shared, dependency-free @Serializable
+                                            models (currently empty; models still live in
+                                            :shared/domain pending migration)
 ```
 
-`:androidApp` depends on `:shared`; `:shared` depends on nothing else in this repo.
-Package roots: `org.cru.soularium.app` (androidApp), `org.cru.soularium` (shared, with
-sub-packages `domain`, `data`, `ui`, `di`, `platform`, `analytics`).
+`:androidApp` depends on `:shared`; `:shared` depends on `:module:model`; `:module:model`
+depends on nothing else in this repo. Package roots: `org.cru.soularium.app` (androidApp),
+`org.cru.soularium.model` (module:model), `org.cru.soularium` (shared, with sub-packages
+`domain`, `data`, `ui`, `di`, `platform`, `analytics`).
 
 Layering is enforced by package convention: code in `org.cru.soularium.domain`
 must not import from `data`, `ui`, or platform packages, and `org.cru.soularium.data`

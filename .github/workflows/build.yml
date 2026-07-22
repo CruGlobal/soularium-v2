@@ -129,7 +129,7 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
       - name: Run Android Unit Tests
-        run: ./gradlew :shared:testAndroidHostTest :shared:koverXmlReport
+        run: ./gradlew testAndroidHostTest koverXmlReport
       - name: Codecov
         uses: codecov/codecov-action@v7
         with:
@@ -201,7 +201,7 @@ jobs:
           key: ${{ runner.os }}-konan-${{ github.sha }}
           restore-keys: ${{ runner.os }}-konan-
       - name: Run iOS Unit Tests
-        run: ./gradlew :shared:iosSimulatorArm64Test
+        run: ./gradlew iosSimulatorArm64Test
       - name: Archive test results
         if: always()
         uses: actions/upload-artifact@v7

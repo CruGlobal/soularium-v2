@@ -12,9 +12,8 @@ class TransitionTest {
     private fun ctx(
         names: List<String> = listOf("Alice"),
         draft: List<Int> = emptyList(),
-        finals: List<Int> = emptyList(),
         showInstructions: Boolean = false,
-    ) = SessionContext(names, draft, finals, showInstructions)
+    ) = SessionContext(names, draft, showInstructions)
 
     // --- NotStarted ---
 
@@ -70,11 +69,11 @@ class TransitionTest {
     // --- InQuestion: BeginSelection ---
 
     @Test
-    fun `BeginSelection from ShowingPrompt without instructions goes to SelectingRound1`() {
+    fun `BeginSelection from ShowingPrompt without instructions goes to Selecting`() {
         val s = SessionState.InQuestion(1, 0, QuestionActivity.ShowingPrompt)
         val r = transition(s, SessionEvent.BeginSelection, ctx(showInstructions = false))
         val next = assertIs<SessionState.InQuestion>(r.next)
-        assertEquals(QuestionActivity.SelectingRound1, next.activity)
+        assertEquals(QuestionActivity.Selecting, next.activity)
     }
 
     @Test
@@ -86,52 +85,26 @@ class TransitionTest {
     }
 
     @Test
-    fun `DismissInstructions to SelectingRound1`() {
+    fun `DismissInstructions to Selecting`() {
         val s = SessionState.InQuestion(1, 0, QuestionActivity.ShowingInstructions)
         val r = transition(s, SessionEvent.DismissInstructions, ctx())
         val next = assertIs<SessionState.InQuestion>(r.next)
-        assertEquals(QuestionActivity.SelectingRound1, next.activity)
+        assertEquals(QuestionActivity.Selecting, next.activity)
     }
 
     @Test
-    fun `BeginSelection from Finalizing on a two-round question returns to SelectingRound2`() {
+    fun `BeginSelection from Finalizing returns to Selecting with picks intact`() {
         val s = SessionState.InQuestion(1, 0, QuestionActivity.Finalizing)
         val r = transition(s, SessionEvent.BeginSelection, ctx())
         val next = assertIs<SessionState.InQuestion>(r.next)
-        assertEquals(QuestionActivity.SelectingRound2, next.activity)
-    }
-
-    @Test
-    fun `BeginSelection from Finalizing on a one-round question returns to SelectingRound1`() {
-        val s = SessionState.InQuestion(3, 0, QuestionActivity.Finalizing)
-        val r = transition(s, SessionEvent.BeginSelection, ctx())
-        val next = assertIs<SessionState.InQuestion>(r.next)
-        assertEquals(QuestionActivity.SelectingRound1, next.activity)
+        assertEquals(QuestionActivity.Selecting, next.activity)
     }
 
     // --- InQuestion: ConfirmSelection ---
 
     @Test
-    fun `Q1 round1 ConfirmSelection with at least 4 picks goes to SelectingRound2`() {
-        val s = SessionState.InQuestion(1, 0, QuestionActivity.SelectingRound1)
-        val r = transition(s, SessionEvent.ConfirmSelection, ctx(draft = listOf(1, 2, 3, 4)))
-        val next = assertIs<SessionState.InQuestion>(r.next)
-        assertEquals(QuestionActivity.SelectingRound2, next.activity)
-        val picks = r.effects.filterIsInstance<Effect.PersistPicks>().single()
-        assertEquals(false, picks.isFinal)
-    }
-
-    @Test
-    fun `Q1 round1 ConfirmSelection with only 3 picks errors - needs at least 4`() {
-        val s = SessionState.InQuestion(1, 0, QuestionActivity.SelectingRound1)
-        val r = transition(s, SessionEvent.ConfirmSelection, ctx(draft = listOf(1, 2, 3)))
-        assertEquals(s, r.next)
-        assertNotNull(r.error)
-    }
-
-    @Test
-    fun `Q1 round2 ConfirmSelection with exactly 3 picks goes to Finalizing`() {
-        val s = SessionState.InQuestion(1, 0, QuestionActivity.SelectingRound2)
+    fun `Q1 ConfirmSelection with exactly 3 picks goes to Finalizing`() {
+        val s = SessionState.InQuestion(1, 0, QuestionActivity.Selecting)
         val r = transition(s, SessionEvent.ConfirmSelection, ctx(draft = listOf(1, 2, 3)))
         val next = assertIs<SessionState.InQuestion>(r.next)
         assertEquals(QuestionActivity.Finalizing, next.activity)
@@ -140,16 +113,16 @@ class TransitionTest {
     }
 
     @Test
-    fun `Q1 round2 ConfirmSelection with wrong count errors`() {
-        val s = SessionState.InQuestion(1, 0, QuestionActivity.SelectingRound2)
+    fun `Q1 ConfirmSelection with wrong count errors`() {
+        val s = SessionState.InQuestion(1, 0, QuestionActivity.Selecting)
         val r = transition(s, SessionEvent.ConfirmSelection, ctx(draft = listOf(1, 2)))
         assertEquals(s, r.next)
         assertNotNull(r.error)
     }
 
     @Test
-    fun `Q3 one-round ConfirmSelection with 1 pick goes to Finalizing`() {
-        val s = SessionState.InQuestion(3, 0, QuestionActivity.SelectingRound1)
+    fun `Q3 ConfirmSelection with 1 pick goes to Finalizing`() {
+        val s = SessionState.InQuestion(3, 0, QuestionActivity.Selecting)
         val r = transition(s, SessionEvent.ConfirmSelection, ctx(draft = listOf(7)))
         val next = assertIs<SessionState.InQuestion>(r.next)
         assertEquals(QuestionActivity.Finalizing, next.activity)
@@ -158,8 +131,8 @@ class TransitionTest {
     }
 
     @Test
-    fun `Q3 one-round ConfirmSelection with zero picks errors`() {
-        val s = SessionState.InQuestion(3, 0, QuestionActivity.SelectingRound1)
+    fun `Q3 ConfirmSelection with zero picks errors`() {
+        val s = SessionState.InQuestion(3, 0, QuestionActivity.Selecting)
         val r = transition(s, SessionEvent.ConfirmSelection, ctx(draft = emptyList()))
         assertEquals(s, r.next)
         assertNotNull(r.error)

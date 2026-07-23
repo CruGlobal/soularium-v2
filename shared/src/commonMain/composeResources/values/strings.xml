@@ -113,11 +113,8 @@
     <!-- Selection screen -->
     <string name="selection_choose_3">CHOOSE 3</string>
     <string name="selection_choose_1">CHOOSE 1</string>
-    <string name="selection_choose_wide">CHOOSE 4 OR MORE</string>
     <string name="selection_x_selected">%1$d selected</string>
     <string name="selection_navigation_instructions">Tap an image to select it. Tap again to deselect.</string>
-    <string name="selection_round_1_label">Round 1 — wide selection</string>
-    <string name="selection_round_2_label">Round 2 — narrow to 3</string>
     <string name="selection_finish_picks">Finish making your selections to continue.</string>
 
     <!-- Finalizing screen -->

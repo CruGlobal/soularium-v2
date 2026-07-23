@@ -5,7 +5,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
-import org.cru.soularium.domain.ContactInfo
+import org.cru.soularium.model.ContactInfo
 import org.cru.soularium.model.Session
 
 class TransitionTest {

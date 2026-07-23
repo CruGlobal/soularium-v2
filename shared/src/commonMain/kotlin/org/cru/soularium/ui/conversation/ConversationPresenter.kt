@@ -20,7 +20,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import org.cru.soularium.domain.ContactInfo
 import org.cru.soularium.domain.content.Questions
 import org.cru.soularium.domain.ports.AnalyticsTracker
 import org.cru.soularium.domain.ports.CrashReporter
@@ -33,6 +32,7 @@ import org.cru.soularium.domain.session.SessionEvent
 import org.cru.soularium.domain.session.SessionState
 import org.cru.soularium.domain.session.transition
 import org.cru.soularium.domain.share.shareUrlFor
+import org.cru.soularium.model.ContactInfo
 import org.cru.soularium.model.Session
 import org.cru.soularium.ui.nav.ConversationScreen
 

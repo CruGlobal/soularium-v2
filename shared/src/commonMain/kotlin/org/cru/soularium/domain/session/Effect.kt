@@ -1,6 +1,6 @@
 package org.cru.soularium.domain.session
 
-import org.cru.soularium.domain.ContactInfo
+import org.cru.soularium.model.ContactInfo
 
 sealed interface Effect {
     data class PersistState(val state: SessionState) : Effect

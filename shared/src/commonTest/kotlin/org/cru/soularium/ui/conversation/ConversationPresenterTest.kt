@@ -14,7 +14,6 @@ import kotlinx.serialization.SerializationException
 import org.ccci.gto.support.androidx.test.junit.runners.AndroidJUnit4
 import org.ccci.gto.support.androidx.test.junit.runners.RunOnAndroidWith
 import org.cru.soularium.domain.CardPick
-import org.cru.soularium.domain.ContactInfo
 import org.cru.soularium.domain.Conversation
 import org.cru.soularium.domain.ports.AnalyticsTracker
 import org.cru.soularium.domain.ports.CrashReporter
@@ -23,6 +22,7 @@ import org.cru.soularium.domain.ports.ShareResult
 import org.cru.soularium.domain.ports.Sharer
 import org.cru.soularium.domain.session.QuestionActivity
 import org.cru.soularium.domain.session.SessionState
+import org.cru.soularium.model.ContactInfo
 import org.cru.soularium.model.ConversationId
 import org.cru.soularium.model.Session
 import org.cru.soularium.ui.nav.ConversationScreen

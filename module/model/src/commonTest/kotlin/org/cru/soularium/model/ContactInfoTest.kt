@@ -1,4 +1,4 @@
-package org.cru.soularium.domain
+package org.cru.soularium.model
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -16,7 +16,7 @@ class ContactInfoTest {
     private val json = Json { encodeDefaults = true }
 
     @Test
-    fun `fully-populated ContactInfo roundtrips through JSON`() {
+    fun `Serialization - round-trips when fully populated`() {
         val original = ContactInfo(
             name = "Ada",
             surname = "Lovelace",
@@ -32,7 +32,7 @@ class ContactInfoTest {
     }
 
     @Test
-    fun `ContactInfo with only required name roundtrips through JSON`() {
+    fun `Serialization - round-trips with only the required name`() {
         val original = ContactInfo(name = "Ada")
 
         val encoded = json.encodeToString(original)
@@ -42,7 +42,7 @@ class ContactInfoTest {
     }
 
     @Test
-    fun `JSON wire keys match the persistence contract`() {
+    fun `Serialization - JSON keys match the persistence contract`() {
         val encoded = json.encodeToString(
             ContactInfo(
                 name = "Ada",

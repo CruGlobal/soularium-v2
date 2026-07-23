@@ -1,6 +1,6 @@
 package org.cru.soularium.domain.session
 
-import org.cru.soularium.domain.ContactInfo
+import org.cru.soularium.model.ContactInfo
 import org.cru.soularium.model.Session
 
 sealed interface SessionEvent {

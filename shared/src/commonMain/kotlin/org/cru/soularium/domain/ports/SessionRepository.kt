@@ -2,9 +2,9 @@ package org.cru.soularium.domain.ports
 
 import kotlinx.coroutines.flow.Flow
 import org.cru.soularium.domain.CardPick
-import org.cru.soularium.domain.ContactInfo
 import org.cru.soularium.domain.Conversation
 import org.cru.soularium.domain.session.SessionState
+import org.cru.soularium.model.ContactInfo
 import org.cru.soularium.model.ConversationId
 import org.cru.soularium.model.Session
 

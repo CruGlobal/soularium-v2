@@ -1,4 +1,4 @@
-package org.cru.soularium.domain.session
+package org.cru.soularium.model.game
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -24,8 +24,26 @@ sealed interface SessionState {
 
     @Serializable
     @SerialName("in_question")
-    data class InQuestion(val questionNumber: Int, val activeParticipantIndex: Int, val activity: QuestionActivity) :
-        SessionState
+    data class InQuestion(val questionNumber: Int, val activeParticipantIndex: Int, val activity: QuestionState) :
+        SessionState {
+        @Serializable
+        enum class QuestionState {
+            @SerialName("showing_prompt")
+            ShowingPrompt,
+
+            @SerialName("showing_instructions")
+            ShowingInstructions,
+
+            @SerialName("selecting")
+            Selecting,
+
+            @SerialName("finalizing")
+            Finalizing,
+
+            @SerialName("discussing")
+            Discussing,
+        }
+    }
 
     @Serializable
     @SerialName("summary")
@@ -38,25 +56,4 @@ sealed interface SessionState {
     @Serializable
     @SerialName("concluded")
     data object Concluded : SessionState
-}
-
-@Serializable
-enum class QuestionActivity {
-    @SerialName("showing_prompt")
-    ShowingPrompt,
-
-    @SerialName("showing_instructions")
-    ShowingInstructions,
-
-    // Kotlin variant was renamed from SelectingRound1 after the two-round flow was
-    // collapsed into one; the @SerialName is preserved so persisted sessions still
-    // deserialize.
-    @SerialName("selecting_round_1")
-    Selecting,
-
-    @SerialName("finalizing")
-    Finalizing,
-
-    @SerialName("discussing")
-    Discussing,
 }

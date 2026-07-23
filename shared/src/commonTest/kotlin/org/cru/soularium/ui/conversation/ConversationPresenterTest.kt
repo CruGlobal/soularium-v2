@@ -18,12 +18,12 @@ import org.cru.soularium.domain.ports.CrashReporter
 import org.cru.soularium.domain.ports.SessionRepository
 import org.cru.soularium.domain.ports.ShareResult
 import org.cru.soularium.domain.ports.Sharer
-import org.cru.soularium.domain.session.QuestionActivity
-import org.cru.soularium.domain.session.SessionState
 import org.cru.soularium.model.CardPick
 import org.cru.soularium.model.ContactInfo
 import org.cru.soularium.model.Conversation
 import org.cru.soularium.model.Session
+import org.cru.soularium.model.game.SessionState
+import org.cru.soularium.model.game.SessionState.InQuestion.QuestionState
 import org.cru.soularium.ui.nav.ConversationScreen
 
 @RunOnAndroidWith(AndroidJUnit4::class)
@@ -92,7 +92,7 @@ class ConversationPresenterTest {
         val repo = FakeSessionRepository().apply {
             // Resume at question 3 ShowingPrompt; the test drives forward to a
             // Selection page so we can observe selectedCardIds toggling.
-            preloadedState = SessionState.InQuestion(3, 0, QuestionActivity.ShowingPrompt)
+            preloadedState = SessionState.InQuestion(3, 0, QuestionState.ShowingPrompt)
             preloadedConversations[sessionId] = listOf(
                 Conversation(Conversation.Id.random(), sessionId, 0, ContactInfo("Alice")),
             )
@@ -133,7 +133,7 @@ class ConversationPresenterTest {
     @Test
     fun `fresh session shows instructions then DismissInstructions reaches Selecting`() = runTest {
         val repo = FakeSessionRepository().apply {
-            preloadedState = SessionState.InQuestion(1, 0, QuestionActivity.ShowingPrompt)
+            preloadedState = SessionState.InQuestion(1, 0, QuestionState.ShowingPrompt)
             preloadedConversations[sessionId] = listOf(
                 Conversation(Conversation.Id.random(), sessionId, 0, ContactInfo("Alice")),
             )
@@ -155,7 +155,7 @@ class ConversationPresenterTest {
         // After the first dismissal, BeginSelection on a fresh prompt must skip
         // the Instructions page entirely and land on Selecting.
         val repo = FakeSessionRepository().apply {
-            preloadedState = SessionState.InQuestion(2, 0, QuestionActivity.ShowingPrompt)
+            preloadedState = SessionState.InQuestion(2, 0, QuestionState.ShowingPrompt)
         }
         presenter(repo).test {
             val firstPrompt = awaitStableState { it is ConversationPresenter.UiState.QuestionPrompt }
@@ -182,7 +182,7 @@ class ConversationPresenterTest {
     @Test
     fun `loadState rehydrates from repository on init`() = runTest {
         val repo = FakeSessionRepository().apply {
-            preloadedState = SessionState.InQuestion(3, 0, QuestionActivity.ShowingPrompt)
+            preloadedState = SessionState.InQuestion(3, 0, QuestionState.ShowingPrompt)
         }
         presenter(repo).test {
             val state = awaitStableState {
@@ -199,7 +199,7 @@ class ConversationPresenterTest {
             // Bookmarked mid-selection: volatile draft picks behind Finalizing
             // were never persisted, so resuming there would strand the user on
             // an empty selection screen.
-            preloadedState = SessionState.InQuestion(3, 0, QuestionActivity.Finalizing)
+            preloadedState = SessionState.InQuestion(3, 0, QuestionState.Finalizing)
         }
         presenter(repo).test {
             val state = awaitStableState {
@@ -214,7 +214,7 @@ class ConversationPresenterTest {
     fun `existing session with unreadable state snapshot restarts cleanly instead of stalling`() = runTest {
         // Simulates a mid-upgrade resume where the persisted state_snapshot_json
         // contains an enum value that no longer exists in this build (e.g. a
-        // removed QuestionActivity variant). The row exists, but decode throws.
+        // removed QuestionState variant). The row exists, but decode throws.
         // Recovery must cascade-delete the broken session (so its conversation
         // and pick children don't linger as orphans) then restart cleanly.
         val repo = FakeSessionRepository().apply {

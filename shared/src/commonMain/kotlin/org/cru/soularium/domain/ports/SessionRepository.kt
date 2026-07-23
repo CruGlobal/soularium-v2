@@ -1,11 +1,11 @@
 package org.cru.soularium.domain.ports
 
 import kotlinx.coroutines.flow.Flow
-import org.cru.soularium.domain.session.SessionState
 import org.cru.soularium.model.CardPick
 import org.cru.soularium.model.ContactInfo
 import org.cru.soularium.model.Conversation
 import org.cru.soularium.model.Session
+import org.cru.soularium.model.game.SessionState
 
 interface SessionRepository {
     suspend fun createSession(session: Session, initialState: SessionState): Session.Id

@@ -17,11 +17,11 @@ import org.cru.soularium.data.db.entities.CardPickEntity
 import org.cru.soularium.data.db.entities.ConversationEntity
 import org.cru.soularium.data.db.entities.SessionEntity
 import org.cru.soularium.domain.ports.SessionRepository
-import org.cru.soularium.domain.session.SessionState
 import org.cru.soularium.model.CardPick
 import org.cru.soularium.model.ContactInfo
 import org.cru.soularium.model.Conversation
 import org.cru.soularium.model.Session
+import org.cru.soularium.model.game.SessionState
 
 @Inject
 @SingleIn(AppScope::class)

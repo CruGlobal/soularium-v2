@@ -4,11 +4,11 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * Optional follow-up contact captured for a conversation participant. Persisted
- * as part of the session-state JSON snapshot (see [SessionState] persistence in
- * [org.cru.soularium.data.repository.SessionRepositoryImpl]), so every field
- * pins its wire name via [SerialName] — renaming a Kotlin property must not
- * silently change the stored key and orphan existing sessions.
+ * Optional follow-up contact captured for a conversation participant.
+ * Persisted alongside the enclosing conversation via `ConversationEntity`
+ * Room columns today; the [SerialName] annotations lock each field's JSON
+ * wire key so the format stays stable if this type is ever serialized to
+ * JSON (share links, sync, export).
  */
 @Serializable
 data class ContactInfo(

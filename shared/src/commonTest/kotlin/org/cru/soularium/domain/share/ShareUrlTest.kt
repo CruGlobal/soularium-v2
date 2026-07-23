@@ -4,16 +4,15 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import org.cru.soularium.domain.CardPick
-import org.cru.soularium.domain.Conversation
 import org.cru.soularium.model.CardPickId
 import org.cru.soularium.model.ContactInfo
-import org.cru.soularium.model.ConversationId
+import org.cru.soularium.model.Conversation
 import org.cru.soularium.model.Session
 
 class ShareUrlTest {
     private val conv =
         Conversation(
-            id = ConversationId("c-1"),
+            id = Conversation.Id("c-1"),
             sessionId = Session.Id("s-1"),
             displayOrder = 0,
             contact = ContactInfo(name = "John"),
@@ -21,7 +20,7 @@ class ShareUrlTest {
 
     private fun pick(q: Int, card: Int, order: Int, isFinal: Boolean = true) = CardPick(
         id = CardPickId("p-$q-$card"),
-        conversationId = ConversationId("c-1"),
+        conversationId = Conversation.Id("c-1"),
         questionNumber = q,
         cardId = card,
         pickOrder = order,

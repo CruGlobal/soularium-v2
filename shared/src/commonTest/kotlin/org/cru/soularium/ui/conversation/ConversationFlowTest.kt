@@ -15,7 +15,6 @@ import kotlinx.coroutines.test.runTest
 import org.ccci.gto.support.androidx.test.junit.runners.AndroidJUnit4
 import org.ccci.gto.support.androidx.test.junit.runners.RunOnAndroidWith
 import org.cru.soularium.domain.CardPick
-import org.cru.soularium.domain.Conversation
 import org.cru.soularium.domain.content.Questions
 import org.cru.soularium.domain.ports.AnalyticsTracker
 import org.cru.soularium.domain.ports.CrashReporter
@@ -25,7 +24,7 @@ import org.cru.soularium.domain.ports.Sharer
 import org.cru.soularium.domain.session.SessionState
 import org.cru.soularium.model.CardPickId
 import org.cru.soularium.model.ContactInfo
-import org.cru.soularium.model.ConversationId
+import org.cru.soularium.model.Conversation
 import org.cru.soularium.model.Session
 import org.cru.soularium.ui.nav.ConversationScreen
 import org.cru.soularium.ui.screens.PastConversationsPresenter
@@ -314,7 +313,7 @@ private class InMemorySessionRepository : SessionRepository {
     private val sessions = mutableMapOf<Session.Id, Session>()
     private val states = mutableMapOf<Session.Id, SessionState>()
     private val conversations = mutableMapOf<Session.Id, MutableList<Conversation>>()
-    private val picks = mutableMapOf<ConversationId, MutableList<CardPick>>()
+    private val picks = mutableMapOf<Conversation.Id, MutableList<CardPick>>()
     private val completedIds = mutableSetOf<Session.Id>()
     private val bookmarkedIds = mutableSetOf<Session.Id>()
     private val completed = MutableStateFlow<List<Session>>(emptyList())
@@ -350,11 +349,11 @@ private class InMemorySessionRepository : SessionRepository {
         refresh()
     }
 
-    override suspend fun upsertParticipants(sessionId: Session.Id, names: List<String>): List<ConversationId> {
+    override suspend fun upsertParticipants(sessionId: Session.Id, names: List<String>): List<Conversation.Id> {
         val existing = conversations[sessionId].orEmpty()
         val list = names.mapIndexed { idx, name ->
             Conversation(
-                id = existing.getOrNull(idx)?.id ?: ConversationId.random(),
+                id = existing.getOrNull(idx)?.id ?: Conversation.Id.random(),
                 sessionId = sessionId,
                 displayOrder = idx,
                 contact = ContactInfo(name),
@@ -364,7 +363,7 @@ private class InMemorySessionRepository : SessionRepository {
         return list.map { it.id }
     }
 
-    override suspend fun upsertContact(conversationId: ConversationId, info: ContactInfo) {
+    override suspend fun upsertContact(conversationId: Conversation.Id, info: ContactInfo) {
         conversations.values.forEach { list ->
             val idx = list.indexOfFirst { it.id == conversationId }
             if (idx >= 0) list[idx] = list[idx].copy(contact = info)
@@ -372,7 +371,7 @@ private class InMemorySessionRepository : SessionRepository {
     }
 
     override suspend fun upsertPicks(
-        conversationId: ConversationId,
+        conversationId: Conversation.Id,
         questionNumber: Int,
         cardIds: List<Int>,
         isFinal: Boolean,
@@ -391,7 +390,7 @@ private class InMemorySessionRepository : SessionRepository {
         }
     }
 
-    override suspend fun loadPicks(conversationId: ConversationId): List<CardPick> = picks[conversationId].orEmpty()
+    override suspend fun loadPicks(conversationId: Conversation.Id): List<CardPick> = picks[conversationId].orEmpty()
 
     override fun observeCompletedSessions(): Flow<List<Session>> = completed.asStateFlow()
     override fun observeBookmarkedSessions(): Flow<List<Session>> = bookmarked.asStateFlow()

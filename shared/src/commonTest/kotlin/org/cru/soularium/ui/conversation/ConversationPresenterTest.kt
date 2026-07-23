@@ -14,7 +14,6 @@ import kotlinx.serialization.SerializationException
 import org.ccci.gto.support.androidx.test.junit.runners.AndroidJUnit4
 import org.ccci.gto.support.androidx.test.junit.runners.RunOnAndroidWith
 import org.cru.soularium.domain.CardPick
-import org.cru.soularium.domain.Conversation
 import org.cru.soularium.domain.ports.AnalyticsTracker
 import org.cru.soularium.domain.ports.CrashReporter
 import org.cru.soularium.domain.ports.SessionRepository
@@ -23,7 +22,7 @@ import org.cru.soularium.domain.ports.Sharer
 import org.cru.soularium.domain.session.QuestionActivity
 import org.cru.soularium.domain.session.SessionState
 import org.cru.soularium.model.ContactInfo
-import org.cru.soularium.model.ConversationId
+import org.cru.soularium.model.Conversation
 import org.cru.soularium.model.Session
 import org.cru.soularium.ui.nav.ConversationScreen
 
@@ -95,7 +94,7 @@ class ConversationPresenterTest {
             // Selection page so we can observe selectedCardIds toggling.
             preloadedState = SessionState.InQuestion(3, 0, QuestionActivity.ShowingPrompt)
             preloadedConversations[sessionId] = listOf(
-                Conversation(ConversationId.random(), sessionId, 0, ContactInfo("Alice")),
+                Conversation(Conversation.Id.random(), sessionId, 0, ContactInfo("Alice")),
             )
         }
         presenter(repo).test {
@@ -136,7 +135,7 @@ class ConversationPresenterTest {
         val repo = FakeSessionRepository().apply {
             preloadedState = SessionState.InQuestion(1, 0, QuestionActivity.ShowingPrompt)
             preloadedConversations[sessionId] = listOf(
-                Conversation(ConversationId.random(), sessionId, 0, ContactInfo("Alice")),
+                Conversation(Conversation.Id.random(), sessionId, 0, ContactInfo("Alice")),
             )
         }
         presenter(repo).test {
@@ -256,11 +255,11 @@ private class FakeSessionRepository : SessionRepository {
 
     override suspend fun setEnded(id: Session.Id) = Unit
 
-    override suspend fun upsertParticipants(sessionId: Session.Id, names: List<String>): List<ConversationId> {
+    override suspend fun upsertParticipants(sessionId: Session.Id, names: List<String>): List<Conversation.Id> {
         lastUpsertedParticipants = names
         val existing = preloadedConversations[sessionId].orEmpty()
         val out = names.mapIndexed { idx, _ ->
-            existing.getOrNull(idx)?.id ?: ConversationId.random()
+            existing.getOrNull(idx)?.id ?: Conversation.Id.random()
         }
         preloadedConversations[sessionId] = out.mapIndexed { idx, cid ->
             Conversation(cid, sessionId, idx, ContactInfo(names[idx]))
@@ -268,16 +267,16 @@ private class FakeSessionRepository : SessionRepository {
         return out
     }
 
-    override suspend fun upsertContact(conversationId: ConversationId, info: ContactInfo) = Unit
+    override suspend fun upsertContact(conversationId: Conversation.Id, info: ContactInfo) = Unit
 
     override suspend fun upsertPicks(
-        conversationId: ConversationId,
+        conversationId: Conversation.Id,
         questionNumber: Int,
         cardIds: List<Int>,
         isFinal: Boolean,
     ) = Unit
 
-    override suspend fun loadPicks(conversationId: ConversationId): List<CardPick> = emptyList()
+    override suspend fun loadPicks(conversationId: Conversation.Id): List<CardPick> = emptyList()
 
     override fun observeCompletedSessions(): Flow<List<Session>> =
         MutableStateFlow<List<Session>>(emptyList()).asStateFlow()

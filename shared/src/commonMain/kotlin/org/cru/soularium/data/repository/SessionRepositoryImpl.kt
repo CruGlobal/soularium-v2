@@ -17,12 +17,11 @@ import org.cru.soularium.data.db.entities.CardPickEntity
 import org.cru.soularium.data.db.entities.ConversationEntity
 import org.cru.soularium.data.db.entities.SessionEntity
 import org.cru.soularium.domain.CardPick
-import org.cru.soularium.domain.Conversation
 import org.cru.soularium.domain.ports.SessionRepository
 import org.cru.soularium.domain.session.SessionState
 import org.cru.soularium.model.CardPickId
 import org.cru.soularium.model.ContactInfo
-import org.cru.soularium.model.ConversationId
+import org.cru.soularium.model.Conversation
 import org.cru.soularium.model.Session
 
 @Inject
@@ -75,13 +74,13 @@ class SessionRepositoryImpl(
         sessionDao.upsert(current.copy(endedAt = Clock.System.now().toEpochMilliseconds()))
     }
 
-    override suspend fun upsertParticipants(sessionId: Session.Id, names: List<String>): List<ConversationId> {
+    override suspend fun upsertParticipants(sessionId: Session.Id, names: List<String>): List<Conversation.Id> {
         val existing = conversationDao.forSession(sessionId.value)
-        val keptIds = mutableListOf<ConversationId>()
+        val keptIds = mutableListOf<Conversation.Id>()
         names.forEachIndexed { index, name ->
             val match = existing.find { it.displayOrder == index }
-            val id = match?.id ?: ConversationId.random().value
-            keptIds += ConversationId(id)
+            val id = match?.id ?: Conversation.Id.random().value
+            keptIds += Conversation.Id(id)
             conversationDao.upsert(
                 ConversationEntity(
                     id = id,
@@ -102,7 +101,7 @@ class SessionRepositoryImpl(
         return keptIds
     }
 
-    override suspend fun upsertContact(conversationId: ConversationId, info: ContactInfo) {
+    override suspend fun upsertContact(conversationId: Conversation.Id, info: ContactInfo) {
         val current = conversationDao.byId(conversationId.value) ?: return
         conversationDao.upsert(
             current.copy(
@@ -116,7 +115,7 @@ class SessionRepositoryImpl(
     }
 
     override suspend fun upsertPicks(
-        conversationId: ConversationId,
+        conversationId: Conversation.Id,
         questionNumber: Int,
         cardIds: List<Int>,
         isFinal: Boolean,
@@ -136,7 +135,7 @@ class SessionRepositoryImpl(
         cardPickDao.replaceRound(conversationId.value, questionNumber, isFinal, entities)
     }
 
-    override suspend fun loadPicks(conversationId: ConversationId): List<CardPick> =
+    override suspend fun loadPicks(conversationId: Conversation.Id): List<CardPick> =
         cardPickDao.forConversation(conversationId.value).map {
             it.toDomain()
         }
@@ -181,7 +180,7 @@ class SessionRepositoryImpl(
     )
 
     private fun ConversationEntity.toDomain() = Conversation(
-        id = ConversationId(id),
+        id = Conversation.Id(id),
         sessionId = Session.Id(sessionId),
         displayOrder = displayOrder,
         contact = ContactInfo(name, surname, email, phone, notes),
@@ -189,7 +188,7 @@ class SessionRepositoryImpl(
 
     private fun CardPickEntity.toDomain() = CardPick(
         id = CardPickId(id),
-        conversationId = ConversationId(conversationId),
+        conversationId = Conversation.Id(conversationId),
         questionNumber = questionNumber,
         cardId = cardId,
         pickOrder = pickOrder,

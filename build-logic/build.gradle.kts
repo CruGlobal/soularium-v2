@@ -9,6 +9,7 @@ dependencies {
     implementation(libs.kotlin.serialization.gradle)
     implementation(libs.kover.gradle)
     implementation(libs.ktlint.gradle)
+    implementation(libs.metro.gradle)
     implementation(libs.paparazzi.gradle)
 }
 

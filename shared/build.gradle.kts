@@ -3,12 +3,12 @@ import dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi
 
 plugins {
     id("soularium-kmp.module-conventions")
+    id("metro-conventions")
     id("serialization-conventions")
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.ksp)
     id("kotlin-parcelize")
-    alias(libs.plugins.metro)
     alias(libs.plugins.room)
     id("paparazzi-conventions")
 }

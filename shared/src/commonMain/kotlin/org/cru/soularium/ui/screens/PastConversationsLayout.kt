@@ -55,7 +55,6 @@ import org.cru.soularium.generated.resources.past_tab_bookmarked
 import org.cru.soularium.generated.resources.past_tab_completed
 import org.cru.soularium.generated.resources.past_title
 import org.cru.soularium.model.Session
-import org.cru.soularium.model.SessionId
 import org.cru.soularium.ui.nav.PastConversationsScreen
 import org.jetbrains.compose.resources.stringResource
 
@@ -73,7 +72,7 @@ fun PastConversationsLayout(state: PastConversationsPresenter.UiState, modifier:
     val backLabel = stringResource(Res.string.action_back)
 
     var selectedTabIndex by remember { mutableIntStateOf(0) }
-    var pendingDeleteId by remember { mutableStateOf<SessionId?>(null) }
+    var pendingDeleteId by remember { mutableStateOf<Session.Id?>(null) }
 
     Scaffold(
         modifier = modifier,
@@ -175,8 +174,8 @@ fun PastConversationsLayout(state: PastConversationsPresenter.UiState, modifier:
 private fun SessionList(
     items: List<PastConversationItem>,
     emptyText: String,
-    onOpen: (SessionId) -> Unit,
-    onDeleteRequest: (SessionId) -> Unit,
+    onOpen: (Session.Id) -> Unit,
+    onDeleteRequest: (Session.Id) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (items.isEmpty()) {

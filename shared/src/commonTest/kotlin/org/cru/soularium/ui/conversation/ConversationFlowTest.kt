@@ -27,7 +27,6 @@ import org.cru.soularium.domain.session.SessionState
 import org.cru.soularium.model.CardPickId
 import org.cru.soularium.model.ConversationId
 import org.cru.soularium.model.Session
-import org.cru.soularium.model.SessionId
 import org.cru.soularium.ui.nav.ConversationScreen
 import org.cru.soularium.ui.screens.PastConversationsPresenter
 
@@ -48,7 +47,7 @@ class ConversationFlowTest {
     fun `solo session completes from start through summary share and conclude`() = runTest {
         val repo = InMemorySessionRepository()
         val sharer = RecordingSharer()
-        val sessionId = SessionId.random()
+        val sessionId = Session.Id.random()
         val screen = ConversationScreen(sessionId, Session.Kind.SOLO)
         val navigator = FakeNavigator(screen)
 
@@ -80,7 +79,7 @@ class ConversationFlowTest {
     @Test
     fun `group session of three completes all five questions`() = runTest {
         val repo = InMemorySessionRepository()
-        val sessionId = SessionId.random()
+        val sessionId = Session.Id.random()
         val screen = ConversationScreen(sessionId, Session.Kind.GROUP)
         val navigator = FakeNavigator(screen)
 
@@ -114,7 +113,7 @@ class ConversationFlowTest {
     @Test
     fun `bookmarked session resumes from persisted state and completes`() = runTest {
         val repo = InMemorySessionRepository()
-        val sessionId = SessionId.random()
+        val sessionId = Session.Id.random()
         val screen = ConversationScreen(sessionId, Session.Kind.SOLO)
         val navigator = FakeNavigator(screen)
 
@@ -153,7 +152,7 @@ class ConversationFlowTest {
     @Test
     fun `bookmarked group session rehydrates participant names on resume`() = runTest {
         val repo = InMemorySessionRepository()
-        val sessionId = SessionId.random()
+        val sessionId = Session.Id.random()
         val screen = ConversationScreen(sessionId, Session.Kind.GROUP)
         val navigator = FakeNavigator(screen)
 
@@ -200,7 +199,7 @@ class ConversationFlowTest {
     @Test
     fun `deleting a past conversation removes it from the completed list`() = runTest {
         val repo = InMemorySessionRepository()
-        val sessionId = SessionId.random()
+        val sessionId = Session.Id.random()
         val screen = ConversationScreen(sessionId, Session.Kind.SOLO)
         val navigator = FakeNavigator(screen)
 
@@ -312,27 +311,27 @@ private fun ConversationPresenter.UiState.pick(count: Int) {
  * the [Session] timestamp fields.
  */
 private class InMemorySessionRepository : SessionRepository {
-    private val sessions = mutableMapOf<SessionId, Session>()
-    private val states = mutableMapOf<SessionId, SessionState>()
-    private val conversations = mutableMapOf<SessionId, MutableList<Conversation>>()
+    private val sessions = mutableMapOf<Session.Id, Session>()
+    private val states = mutableMapOf<Session.Id, SessionState>()
+    private val conversations = mutableMapOf<Session.Id, MutableList<Conversation>>()
     private val picks = mutableMapOf<ConversationId, MutableList<CardPick>>()
-    private val completedIds = mutableSetOf<SessionId>()
-    private val bookmarkedIds = mutableSetOf<SessionId>()
+    private val completedIds = mutableSetOf<Session.Id>()
+    private val bookmarkedIds = mutableSetOf<Session.Id>()
     private val completed = MutableStateFlow<List<Session>>(emptyList())
     private val bookmarked = MutableStateFlow<List<Session>>(emptyList())
 
     fun bookmarkedSnapshot(): List<Session> = bookmarked.value
 
-    override suspend fun createSession(session: Session, initialState: SessionState): SessionId {
+    override suspend fun createSession(session: Session, initialState: SessionState): Session.Id {
         sessions[session.id] = session
         states[session.id] = initialState
         return session.id
     }
 
-    override suspend fun loadSession(id: SessionId): Session? = sessions[id]
-    override suspend fun loadState(id: SessionId): SessionState? = states[id]
+    override suspend fun loadSession(id: Session.Id): Session? = sessions[id]
+    override suspend fun loadState(id: Session.Id): SessionState? = states[id]
 
-    override suspend fun persistState(id: SessionId, state: SessionState) {
+    override suspend fun persistState(id: Session.Id, state: SessionState) {
         states[id] = state
         if (state == SessionState.Concluded) {
             completedIds += id
@@ -341,17 +340,17 @@ private class InMemorySessionRepository : SessionRepository {
         }
     }
 
-    override suspend fun setBookmarked(id: SessionId, bookmarked: Boolean) {
+    override suspend fun setBookmarked(id: Session.Id, bookmarked: Boolean) {
         if (bookmarked) bookmarkedIds += id else bookmarkedIds -= id
         refresh()
     }
 
-    override suspend fun setEnded(id: SessionId) {
+    override suspend fun setEnded(id: Session.Id) {
         completedIds += id
         refresh()
     }
 
-    override suspend fun upsertParticipants(sessionId: SessionId, names: List<String>): List<ConversationId> {
+    override suspend fun upsertParticipants(sessionId: Session.Id, names: List<String>): List<ConversationId> {
         val existing = conversations[sessionId].orEmpty()
         val list = names.mapIndexed { idx, name ->
             Conversation(
@@ -397,7 +396,7 @@ private class InMemorySessionRepository : SessionRepository {
     override fun observeCompletedSessions(): Flow<List<Session>> = completed.asStateFlow()
     override fun observeBookmarkedSessions(): Flow<List<Session>> = bookmarked.asStateFlow()
 
-    override suspend fun deleteSession(id: SessionId) {
+    override suspend fun deleteSession(id: Session.Id) {
         sessions.remove(id)
         states.remove(id)
         completedIds -= id
@@ -406,7 +405,7 @@ private class InMemorySessionRepository : SessionRepository {
         refresh()
     }
 
-    override suspend fun loadConversations(sessionId: SessionId): List<Conversation> =
+    override suspend fun loadConversations(sessionId: Session.Id): List<Conversation> =
         conversations[sessionId].orEmpty()
 
     private fun refresh() {

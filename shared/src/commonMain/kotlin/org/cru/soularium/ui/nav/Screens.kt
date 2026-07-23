@@ -3,7 +3,6 @@ package org.cru.soularium.ui.nav
 import com.slack.circuit.runtime.screen.Screen
 import org.ccci.gto.android.common.parcelize.Parcelize
 import org.cru.soularium.model.Session
-import org.cru.soularium.model.SessionId
 
 @Parcelize
 data object IntroScreen : Screen
@@ -20,10 +19,10 @@ data class ConversationScreen(
     val sessionIdValue: String,
     val kind: Session.Kind,
 ) : Screen {
-    val sessionId: SessionId get() = SessionId(sessionIdValue)
+    val sessionId: Session.Id get() = Session.Id(sessionIdValue)
 
     companion object {
-        operator fun invoke(sessionId: SessionId, kind: Session.Kind): ConversationScreen =
+        operator fun invoke(sessionId: Session.Id, kind: Session.Kind): ConversationScreen =
             ConversationScreen(sessionId.value, kind)
     }
 }

@@ -8,13 +8,13 @@ import org.cru.soularium.domain.ContactInfo
 import org.cru.soularium.domain.Conversation
 import org.cru.soularium.model.CardPickId
 import org.cru.soularium.model.ConversationId
-import org.cru.soularium.model.SessionId
+import org.cru.soularium.model.Session
 
 class ShareUrlTest {
     private val conv =
         Conversation(
             id = ConversationId("c-1"),
-            sessionId = SessionId("s-1"),
+            sessionId = Session.Id("s-1"),
             displayOrder = 0,
             contact = ContactInfo(name = "John"),
         )

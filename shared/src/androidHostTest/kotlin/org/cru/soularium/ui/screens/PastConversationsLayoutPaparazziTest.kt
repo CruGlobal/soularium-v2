@@ -5,7 +5,6 @@ import com.android.resources.NightMode
 import com.google.testing.junit.testparameterinjector.TestParameter
 import com.google.testing.junit.testparameterinjector.TestParameterInjector
 import org.cru.soularium.model.Session
-import org.cru.soularium.model.SessionId
 import org.cru.soularium.ui.test.BasePaparazziTest
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -32,13 +31,13 @@ class PastConversationsLayoutPaparazziTest(
             state = PastConversationsPresenter.UiState(
                 completed = listOf(
                     PastConversationItem(
-                        sessionId = SessionId.random(),
+                        sessionId = Session.Id.random(),
                         kind = Session.Kind.GROUP,
                         formattedDate = "Jul 10, 2026",
                         participantNames = listOf("Ada", "Grace", "Alan"),
                     ),
                     PastConversationItem(
-                        sessionId = SessionId.random(),
+                        sessionId = Session.Id.random(),
                         kind = Session.Kind.SOLO,
                         formattedDate = "Jun 28, 2026",
                         participantNames = listOf("Ada"),
@@ -46,7 +45,7 @@ class PastConversationsLayoutPaparazziTest(
                 ),
                 bookmarked = listOf(
                     PastConversationItem(
-                        sessionId = SessionId.random(),
+                        sessionId = Session.Id.random(),
                         kind = Session.Kind.GROUP,
                         formattedDate = "Jul 12, 2026",
                         participantNames = listOf("Riley", "Sam"),

@@ -24,7 +24,6 @@ import org.cru.soularium.domain.session.SessionState
 import org.cru.soularium.model.CardPickId
 import org.cru.soularium.model.ConversationId
 import org.cru.soularium.model.Session
-import org.cru.soularium.model.SessionId
 
 @Inject
 @SingleIn(AppScope::class)
@@ -36,18 +35,18 @@ class SessionRepositoryImpl(
 ) : SessionRepository {
     private val json: Json = Json { ignoreUnknownKeys = true }
 
-    override suspend fun createSession(session: Session, initialState: SessionState): SessionId {
+    override suspend fun createSession(session: Session, initialState: SessionState): Session.Id {
         sessionDao.upsert(session.toEntity(initialState))
         return session.id
     }
 
-    override suspend fun loadSession(id: SessionId): Session? = sessionDao.byId(id.value)?.toDomain()
+    override suspend fun loadSession(id: Session.Id): Session? = sessionDao.byId(id.value)?.toDomain()
 
-    override suspend fun loadState(id: SessionId): SessionState? = sessionDao.byId(id.value)?.let {
+    override suspend fun loadState(id: Session.Id): SessionState? = sessionDao.byId(id.value)?.let {
         json.decodeFromString<SessionState>(it.stateSnapshotJson)
     }
 
-    override suspend fun persistState(id: SessionId, state: SessionState) {
+    override suspend fun persistState(id: Session.Id, state: SessionState) {
         val current = sessionDao.byId(id.value) ?: return
         // Reaching Concluded ends the session, so it surfaces under
         // Past Conversations → Completed (which filters on ended_at).
@@ -65,18 +64,18 @@ class SessionRepositoryImpl(
         )
     }
 
-    override suspend fun setBookmarked(id: SessionId, bookmarked: Boolean) {
+    override suspend fun setBookmarked(id: Session.Id, bookmarked: Boolean) {
         val current = sessionDao.byId(id.value) ?: return
         val bookmarkedAt = if (bookmarked) Clock.System.now().toEpochMilliseconds() else null
         sessionDao.upsert(current.copy(bookmarkedAt = bookmarkedAt))
     }
 
-    override suspend fun setEnded(id: SessionId) {
+    override suspend fun setEnded(id: Session.Id) {
         val current = sessionDao.byId(id.value) ?: return
         sessionDao.upsert(current.copy(endedAt = Clock.System.now().toEpochMilliseconds()))
     }
 
-    override suspend fun upsertParticipants(sessionId: SessionId, names: List<String>): List<ConversationId> {
+    override suspend fun upsertParticipants(sessionId: Session.Id, names: List<String>): List<ConversationId> {
         val existing = conversationDao.forSession(sessionId.value)
         val keptIds = mutableListOf<ConversationId>()
         names.forEachIndexed { index, name ->
@@ -150,11 +149,11 @@ class SessionRepositoryImpl(
         list.map { it.toDomain() }
     }
 
-    override suspend fun deleteSession(id: SessionId) {
+    override suspend fun deleteSession(id: Session.Id) {
         sessionDao.delete(id.value)
     }
 
-    override suspend fun loadConversations(sessionId: SessionId): List<Conversation> =
+    override suspend fun loadConversations(sessionId: Session.Id): List<Conversation> =
         conversationDao.forSession(sessionId.value).map {
             it.toDomain()
         }
@@ -170,7 +169,7 @@ class SessionRepositoryImpl(
     )
 
     private fun SessionEntity.toDomain() = Session(
-        id = SessionId(id),
+        id = Session.Id(id),
         // Tolerate an unrecognised persisted kind (corruption / a value
         // written by a newer build) rather than throwing and taking down
         // the whole Past Conversations list.
@@ -183,7 +182,7 @@ class SessionRepositoryImpl(
 
     private fun ConversationEntity.toDomain() = Conversation(
         id = ConversationId(id),
-        sessionId = SessionId(sessionId),
+        sessionId = Session.Id(sessionId),
         displayOrder = displayOrder,
         contact = ContactInfo(name, surname, email, phone, notes),
     )

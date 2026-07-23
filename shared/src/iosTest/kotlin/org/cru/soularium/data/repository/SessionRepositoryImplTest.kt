@@ -10,7 +10,6 @@ import org.cru.soularium.data.db.SoulariumDatabase
 import org.cru.soularium.data.db.inMemorySoulariumDatabase
 import org.cru.soularium.domain.session.SessionState
 import org.cru.soularium.model.Session
-import org.cru.soularium.model.SessionId
 
 class SessionRepositoryImplTest {
     private fun newRepo(): Pair<SoulariumDatabase, SessionRepositoryImpl> {
@@ -21,7 +20,7 @@ class SessionRepositoryImplTest {
     @Test
     fun `a session round-trips through createSession and loadState`() = runTest {
         val (db, repo) = newRepo()
-        val sessionId = SessionId.random()
+        val sessionId = Session.Id.random()
         repo.createSession(Session(id = sessionId, kind = Session.Kind.GROUP), SessionState.AddingParticipants)
 
         assertEquals(Session.Kind.GROUP, repo.loadSession(sessionId)?.kind)
@@ -32,7 +31,7 @@ class SessionRepositoryImplTest {
     @Test
     fun `persistState stamps endedAt once the session is Concluded`() = runTest {
         val (db, repo) = newRepo()
-        val sessionId = SessionId.random()
+        val sessionId = Session.Id.random()
         repo.createSession(Session(id = sessionId, kind = Session.Kind.SOLO), SessionState.NotStarted)
 
         assertNull(repo.loadSession(sessionId)?.endedAt, "a fresh session has no endedAt")
@@ -44,7 +43,7 @@ class SessionRepositoryImplTest {
     @Test
     fun `upsertParticipants prunes conversations when the list shrinks`() = runTest {
         val (db, repo) = newRepo()
-        val sessionId = SessionId.random()
+        val sessionId = Session.Id.random()
         repo.createSession(Session(id = sessionId, kind = Session.Kind.GROUP), SessionState.AddingParticipants)
 
         repo.upsertParticipants(sessionId, listOf("Ana", "Ben", "Cara"))
@@ -62,7 +61,7 @@ class SessionRepositoryImplTest {
     @Test
     fun `deleting a session cascades to its conversations and card picks`() = runTest {
         val (db, repo) = newRepo()
-        val sessionId = SessionId.random()
+        val sessionId = Session.Id.random()
         repo.createSession(Session(id = sessionId, kind = Session.Kind.SOLO), SessionState.AddingParticipants)
         val conversationId = repo.upsertParticipants(sessionId, listOf("Ana")).single()
         repo.upsertPicks(conversationId, questionNumber = 1, cardIds = listOf(4, 8, 15), isFinal = true)

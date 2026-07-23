@@ -25,13 +25,12 @@ import org.cru.soularium.domain.session.QuestionActivity
 import org.cru.soularium.domain.session.SessionState
 import org.cru.soularium.model.ConversationId
 import org.cru.soularium.model.Session
-import org.cru.soularium.model.SessionId
 import org.cru.soularium.ui.nav.ConversationScreen
 
 @RunOnAndroidWith(AndroidJUnit4::class)
 class ConversationPresenterTest {
 
-    private val sessionId = SessionId.random()
+    private val sessionId = Session.Id.random()
     private val screen = ConversationScreen(sessionId, Session.Kind.SOLO)
     private val navigator = FakeNavigator(screen)
 
@@ -235,29 +234,29 @@ private class FakeSessionRepository : SessionRepository {
     var preloadedState: SessionState? = null
     var preloadedSession: Session? = null
     var loadStateError: Throwable? = null
-    val preloadedConversations = mutableMapOf<SessionId, List<Conversation>>()
+    val preloadedConversations = mutableMapOf<Session.Id, List<Conversation>>()
     var lastUpsertedParticipants: List<String>? = null
-    val persistedStates = mutableListOf<Pair<SessionId, SessionState>>()
-    val deletedSessions = mutableListOf<SessionId>()
+    val persistedStates = mutableListOf<Pair<Session.Id, SessionState>>()
+    val deletedSessions = mutableListOf<Session.Id>()
 
-    override suspend fun createSession(session: Session, initialState: SessionState): SessionId = session.id
+    override suspend fun createSession(session: Session, initialState: SessionState): Session.Id = session.id
 
-    override suspend fun loadSession(id: SessionId): Session? = preloadedSession
+    override suspend fun loadSession(id: Session.Id): Session? = preloadedSession
 
-    override suspend fun loadState(id: SessionId): SessionState? {
+    override suspend fun loadState(id: Session.Id): SessionState? {
         loadStateError?.let { throw it }
         return preloadedState
     }
 
-    override suspend fun persistState(id: SessionId, state: SessionState) {
+    override suspend fun persistState(id: Session.Id, state: SessionState) {
         persistedStates += id to state
     }
 
-    override suspend fun setBookmarked(id: SessionId, bookmarked: Boolean) = Unit
+    override suspend fun setBookmarked(id: Session.Id, bookmarked: Boolean) = Unit
 
-    override suspend fun setEnded(id: SessionId) = Unit
+    override suspend fun setEnded(id: Session.Id) = Unit
 
-    override suspend fun upsertParticipants(sessionId: SessionId, names: List<String>): List<ConversationId> {
+    override suspend fun upsertParticipants(sessionId: Session.Id, names: List<String>): List<ConversationId> {
         lastUpsertedParticipants = names
         val existing = preloadedConversations[sessionId].orEmpty()
         val out = names.mapIndexed { idx, _ ->
@@ -286,11 +285,11 @@ private class FakeSessionRepository : SessionRepository {
     override fun observeBookmarkedSessions(): Flow<List<Session>> =
         MutableStateFlow<List<Session>>(emptyList()).asStateFlow()
 
-    override suspend fun deleteSession(id: SessionId) {
+    override suspend fun deleteSession(id: Session.Id) {
         deletedSessions += id
     }
 
-    override suspend fun loadConversations(sessionId: SessionId): List<Conversation> =
+    override suspend fun loadConversations(sessionId: Session.Id): List<Conversation> =
         preloadedConversations[sessionId].orEmpty()
 }
 

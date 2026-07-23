@@ -14,7 +14,6 @@ import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
 import org.cru.soularium.model.Session
-import org.cru.soularium.model.SessionId
 import org.cru.soularium.ui.nav.CardsAndQuestionsScreen
 import org.cru.soularium.ui.nav.ConversationScreen
 import org.cru.soularium.ui.nav.PastConversationsScreen
@@ -45,8 +44,10 @@ class HomePresenter(@Assisted private val navigator: Navigator) : Presenter<Home
         showMenu = rememberSaveable { mutableStateOf(false) },
     ) { event ->
         when (event) {
-            UiEvent.StartGroupConversation -> navigator.goTo(ConversationScreen(SessionId.random(), Session.Kind.GROUP))
-            UiEvent.StartSoloConversation -> navigator.goTo(ConversationScreen(SessionId.random(), Session.Kind.SOLO))
+            UiEvent.StartGroupConversation -> navigator.goTo(
+                ConversationScreen(Session.Id.random(), Session.Kind.GROUP)
+            )
+            UiEvent.StartSoloConversation -> navigator.goTo(ConversationScreen(Session.Id.random(), Session.Kind.SOLO))
             UiEvent.OpenPastConversations -> navigator.goTo(PastConversationsScreen)
             UiEvent.OpenAbout -> navigator.goTo(AboutScreen)
             UiEvent.OpenResources -> navigator.goTo(ResourcesScreen)

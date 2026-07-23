@@ -7,22 +7,21 @@ import org.cru.soularium.domain.Conversation
 import org.cru.soularium.domain.session.SessionState
 import org.cru.soularium.model.ConversationId
 import org.cru.soularium.model.Session
-import org.cru.soularium.model.SessionId
 
 interface SessionRepository {
-    suspend fun createSession(session: Session, initialState: SessionState): SessionId
+    suspend fun createSession(session: Session, initialState: SessionState): Session.Id
 
-    suspend fun loadSession(id: SessionId): Session?
+    suspend fun loadSession(id: Session.Id): Session?
 
-    suspend fun loadState(id: SessionId): SessionState?
+    suspend fun loadState(id: Session.Id): SessionState?
 
-    suspend fun persistState(id: SessionId, state: SessionState)
+    suspend fun persistState(id: Session.Id, state: SessionState)
 
-    suspend fun setBookmarked(id: SessionId, bookmarked: Boolean)
+    suspend fun setBookmarked(id: Session.Id, bookmarked: Boolean)
 
-    suspend fun setEnded(id: SessionId)
+    suspend fun setEnded(id: Session.Id)
 
-    suspend fun upsertParticipants(sessionId: SessionId, names: List<String>): List<ConversationId>
+    suspend fun upsertParticipants(sessionId: Session.Id, names: List<String>): List<ConversationId>
 
     suspend fun upsertContact(conversationId: ConversationId, info: ContactInfo)
 
@@ -34,7 +33,7 @@ interface SessionRepository {
 
     fun observeBookmarkedSessions(): Flow<List<Session>>
 
-    suspend fun deleteSession(id: SessionId)
+    suspend fun deleteSession(id: Session.Id)
 
-    suspend fun loadConversations(sessionId: SessionId): List<Conversation>
+    suspend fun loadConversations(sessionId: Session.Id): List<Conversation>
 }

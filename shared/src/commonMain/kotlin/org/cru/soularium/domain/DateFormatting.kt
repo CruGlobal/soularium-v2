@@ -2,6 +2,7 @@ package org.cru.soularium.domain
 
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import org.cru.soularium.model.Session
 
 /**
  * Returns [Session.startedAt] as a "YYYY-MM-DD" string in the device's local time zone.

@@ -6,7 +6,7 @@ import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import org.cru.soularium.domain.ContactInfo
-import org.cru.soularium.domain.SessionKind
+import org.cru.soularium.model.Session
 
 class TransitionTest {
     private fun ctx(
@@ -19,7 +19,7 @@ class TransitionTest {
 
     @Test
     fun `NotStarted plus StartSession to AddingParticipants`() {
-        val r = transition(SessionState.NotStarted, SessionEvent.StartSession(SessionKind.SOLO), ctx(emptyList()))
+        val r = transition(SessionState.NotStarted, SessionEvent.StartSession(Session.Kind.SOLO), ctx(emptyList()))
         assertEquals(SessionState.AddingParticipants, r.next)
         assertNull(r.error)
         assertEquals(1, r.effects.filterIsInstance<Effect.LogAnalytics>().size)

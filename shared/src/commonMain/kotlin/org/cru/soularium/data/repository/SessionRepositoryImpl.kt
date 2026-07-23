@@ -19,12 +19,11 @@ import org.cru.soularium.data.db.entities.SessionEntity
 import org.cru.soularium.domain.CardPick
 import org.cru.soularium.domain.ContactInfo
 import org.cru.soularium.domain.Conversation
-import org.cru.soularium.domain.Session
-import org.cru.soularium.domain.SessionKind
 import org.cru.soularium.domain.ports.SessionRepository
 import org.cru.soularium.domain.session.SessionState
 import org.cru.soularium.model.CardPickId
 import org.cru.soularium.model.ConversationId
+import org.cru.soularium.model.Session
 import org.cru.soularium.model.SessionId
 
 @Inject
@@ -175,7 +174,7 @@ class SessionRepositoryImpl(
         // Tolerate an unrecognised persisted kind (corruption / a value
         // written by a newer build) rather than throwing and taking down
         // the whole Past Conversations list.
-        kind = SessionKind.entries.firstOrNull { it.name == kind } ?: SessionKind.SOLO,
+        kind = Session.Kind.entries.firstOrNull { it.name == kind } ?: Session.Kind.SOLO,
         startedAt = Instant.fromEpochMilliseconds(startedAt),
         endedAt = endedAt?.let(Instant::fromEpochMilliseconds),
         bookmarkedAt = bookmarkedAt?.let(Instant::fromEpochMilliseconds),

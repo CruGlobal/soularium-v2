@@ -1,10 +1,10 @@
 package org.cru.soularium.domain.session
 
 import org.cru.soularium.domain.ContactInfo
-import org.cru.soularium.domain.SessionKind
+import org.cru.soularium.model.Session
 
 sealed interface SessionEvent {
-    data class StartSession(val kind: SessionKind) : SessionEvent
+    data class StartSession(val kind: Session.Kind) : SessionEvent
 
     data class AddParticipant(val name: String) : SessionEvent
 

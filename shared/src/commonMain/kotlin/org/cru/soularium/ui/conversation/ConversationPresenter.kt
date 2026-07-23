@@ -22,7 +22,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.cru.soularium.domain.ContactInfo
 import org.cru.soularium.domain.content.Questions
-import org.cru.soularium.domain.newSession
 import org.cru.soularium.domain.ports.AnalyticsTracker
 import org.cru.soularium.domain.ports.CrashReporter
 import org.cru.soularium.domain.ports.SessionRepository
@@ -34,6 +33,7 @@ import org.cru.soularium.domain.session.SessionEvent
 import org.cru.soularium.domain.session.SessionState
 import org.cru.soularium.domain.session.transition
 import org.cru.soularium.domain.share.shareUrlFor
+import org.cru.soularium.model.Session
 import org.cru.soularium.ui.nav.ConversationScreen
 
 private const val TOTAL_QUESTIONS = 5
@@ -244,7 +244,7 @@ class ConversationPresenter(
                     if (existing == null || loadStateFailed) {
                         runCatching {
                             sessionRepository.createSession(
-                                session = newSession(screen.sessionId, screen.kind),
+                                session = Session(id = screen.sessionId, kind = screen.kind),
                                 initialState = SessionState.NotStarted,
                             )
                         }.onFailure { crashReporter.recordNonFatal(it, "createSession") }

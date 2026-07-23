@@ -8,9 +8,8 @@ import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
 import org.cru.soularium.data.db.SoulariumDatabase
 import org.cru.soularium.data.db.inMemorySoulariumDatabase
-import org.cru.soularium.domain.SessionKind
-import org.cru.soularium.domain.newSession
 import org.cru.soularium.domain.session.SessionState
+import org.cru.soularium.model.Session
 import org.cru.soularium.model.SessionId
 
 class SessionRepositoryImplTest {
@@ -23,9 +22,9 @@ class SessionRepositoryImplTest {
     fun `a session round-trips through createSession and loadState`() = runTest {
         val (db, repo) = newRepo()
         val sessionId = SessionId.random()
-        repo.createSession(newSession(sessionId, SessionKind.GROUP), SessionState.AddingParticipants)
+        repo.createSession(Session(id = sessionId, kind = Session.Kind.GROUP), SessionState.AddingParticipants)
 
-        assertEquals(SessionKind.GROUP, repo.loadSession(sessionId)?.kind)
+        assertEquals(Session.Kind.GROUP, repo.loadSession(sessionId)?.kind)
         assertEquals(SessionState.AddingParticipants, repo.loadState(sessionId))
         db.close()
     }
@@ -34,7 +33,7 @@ class SessionRepositoryImplTest {
     fun `persistState stamps endedAt once the session is Concluded`() = runTest {
         val (db, repo) = newRepo()
         val sessionId = SessionId.random()
-        repo.createSession(newSession(sessionId, SessionKind.SOLO), SessionState.NotStarted)
+        repo.createSession(Session(id = sessionId, kind = Session.Kind.SOLO), SessionState.NotStarted)
 
         assertNull(repo.loadSession(sessionId)?.endedAt, "a fresh session has no endedAt")
         repo.persistState(sessionId, SessionState.Concluded)
@@ -46,7 +45,7 @@ class SessionRepositoryImplTest {
     fun `upsertParticipants prunes conversations when the list shrinks`() = runTest {
         val (db, repo) = newRepo()
         val sessionId = SessionId.random()
-        repo.createSession(newSession(sessionId, SessionKind.GROUP), SessionState.AddingParticipants)
+        repo.createSession(Session(id = sessionId, kind = Session.Kind.GROUP), SessionState.AddingParticipants)
 
         repo.upsertParticipants(sessionId, listOf("Ana", "Ben", "Cara"))
         assertEquals(3, repo.loadConversations(sessionId).size)
@@ -64,7 +63,7 @@ class SessionRepositoryImplTest {
     fun `deleting a session cascades to its conversations and card picks`() = runTest {
         val (db, repo) = newRepo()
         val sessionId = SessionId.random()
-        repo.createSession(newSession(sessionId, SessionKind.SOLO), SessionState.AddingParticipants)
+        repo.createSession(Session(id = sessionId, kind = Session.Kind.SOLO), SessionState.AddingParticipants)
         val conversationId = repo.upsertParticipants(sessionId, listOf("Ana")).single()
         repo.upsertPicks(conversationId, questionNumber = 1, cardIds = listOf(4, 8, 15), isFinal = true)
         assertEquals(3, repo.loadPicks(conversationId).size)

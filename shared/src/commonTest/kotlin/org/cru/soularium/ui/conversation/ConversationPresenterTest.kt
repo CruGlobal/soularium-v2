@@ -16,9 +16,6 @@ import org.ccci.gto.support.androidx.test.junit.runners.RunOnAndroidWith
 import org.cru.soularium.domain.CardPick
 import org.cru.soularium.domain.ContactInfo
 import org.cru.soularium.domain.Conversation
-import org.cru.soularium.domain.Session
-import org.cru.soularium.domain.SessionKind
-import org.cru.soularium.domain.newSession
 import org.cru.soularium.domain.ports.AnalyticsTracker
 import org.cru.soularium.domain.ports.CrashReporter
 import org.cru.soularium.domain.ports.SessionRepository
@@ -27,6 +24,7 @@ import org.cru.soularium.domain.ports.Sharer
 import org.cru.soularium.domain.session.QuestionActivity
 import org.cru.soularium.domain.session.SessionState
 import org.cru.soularium.model.ConversationId
+import org.cru.soularium.model.Session
 import org.cru.soularium.model.SessionId
 import org.cru.soularium.ui.nav.ConversationScreen
 
@@ -34,7 +32,7 @@ import org.cru.soularium.ui.nav.ConversationScreen
 class ConversationPresenterTest {
 
     private val sessionId = SessionId.random()
-    private val screen = ConversationScreen(sessionId, SessionKind.SOLO)
+    private val screen = ConversationScreen(sessionId, Session.Kind.SOLO)
     private val navigator = FakeNavigator(screen)
 
     private fun presenter(
@@ -222,7 +220,7 @@ class ConversationPresenterTest {
         // Recovery must cascade-delete the broken session (so its conversation
         // and pick children don't linger as orphans) then restart cleanly.
         val repo = FakeSessionRepository().apply {
-            preloadedSession = newSession(sessionId, SessionKind.SOLO)
+            preloadedSession = Session(id = sessionId, kind = Session.Kind.SOLO)
             loadStateError = SerializationException("unknown enum value")
         }
         presenter(repo).test {

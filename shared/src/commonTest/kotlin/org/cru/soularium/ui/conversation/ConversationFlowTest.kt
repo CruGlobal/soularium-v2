@@ -17,8 +17,6 @@ import org.ccci.gto.support.androidx.test.junit.runners.RunOnAndroidWith
 import org.cru.soularium.domain.CardPick
 import org.cru.soularium.domain.ContactInfo
 import org.cru.soularium.domain.Conversation
-import org.cru.soularium.domain.Session
-import org.cru.soularium.domain.SessionKind
 import org.cru.soularium.domain.content.Questions
 import org.cru.soularium.domain.ports.AnalyticsTracker
 import org.cru.soularium.domain.ports.CrashReporter
@@ -28,6 +26,7 @@ import org.cru.soularium.domain.ports.Sharer
 import org.cru.soularium.domain.session.SessionState
 import org.cru.soularium.model.CardPickId
 import org.cru.soularium.model.ConversationId
+import org.cru.soularium.model.Session
 import org.cru.soularium.model.SessionId
 import org.cru.soularium.ui.nav.ConversationScreen
 import org.cru.soularium.ui.screens.PastConversationsPresenter
@@ -50,7 +49,7 @@ class ConversationFlowTest {
         val repo = InMemorySessionRepository()
         val sharer = RecordingSharer()
         val sessionId = SessionId.random()
-        val screen = ConversationScreen(sessionId, SessionKind.SOLO)
+        val screen = ConversationScreen(sessionId, Session.Kind.SOLO)
         val navigator = FakeNavigator(screen)
 
         presenter(navigator, screen, repo, sharer = sharer).test {
@@ -82,7 +81,7 @@ class ConversationFlowTest {
     fun `group session of three completes all five questions`() = runTest {
         val repo = InMemorySessionRepository()
         val sessionId = SessionId.random()
-        val screen = ConversationScreen(sessionId, SessionKind.GROUP)
+        val screen = ConversationScreen(sessionId, Session.Kind.GROUP)
         val navigator = FakeNavigator(screen)
 
         presenter(navigator, screen, repo).test {
@@ -116,7 +115,7 @@ class ConversationFlowTest {
     fun `bookmarked session resumes from persisted state and completes`() = runTest {
         val repo = InMemorySessionRepository()
         val sessionId = SessionId.random()
-        val screen = ConversationScreen(sessionId, SessionKind.SOLO)
+        val screen = ConversationScreen(sessionId, Session.Kind.SOLO)
         val navigator = FakeNavigator(screen)
 
         // First sitting: play questions 1 and 2, then bookmark at question 3.
@@ -155,7 +154,7 @@ class ConversationFlowTest {
     fun `bookmarked group session rehydrates participant names on resume`() = runTest {
         val repo = InMemorySessionRepository()
         val sessionId = SessionId.random()
-        val screen = ConversationScreen(sessionId, SessionKind.GROUP)
+        val screen = ConversationScreen(sessionId, Session.Kind.GROUP)
         val navigator = FakeNavigator(screen)
 
         presenter(navigator, screen, repo).test {
@@ -202,7 +201,7 @@ class ConversationFlowTest {
     fun `deleting a past conversation removes it from the completed list`() = runTest {
         val repo = InMemorySessionRepository()
         val sessionId = SessionId.random()
-        val screen = ConversationScreen(sessionId, SessionKind.SOLO)
+        val screen = ConversationScreen(sessionId, Session.Kind.SOLO)
         val navigator = FakeNavigator(screen)
 
         // Run a full solo session so it lands in the completed list.

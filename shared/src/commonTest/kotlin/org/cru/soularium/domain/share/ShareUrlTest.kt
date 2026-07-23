@@ -3,8 +3,7 @@ package org.cru.soularium.domain.share
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
-import org.cru.soularium.domain.CardPick
-import org.cru.soularium.model.CardPickId
+import org.cru.soularium.model.CardPick
 import org.cru.soularium.model.ContactInfo
 import org.cru.soularium.model.Conversation
 import org.cru.soularium.model.Session
@@ -19,7 +18,7 @@ class ShareUrlTest {
         )
 
     private fun pick(q: Int, card: Int, order: Int, isFinal: Boolean = true) = CardPick(
-        id = CardPickId("p-$q-$card"),
+        id = CardPick.Id("p-$q-$card"),
         conversationId = Conversation.Id("c-1"),
         questionNumber = q,
         cardId = card,

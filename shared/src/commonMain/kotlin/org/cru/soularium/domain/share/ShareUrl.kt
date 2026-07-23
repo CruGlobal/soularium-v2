@@ -1,6 +1,6 @@
 package org.cru.soularium.domain.share
 
-import org.cru.soularium.domain.CardPick
+import org.cru.soularium.model.CardPick
 import org.cru.soularium.model.Conversation
 
 fun shareUrlFor(conversation: Conversation, picks: List<CardPick>): String {

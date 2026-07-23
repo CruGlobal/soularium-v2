@@ -14,7 +14,6 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.ccci.gto.support.androidx.test.junit.runners.AndroidJUnit4
 import org.ccci.gto.support.androidx.test.junit.runners.RunOnAndroidWith
-import org.cru.soularium.domain.CardPick
 import org.cru.soularium.domain.content.Questions
 import org.cru.soularium.domain.ports.AnalyticsTracker
 import org.cru.soularium.domain.ports.CrashReporter
@@ -22,7 +21,7 @@ import org.cru.soularium.domain.ports.SessionRepository
 import org.cru.soularium.domain.ports.ShareResult
 import org.cru.soularium.domain.ports.Sharer
 import org.cru.soularium.domain.session.SessionState
-import org.cru.soularium.model.CardPickId
+import org.cru.soularium.model.CardPick
 import org.cru.soularium.model.ContactInfo
 import org.cru.soularium.model.Conversation
 import org.cru.soularium.model.Session
@@ -380,7 +379,7 @@ private class InMemorySessionRepository : SessionRepository {
         bucket.removeAll { it.questionNumber == questionNumber }
         cardIds.forEachIndexed { order, cardId ->
             bucket += CardPick(
-                id = CardPickId.random(),
+                id = CardPick.Id.random(),
                 conversationId = conversationId,
                 questionNumber = questionNumber,
                 cardId = cardId,

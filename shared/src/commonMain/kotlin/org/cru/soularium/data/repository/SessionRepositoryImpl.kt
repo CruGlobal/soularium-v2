@@ -16,10 +16,9 @@ import org.cru.soularium.data.db.SessionDao
 import org.cru.soularium.data.db.entities.CardPickEntity
 import org.cru.soularium.data.db.entities.ConversationEntity
 import org.cru.soularium.data.db.entities.SessionEntity
-import org.cru.soularium.domain.CardPick
 import org.cru.soularium.domain.ports.SessionRepository
 import org.cru.soularium.domain.session.SessionState
-import org.cru.soularium.model.CardPickId
+import org.cru.soularium.model.CardPick
 import org.cru.soularium.model.ContactInfo
 import org.cru.soularium.model.Conversation
 import org.cru.soularium.model.Session
@@ -123,7 +122,7 @@ class SessionRepositoryImpl(
         val entities =
             cardIds.mapIndexed { i, cid ->
                 CardPickEntity(
-                    id = CardPickId.random().value,
+                    id = CardPick.Id.random().value,
                     conversationId = conversationId.value,
                     questionNumber = questionNumber,
                     cardId = cid,
@@ -187,7 +186,7 @@ class SessionRepositoryImpl(
     )
 
     private fun CardPickEntity.toDomain() = CardPick(
-        id = CardPickId(id),
+        id = CardPick.Id(id),
         conversationId = Conversation.Id(conversationId),
         questionNumber = questionNumber,
         cardId = cardId,

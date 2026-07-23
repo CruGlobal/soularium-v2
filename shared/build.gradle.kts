@@ -7,9 +7,7 @@ plugins {
     id("serialization-conventions")
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.compose.compiler)
-    alias(libs.plugins.ksp)
     id("kotlin-parcelize")
-    alias(libs.plugins.room)
     id("paparazzi-conventions")
 }
 
@@ -48,7 +46,6 @@ kotlin {
                 implementation(projects.module.model)
 
                 api(libs.circuit.codegen.annotations)
-                api(libs.room.runtime)
                 implementation(libs.circuit.foundation)
                 implementation(libs.circuit.overlay)
                 implementation(libs.circuit.runtime.presenter)
@@ -72,7 +69,6 @@ kotlin {
                 implementation(libs.markdown.renderer)
                 implementation(libs.markdown.renderer.m3)
                 implementation(libs.okio)
-                implementation(libs.sqlite.bundled)
             }
         }
 
@@ -105,6 +101,12 @@ kotlin {
                 implementation(libs.testparameterinjector)
             }
         }
+
+        iosTest {
+            dependencies {
+                implementation(libs.sqlite.bundled)
+            }
+        }
     }
 }
 
@@ -115,14 +117,4 @@ compose.resources {
 metro {
     @OptIn(ExperimentalMetroGradleApi::class)
     enableCircuitCodegen.set(true)
-}
-
-room {
-    schemaDirectory("$projectDir/schemas")
-}
-
-dependencies {
-    kspAndroid(libs.room.compiler)
-    add("kspIosArm64", libs.room.compiler)
-    add("kspIosSimulatorArm64", libs.room.compiler)
 }

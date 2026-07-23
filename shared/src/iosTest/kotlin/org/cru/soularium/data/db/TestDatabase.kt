@@ -2,6 +2,8 @@ package org.cru.soularium.data.db
 
 import androidx.room.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import org.cru.soularium.db.room.SoulariumDatabase
+import org.cru.soularium.db.room.withForeignKeysEnabled
 
 /**
  * Builds an in-memory [SoulariumDatabase] for tests, with foreign-key

@@ -1,10 +1,10 @@
-package org.cru.soularium.data.db
+package org.cru.soularium.db.room.dao
 
 import androidx.room.Dao
 import androidx.room.Query
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
-import org.cru.soularium.data.db.entities.SessionEntity
+import org.cru.soularium.db.room.entities.SessionEntity
 
 @Dao
 interface SessionDao {

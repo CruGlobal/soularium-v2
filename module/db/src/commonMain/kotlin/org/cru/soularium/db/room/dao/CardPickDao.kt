@@ -1,10 +1,10 @@
-package org.cru.soularium.data.db
+package org.cru.soularium.db.room.dao
 
 import androidx.room.Dao
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Upsert
-import org.cru.soularium.data.db.entities.CardPickEntity
+import org.cru.soularium.db.room.entities.CardPickEntity
 
 @Dao
 interface CardPickDao {

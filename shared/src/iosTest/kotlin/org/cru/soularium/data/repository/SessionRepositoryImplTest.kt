@@ -6,8 +6,8 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
-import org.cru.soularium.data.db.SoulariumDatabase
 import org.cru.soularium.data.db.inMemorySoulariumDatabase
+import org.cru.soularium.db.room.SoulariumDatabase
 import org.cru.soularium.model.Session
 import org.cru.soularium.model.game.SessionState
 

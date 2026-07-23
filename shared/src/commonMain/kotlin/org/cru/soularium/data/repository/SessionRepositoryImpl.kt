@@ -16,7 +16,7 @@ import org.cru.soularium.data.db.SessionDao
 import org.cru.soularium.data.db.entities.CardPickEntity
 import org.cru.soularium.data.db.entities.ConversationEntity
 import org.cru.soularium.data.db.entities.SessionEntity
-import org.cru.soularium.domain.ports.SessionRepository
+import org.cru.soularium.db.repository.SessionRepository
 import org.cru.soularium.model.CardPick
 import org.cru.soularium.model.ContactInfo
 import org.cru.soularium.model.Conversation

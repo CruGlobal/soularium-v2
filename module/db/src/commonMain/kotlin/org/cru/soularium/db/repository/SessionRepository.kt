@@ -1,4 +1,4 @@
-package org.cru.soularium.domain.ports
+package org.cru.soularium.db.repository
 
 import kotlinx.coroutines.flow.Flow
 import org.cru.soularium.model.CardPick

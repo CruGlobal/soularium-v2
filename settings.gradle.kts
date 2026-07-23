@@ -31,4 +31,5 @@ includeBuild("build-logic")
 include(":androidApp")
 include(":shared")
 
+include(":module:db")
 include(":module:model")

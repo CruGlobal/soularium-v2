@@ -16,8 +16,8 @@ import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
 import kotlinx.coroutines.launch
+import org.cru.soularium.db.repository.SessionRepository
 import org.cru.soularium.domain.ports.CrashReporter
-import org.cru.soularium.domain.ports.SessionRepository
 import org.cru.soularium.domain.startedAtLocalDate
 import org.cru.soularium.model.Session
 import org.cru.soularium.ui.nav.ConversationScreen

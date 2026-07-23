@@ -44,6 +44,7 @@ kotlin {
     sourceSets {
         commonMain {
             dependencies {
+                implementation(projects.module.db)
                 implementation(projects.module.model)
 
                 api(libs.circuit.codegen.annotations)

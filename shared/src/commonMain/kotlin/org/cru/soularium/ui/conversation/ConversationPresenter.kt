@@ -20,10 +20,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import org.cru.soularium.db.repository.SessionRepository
 import org.cru.soularium.domain.content.Questions
 import org.cru.soularium.domain.ports.AnalyticsTracker
 import org.cru.soularium.domain.ports.CrashReporter
-import org.cru.soularium.domain.ports.SessionRepository
 import org.cru.soularium.domain.ports.Sharer
 import org.cru.soularium.domain.session.Effect
 import org.cru.soularium.domain.session.SessionContext

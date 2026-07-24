@@ -19,8 +19,16 @@ kotlin {
         commonMain {
             dependencies {
                 api(projects.module.model)
+
                 api(libs.coroutines.core)
                 api(libs.room.runtime)
+                implementation(libs.kotlinx.serialization.json)
+            }
+        }
+
+        commonTest {
+            dependencies {
+                implementation(libs.coroutines.test)
             }
         }
 

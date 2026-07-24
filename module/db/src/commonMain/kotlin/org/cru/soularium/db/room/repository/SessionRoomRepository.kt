@@ -1,9 +1,6 @@
-package org.cru.soularium.data.repository
+package org.cru.soularium.db.room.repository
 
-import dev.zacsweers.metro.AppScope
-import dev.zacsweers.metro.ContributesBinding
-import dev.zacsweers.metro.Inject
-import dev.zacsweers.metro.SingleIn
+import androidx.room.Dao
 import kotlin.time.Clock
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
@@ -11,9 +8,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.cru.soularium.db.repository.SessionRepository
-import org.cru.soularium.db.room.dao.CardPickDao
-import org.cru.soularium.db.room.dao.ConversationDao
-import org.cru.soularium.db.room.dao.SessionDao
+import org.cru.soularium.db.room.SoulariumDatabase
 import org.cru.soularium.db.room.entities.CardPickEntity
 import org.cru.soularium.db.room.entities.ConversationEntity
 import org.cru.soularium.db.room.entities.SessionEntity
@@ -23,14 +18,11 @@ import org.cru.soularium.model.Conversation
 import org.cru.soularium.model.Session
 import org.cru.soularium.model.game.SessionState
 
-@Inject
-@SingleIn(AppScope::class)
-@ContributesBinding(AppScope::class)
-class SessionRepositoryImpl(
-    private val sessionDao: SessionDao,
-    private val conversationDao: ConversationDao,
-    private val cardPickDao: CardPickDao,
-) : SessionRepository {
+@Dao
+internal abstract class SessionRoomRepository(private val db: SoulariumDatabase) : SessionRepository {
+    private val sessionDao get() = db.sessionDao
+    private val conversationDao get() = db.conversationDao
+    private val cardPickDao get() = db.cardPickDao
     private val json: Json = Json { ignoreUnknownKeys = true }
 
     override suspend fun createSession(session: Session, initialState: SessionState): Session.Id {

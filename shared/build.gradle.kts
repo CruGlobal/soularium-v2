@@ -98,12 +98,6 @@ kotlin {
                 implementation(libs.testparameterinjector)
             }
         }
-
-        iosTest {
-            dependencies {
-                implementation(libs.sqlite.bundled)
-            }
-        }
     }
 }
 

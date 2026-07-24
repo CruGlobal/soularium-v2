@@ -10,21 +10,24 @@ import org.cru.soularium.db.room.dao.SessionDao
 import org.cru.soularium.db.room.entities.CardPickEntity
 import org.cru.soularium.db.room.entities.ConversationEntity
 import org.cru.soularium.db.room.entities.SessionEntity
+import org.cru.soularium.db.room.repository.SessionRoomRepository
 
 @Database(
     entities = [SessionEntity::class, ConversationEntity::class, CardPickEntity::class],
     version = 1,
 )
 @ConstructedBy(SoulariumDatabaseConstructor::class)
-abstract class SoulariumDatabase : RoomDatabase() {
-    abstract fun sessions(): SessionDao
+internal abstract class SoulariumDatabase : RoomDatabase() {
+    // DAOs
+    internal abstract val cardPickDao: CardPickDao
+    internal abstract val conversationDao: ConversationDao
+    internal abstract val sessionDao: SessionDao
 
-    abstract fun conversations(): ConversationDao
-
-    abstract fun cardPicks(): CardPickDao
+    // Repositories
+    internal abstract val sessionRepository: SessionRoomRepository
 }
 
 @Suppress("KotlinNoActualForExpect")
-expect object SoulariumDatabaseConstructor : RoomDatabaseConstructor<SoulariumDatabase> {
+internal expect object SoulariumDatabaseConstructor : RoomDatabaseConstructor<SoulariumDatabase> {
     override fun initialize(): SoulariumDatabase
 }

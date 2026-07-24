@@ -10,6 +10,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.ccci.gto.support.androidx.test.junit.runners.AndroidJUnit4
@@ -405,6 +406,12 @@ private class InMemorySessionRepository : SessionRepository {
 
     override suspend fun loadConversations(sessionId: Session.Id): List<Conversation> =
         conversations[sessionId].orEmpty()
+
+    override fun observeConversations(sessionId: Session.Id): Flow<List<Conversation>> =
+        flowOf(conversations[sessionId].orEmpty())
+
+    override fun observePicks(conversationId: Conversation.Id): Flow<List<CardPick>> =
+        flowOf(picks[conversationId].orEmpty())
 
     private fun refresh() {
         completed.value = completedIds.mapNotNull { sessions[it] }

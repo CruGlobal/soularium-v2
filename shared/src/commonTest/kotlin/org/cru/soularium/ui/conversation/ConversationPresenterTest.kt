@@ -9,6 +9,7 @@ import kotlin.test.assertTrue
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.SerializationException
 import org.ccci.gto.support.androidx.test.junit.runners.AndroidJUnit4
@@ -290,6 +291,11 @@ private class FakeSessionRepository : SessionRepository {
 
     override suspend fun loadConversations(sessionId: Session.Id): List<Conversation> =
         preloadedConversations[sessionId].orEmpty()
+
+    override fun observeConversations(sessionId: Session.Id): Flow<List<Conversation>> =
+        flowOf(preloadedConversations[sessionId].orEmpty())
+
+    override fun observePicks(conversationId: Conversation.Id): Flow<List<CardPick>> = flowOf(emptyList())
 }
 
 private class RecordingAnalytics : AnalyticsTracker {

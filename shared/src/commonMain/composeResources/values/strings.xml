@@ -216,6 +216,7 @@
     <string name="error_no_email_app">No email account is configured on this device.</string>
     <string name="error_no_sms_app">No SMS app is available.</string>
     <string name="error_invalid_selection_count">Pick %1$d image(s) to continue (you have %2$d).</string>
+    <string name="summary_load_failed">Couldn’t load this conversation.</string>
 
     <!-- Accessibility content descriptions -->
     <string name="card_a11y_description_1">Barbed wire atop a chain-link fence</string>

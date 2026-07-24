@@ -3,6 +3,21 @@
 Cru-internal mobile rebuild of the discontinued Soularium and MySoularium
 apps, built with Kotlin Multiplatform and Compose Multiplatform (Android + iOS).
 
+## Modules
+
+- `:module:model` — `@Serializable` domain models (`org.cru.soularium.model`); no other
+  in-repo dependencies.
+- `:module:db` — Room persistence plus the `SessionRepository` contract
+  (`org.cru.soularium.db`); depends on `:module:model`.
+- `:shared` — session state machine, Compose UI, Circuit presenters, navigation, Metro DI,
+  and DeviceState; depends on `:module:db` and `:module:model`.
+- `:androidApp` — the Android application shell; depends on `:shared`. The iOS app
+  (`iosApp/`) embeds `:shared` as a framework.
+- `build-logic/` — convention plugins (`soularium-kmp.module-conventions`,
+  `serialization-conventions`, `metro-conventions`, plus ktlint/kover/paparazzi).
+
+See `.claude/CLAUDE.md` for the full architecture.
+
 ## Documentation
 
 Project docs live in `docs/superpowers/`:
@@ -20,7 +35,7 @@ Gradle wrapper (9.x) drives the build. Source/target bytecode is JVM 17.
 ./gradlew :androidApp:assembleDebug                          # Android APK
 ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64        # iOS framework
 ./gradlew ktlintCheck                                        # lint all modules
-./gradlew :shared:allTests                                   # tests
+./gradlew allTests                                           # tests (all modules, host + iOS sim)
 ```
 
 ## CI and GitHub secrets

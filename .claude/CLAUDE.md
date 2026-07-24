@@ -19,38 +19,48 @@ bundled and persistence is local.
 
 ```
 shared/        → :shared — KMP library (Android via com.android.kotlin.multiplatform.library
-                          + iOS framework). Session state machine, Room + DataStore
-                          persistence, Compose UI, Circuit Presenters, navigation, Metro
-                          DI wiring, and Android/iOS actuals — all in one module. Depends
-                          on :module:model.
-module/model/  → :module:model — KMP library (Android + iOS), the home for shared,
-                              dependency-free @Serializable domain models. Currently empty
-                              (models still live in :shared/domain pending migration).
-                              Depended on by :shared.
+                          + iOS framework). Session state machine, Compose UI, Circuit
+                          Presenters, navigation, Metro DI wiring, DeviceState (DataStore)
+                          persistence, and Android/iOS actuals. Depends on :module:db and
+                          :module:model.
+module/model/  → :module:model — KMP library (Android + iOS). All @Serializable domain
+                              models (org.cru.soularium.model): Session, Conversation,
+                              CardPick, ContactInfo, and the persisted state machine state
+                              (model.game.SessionState). Depends on nothing else in-repo.
+module/db/     → :module:db — KMP library (Android + iOS). The Room persistence layer
+                              (org.cru.soularium.db): the SessionRepository contract, the
+                              Room database/DAOs/entities, the Room-backed repository, and
+                              its Metro bindings. Depends on :module:model.
 androidApp/    → :androidApp — Pure Android application (com.android.application). Hosts
                               MainActivity + SoulariumApplication + AndroidManifest;
                               depends on :shared.
 iosApp/        → Native iOS shell (SwiftUI) hosting the Compose framework.
-build-logic/   → Composite build with the convention plugins (ktlint/kover/paparazzi +
-                              soularium-kmp.module-conventions).
-shared/schemas/ → Exported Room schema JSON (one per @Database version).
+build-logic/   → Composite build with the convention plugins (soularium-kmp.module-conventions,
+                              serialization-conventions, metro-conventions, plus ktlint/kover/paparazzi).
+module/db/schemas/ → Exported Room schema JSON (one per @Database version).
 gradle/libs.versions.toml → Version catalog (single source of dependency versions).
 .github/workflows/ → build.yml, git-lfs-validation.yml, record-snapshots.yml,
                      crowdin-upload.yml, crowdin-download.yml
 ```
 
-The app modules are `:shared`, `:module:model`, and `:androidApp`. Cross-module build
-logic lives in a `build-logic/` composite build. Both KMP library modules
-(`:shared`, `:module:model`) share their target/Android/iOS setup through the
+The app modules are `:shared`, `:module:model`, `:module:db`, and `:androidApp`. Cross-module
+build logic lives in a `build-logic/` composite build. The three KMP library modules
+(`:shared`, `:module:model`, `:module:db`) share their target/Android/iOS setup through the
 `soularium-kmp.module-conventions` precompiled plugin (applies `kotlin("multiplatform")` +
 `com.android.kotlin.multiplatform.library`, sets `compileSdk`/`minSdk`/JVM 17, `withHostTest`,
-and the `iosArm64`/`iosSimulatorArm64` targets, plus `ktlint-conventions` + `kover-conventions`).
-The other convention plugins are `ktlint-conventions`, `kover-conventions`, and
-`paparazzi-conventions` (shared `Project.kt` helper). Each module's `build.gradle.kts` still
+and the `iosArm64`/`iosSimulatorArm64` targets; applies `ktlint-conventions` + `kover-conventions`;
+and wires the `test-framework` bundle into `commonTest` and the `android-test-framework` bundle
+into `androidHostTest`). Two more composable conventions layer on top: `serialization-conventions`
+(kotlin serialization plugin + `api(kotlinx-serialization-core)`) and `metro-conventions` (the
+Metro plugin with `generateContributionProviders`, so `@ContributesTo`/`@ContributesBinding`
+work across module boundaries). The remaining conventions are `ktlint-conventions`,
+`kover-conventions`, and `paparazzi-conventions` (shared `Project.kt` helper). A module lists
+`soularium-kmp.module-conventions` explicitly even when it also applies metro/serialization
+conventions, so its KMP-library nature is obvious. Each module's `build.gradle.kts` still
 declares its own `namespace`, extra plugins, and dependencies using `libs.versions.toml`
 aliases, and inter-module dependencies use the type-safe project accessors
-(`projects.module.model`, enabled via `TYPESAFE_PROJECT_ACCESSORS` in `settings.gradle.kts`).
-`:shared` and `:module:model` are KMP libraries (via
+(`projects.module.model`, `projects.module.db`; `TYPESAFE_PROJECT_ACCESSORS` is enabled in
+`settings.gradle.kts`). `:shared`, `:module:model`, and `:module:db` are KMP libraries (via
 `com.android.kotlin.multiplatform.library`) and `:androidApp` is a separate Android-only
 shell that depends on `:shared`.
 
@@ -97,27 +107,32 @@ this table names the choices, not their versions.
 | Crash / analytics | Firebase Crashlytics + Analytics (no-op until config files land) |
 | i18n | Crowdin (en, es, fr, pl, zh-rCN) |
 
-## Architecture: Hexagonal (single shared module)
+## Architecture: Hexagonal (extracted model + db modules)
 
 ```
 :androidApp  (Android-only shell: MainActivity, SoulariumApplication, manifest)
      │  depends on
      ▼
 :shared      (KMP library — Android + iOS targets)
-     │        ├── org.cru.soularium.domain — pure models, ports, session state machine
-     │        ├── org.cru.soularium.data   — Room + DataStore + repository impls
-     │        └── org.cru.soularium.ui     — Compose UI, Circuit Presenters, navigation, Metro DI
+     │        ├── org.cru.soularium.domain — ports, pure session state machine, content,
+     │        │                              DomainError, settings/share
+     │        ├── org.cru.soularium.data   — DeviceState (DataStore) + ContentRepositoryImpl
+     │        └── org.cru.soularium.ui      — Compose UI, Circuit Presenters, navigation, Metro DI
      │  depends on
+     ├──────────────► :module:db (KMP library)
+     │                └── org.cru.soularium.db — SessionRepository contract + Room persistence
+     │                                           (database, DAOs, entities, RoomBindings, the
+     │                                           Room-backed repository).  Depends on :module:model.
      ▼
 :module:model (KMP library — Android + iOS targets)
-              └── org.cru.soularium.model — home for shared, dependency-free @Serializable
-                                            models (currently empty; models still live in
-                                            :shared/domain pending migration)
+              └── org.cru.soularium.model — @Serializable domain models (Session, Conversation,
+                                            CardPick, ContactInfo) and model.game.SessionState
 ```
 
-`:androidApp` depends on `:shared`; `:shared` depends on `:module:model`; `:module:model`
-depends on nothing else in this repo. Package roots: `org.cru.soularium.app` (androidApp),
-`org.cru.soularium.model` (module:model), `org.cru.soularium` (shared, with sub-packages
+`:androidApp` → `:shared` → `:module:db` → `:module:model`, and `:shared` also depends on
+`:module:model` directly; `:module:model` depends on nothing else in this repo. Package roots:
+`org.cru.soularium.app` (androidApp), `org.cru.soularium.model` (module:model),
+`org.cru.soularium.db` (module:db), `org.cru.soularium` (shared, with sub-packages
 `domain`, `data`, `ui`, `di`, `platform`, `analytics`).
 
 Layering is enforced by package convention: code in `org.cru.soularium.domain`
@@ -127,17 +142,18 @@ must not import from `ui`.
 ### Domain layer (`org.cru.soularium.domain`)
 
 - **Ports** (`domain/ports/`): interfaces the rest of the app depends on —
-  `ContentRepository`, `SessionRepository`, `DeviceStateRepository`, `AnalyticsTracker`,
-  `CrashReporter`, `Sharer`. The interfaces live here; implementations live in
-  `org.cru.soularium.data` or in the platform Metro binding containers (`PlatformBindings`).
-- **Session state machine** (`domain/session/`): `SessionState` (sealed,
-  `@Serializable`), `SessionEvent` (sealed), a **pure** `fun transition(state, event,
-  ctx): TransitionResult`, and `Effect` (sealed). `transition()` performs no I/O — side
-  effects are *returned as data* (`Effect`) for the Presenter to execute. Keep it pure
-  and exhaustively tested.
-- **Models**: `Session`, `Conversation`, `CardPick`, `ContactInfo`, etc. — all
-  `@Serializable`. IDs (`SessionId`, `ConversationId`, `CardPickId`) are
-  `@Serializable @JvmInline value class` wrappers over UUID strings.
+  `ContentRepository`, `DeviceStateRepository`, `AnalyticsTracker`, `CrashReporter`,
+  `Sharer`. The interfaces live here; implementations live in `org.cru.soularium.data`
+  or in the platform Metro binding containers (`PlatformBindings`). (`SessionRepository`
+  is **not** here — it moved to `:module:db`, package `org.cru.soularium.db.repository`.)
+- **Session state machine** (`domain/session/`): `SessionEvent` (sealed), a **pure**
+  `fun transition(state, event, ctx): TransitionResult`, `Effect` (sealed), and
+  `SessionContext`. The state itself — `SessionState` (sealed, `@Serializable`, with the
+  nested `SessionState.InQuestion.QuestionState` enum) — lives in `:module:model`
+  (`org.cru.soularium.model.game`), so `transition()` operates over it. `transition()`
+  performs no I/O — side effects are *returned as data* (`Effect`) for the Presenter to
+  execute. Keep it pure and exhaustively tested.
+- **Models** live in `:module:model` (see below), not here.
 - **Errors**: `DomainError` sealed interface. There is no `Result<T>` wrapper —
   transition errors surface via `TransitionResult.error`.
 
@@ -147,26 +163,56 @@ APIs — a domain port can have Android/iOS `actual` implementations that use th
 one exception: lightweight multiplatform value types such as Compose's `Locale`
 (`androidx.compose.ui.text.intl.Locale`), treated as a data model.
 
-### Data layer (`org.cru.soularium.data`)
+### Model layer (`:module:model`, `org.cru.soularium.model`)
 
-- `SoulariumDatabase` is `@Database(version = 1, exportSchema = true)` with
-  `@ConstructedBy(SoulariumDatabaseConstructor::class)` and an
-  `expect object SoulariumDatabaseConstructor : RoomDatabaseConstructor<SoulariumDatabase>`.
-  Room codegen runs through KSP for `kspAndroid` + each `kspIos*` target.
-- Entities (`SessionEntity`, `ConversationEntity`, `CardPickEntity`) use FK cascades and
-  indices on FK columns. DAOs use `@Upsert`, `@Query`, and `Flow` return types.
-- The database is opened through an `expect fun getDatabaseBuilder()` with Android/iOS
-  actuals; `BundledSQLiteDriver` is the driver on both platforms.
-- **`SessionState` is persisted as a JSON snapshot string** (`state_snapshot_json`
-  column). Renaming or removing a `@Serializable` field in the session-state hierarchy
-  breaks already-persisted sessions — treat such changes as schema changes.
-- Exported Room schema JSON lives in `shared/schemas/`. A `@Database` version
-  bump must ship a matching schema JSON and migration.
+- Holds every `@Serializable` domain model, dependency-free (only serialization + stdlib):
+  `Session`, `Conversation`, `CardPick`, `ContactInfo`, and the persisted state machine
+  state `model.game.SessionState`.
+- **IDs are nested value classes**, one per owning model: `Session.Id`, `Conversation.Id`,
+  `CardPick.Id` — each a `@Serializable @JvmInline value class` over a UUID string
+  (serializes as a bare JSON string). `Session` also nests `Session.Kind`, and
+  `SessionState.InQuestion` nests the `QuestionState` enum.
+- Applies `serialization-conventions` (so `@Serializable`/`@SerialName` are available).
+  `@SerialName` on `ContactInfo` and `SessionState` variants pins the JSON wire format —
+  do not change an existing `@SerialName`; it would orphan persisted sessions.
+
+### Data layer (`org.cru.soularium.data`, in `:shared`)
+
+- What remains in `:shared` is non-Room: the DeviceState `DataStore` code
+  (`data/devicestate/`) and `ContentRepositoryImpl` (`data/repository/`, the bundled
+  content). The Room database and the `SessionRepository` implementation moved to
+  `:module:db`.
 - Device flags (intro seen, ToS agreed) persist via DataStore Preferences, not Room. The
   app language is not stored here — it is the platform per-app language setting, read
   through `LanguageRepository`.
-- Repositories map Room entities ↔ domain models; the mapping must be total (no `!!` on
-  optional columns).
+- Repositories map persistence rows ↔ domain models; the mapping must be total (no `!!`
+  on optional columns).
+
+### Persistence — Room (`:module:db`, `org.cru.soularium.db`)
+
+- `db.repository.SessionRepository` is the persistence **contract** (the interface
+  `:shared` depends on). `db.room` holds the Room implementation.
+- `SoulariumDatabase` (`db.room`) is `@Database(version = 1)` with
+  `@ConstructedBy(SoulariumDatabaseConstructor::class)` and an
+  `expect object SoulariumDatabaseConstructor : RoomDatabaseConstructor<SoulariumDatabase>`.
+  Its DAO/repository accessors are `internal abstract val`s. Room codegen runs through KSP
+  for `kspAndroid` + each `kspIos*` target.
+- Entities (`db.room.entities`) use FK cascades and indices on FK columns; DAOs
+  (`db.room.dao`) use `@Upsert`, `@Query`, and `Flow` return types. **Foreign-key
+  enforcement is on by default** with Room 2.8's drivers — there is no manual
+  `PRAGMA foreign_keys = ON`.
+- `SessionRoomRepository` is a Room `@Dao internal abstract class(db: SoulariumDatabase)`
+  implementing `SessionRepository`: it reads its DAOs off the database and does the
+  entity ↔ model mapping. `RoomBindings` exposes it to the graph as `SessionRepository`
+  (see DI below).
+- The database builder is provided per platform by `Android`/`Ios RoomBindings`
+  (`AndroidSQLiteDriver` on Android, `BundledSQLiteDriver` on iOS) — not via an
+  `expect`/`actual` function.
+- **`SessionState` is persisted as a JSON snapshot string** (`state_snapshot_json`
+  column). Renaming or removing a `@Serializable` field in the session-state hierarchy
+  breaks already-persisted sessions — treat such changes as schema changes.
+- Exported Room schema JSON lives in `module/db/schemas/`. A `@Database` version bump
+  must ship a matching schema JSON and migration.
 
 ### UI layer (`org.cru.soularium.ui`)
 
@@ -222,14 +268,18 @@ one exception: lightweight multiplatform value types such as Compose's `Locale`
   `@DependencyGraph(AppScope::class)` interface created via
   `createSoulariumAppGraph(platformBindings)`. The Android shell builds it once in
   `SoulariumApplication`; iOS builds it in `MainViewController.kt`.
-- App-wide bindings live in `@BindingContainer @ContributesTo(AppScope::class)`
-  interfaces (`DataBindings` for the database/DAOs/`DeviceStateRepository`,
-  `CircuitBindings` for the assembled `Circuit`, `Placeholders` for the no-op
-  analytics/crash). Repository implementations (`SessionRepositoryImpl`,
-  `ContentRepositoryImpl`) are `@Inject @ContributesBinding(AppScope::class)` so they're
-  picked up automatically. Add new app-wide types by giving the implementation
-  `@Inject` + `@ContributesBinding(AppScope::class)`, or by adding a `@Provides` to one
-  of the binding containers.
+- App-wide bindings live in `@BindingContainer @ContributesTo(AppScope::class)` containers,
+  and **contributions merge across modules** — every Metro module applies
+  `metro-conventions` (`generateContributionProviders`), so `:module:db`'s bindings land in
+  the `:shared` graph. In `:shared`: `DataBindings` (the `DeviceStateRepository`/DataStore),
+  `CircuitBindings` (the assembled `Circuit`), `Placeholders` (no-op analytics/crash). In
+  `:module:db`: `RoomBindings` builds the `SoulariumDatabase` and provides the
+  `SessionRepository` (`= db.sessionRepository`), while `Android`/`Ios RoomBindings` provide
+  the platform DB builder. `ContentRepositoryImpl` is `@Inject @ContributesBinding(AppScope::class)`
+  so it's picked up automatically; the Room-backed `SessionRoomRepository` is a `@Dao` (Room
+  constructs it) and is provided by `RoomBindings` rather than `@ContributesBinding`. Add new
+  app-wide types by giving the implementation `@Inject` + `@ContributesBinding(AppScope::class)`,
+  or by adding a `@Provides` to one of the binding containers.
 - `PlatformBindings` is `expect class PlatformBindings` with Android/iOS actuals.
   The Android actual exposes the `Context` and pulls in `AndroidSharer`; the iOS actual
   pulls in `IosSharer`. Both `Sharer` impls are `@Inject @ContributesBinding(AppScope::class)`.
@@ -245,12 +295,14 @@ one exception: lightweight multiplatform value types such as Compose's `Locale`
 
 KMP platform seams use `expect`/`actual`: `PlatformBindings`, `Sharer`
 (`AndroidSharer` → `Intent.ACTION_SEND`; `IosSharer` → `UIActivityViewController`),
-`PlatformBackHandler` (Android → `BackHandler`; iOS → no-op), `getDatabaseBuilder()`,
-and `SoulariumDatabaseConstructor`. (The device-state `DataStore` is not an `expect`/`actual`
+`PlatformBackHandler` (Android → `BackHandler`; iOS → no-op), and — in `:module:db` —
+`SoulariumDatabaseConstructor` (its `actual`s are KSP-generated per platform). The Room
+database **builder** is *not* `expect`/`actual`: it's a platform Metro `@Provides` in
+`Android`/`Ios RoomBindings`. The device-state `DataStore` is likewise not `expect`/`actual`
 — the common `preferenceDataStoreAt(producePath)` helper builds it and each platform's
-`@Provides providesDeviceStateDataStore` supplies the path.) Every `expect`
-declaration needs an `actual` for **both** `androidMain` and `iosMain`, with matching
-signatures. `commonMain` must contain no Android- or iOS-specific imports.
+`@Provides providesDeviceStateDataStore` supplies the path. Every `expect` declaration needs
+an `actual` for **both** `androidMain` and `iosMain`, with matching signatures. `commonMain`
+must contain no Android- or iOS-specific imports.
 
 ## Testing
 
@@ -265,6 +317,19 @@ signatures. `commonMain` must contain no Android- or iOS-specific imports.
   them under Robolectric — required because the Compose Runtime's Android artifact
   touches `android.util.Log` from its error path. The iOS-simulator variant runs the
   same tests unannotated. Pure domain code (no Compose) has no such requirement.
+- **Tests live in each module's `commonTest`** — `:module:model`, `:module:db`, and
+  `:shared`. `soularium-kmp.module-conventions` wires `kotlin.test` (+ the multiplatform
+  `@RunOnAndroidWith` runner) into every `commonTest` via the `test-framework` catalog
+  bundle, and Robolectric + androidx-test into every `androidHostTest` via the
+  `android-test-framework` bundle.
+- **Repository / Room tests** use an abstract-contract pattern: a persistence-agnostic
+  contract test (e.g. `db.repository.SessionRepositoryTest`, asserting against an
+  `abstract val repository`) plus a thin Room subclass (`SessionRoomRepositoryTest`,
+  `@RunOnAndroidWith(AndroidJUnit4::class)`) that wires `db.sessionRepository` in. It runs
+  on **both** Android host (Robolectric) and iOS via an `expect fun
+  buildInMemorySoulariumDatabase()` with android/ios actuals (Android `ApplicationProvider`,
+  iOS `BundledSQLiteDriver`); `module/db/src/androidHostTest/resources/robolectric.properties`
+  pins the Robolectric SDK.
 - **Compose UI interaction tests** live in `commonTest` and use `runComposeUiTest` (the
   `androidx.compose.ui.test.v2` API, from the `compose-ui-test` catalog entry) with
   `@RunOnAndroidWith(AndroidJUnit4::class)`. They render a composable, drive it
@@ -335,7 +400,8 @@ author may dismiss severity < 7 findings.
 ## Key Conventions
 
 - Package structure: `org.cru.soularium.<area>` (e.g. `org.cru.soularium.ui.conversation`,
-  `org.cru.soularium.domain.session`, `org.cru.soularium.data.db`). The Compose-resources
+  `org.cru.soularium.domain.session`, `org.cru.soularium.model.game`,
+  `org.cru.soularium.db.room`). The Compose-resources
   `Res` accessor is generated at `org.cru.soularium.generated.resources` (configured via
   `compose.resources.packageOfResClass` in `:shared`).
 - Android: `minSdk 24`, `compileSdk`/`targetSdk 37`, JVM target 17, application id

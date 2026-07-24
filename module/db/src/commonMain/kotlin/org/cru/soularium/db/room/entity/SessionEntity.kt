@@ -17,6 +17,25 @@ data class SessionEntity(
     @ColumnInfo(name = "started_at") val startedAt: Instant,
     @ColumnInfo(name = "ended_at") val endedAt: Instant?,
     @ColumnInfo(name = "bookmarked_at") val bookmarkedAt: Instant?,
-    @ColumnInfo(name = "state_snapshot_json") val state: SessionState,
     @ColumnInfo(name = "selection_instructions_shown") val selectionInstructionsShown: Boolean,
-)
+    @ColumnInfo(name = "state_snapshot_json") val state: SessionState,
+) {
+    constructor(session: Session, state: SessionState) : this(
+        id = session.id,
+        kind = session.kind,
+        startedAt = session.startedAt,
+        endedAt = session.endedAt,
+        bookmarkedAt = session.bookmarkedAt,
+        selectionInstructionsShown = session.selectionInstructionsShown,
+        state = state,
+    )
+
+    fun toModel() = Session(
+        id = id,
+        kind = kind,
+        startedAt = startedAt,
+        endedAt = endedAt,
+        bookmarkedAt = bookmarkedAt,
+        selectionInstructionsShown = selectionInstructionsShown,
+    )
+}

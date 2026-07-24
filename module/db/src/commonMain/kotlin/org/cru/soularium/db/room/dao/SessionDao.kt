@@ -14,8 +14,6 @@ interface SessionDao {
     @Query("SELECT * FROM sessions WHERE id = :id")
     fun findSessionFlow(id: Session.Id): Flow<SessionEntity?>
 
-    // @Upsert (not @Insert REPLACE): REPLACE deletes the existing row first,
-    // which cascades to child conversations/card_picks. @Upsert updates in place.
     @Upsert
     suspend fun upsert(session: SessionEntity)
 

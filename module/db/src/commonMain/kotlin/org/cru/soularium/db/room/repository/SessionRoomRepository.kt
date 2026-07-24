@@ -25,7 +25,7 @@ internal abstract class SessionRoomRepository(private val db: SoulariumDatabase)
     override fun findSessionFlow(id: Session.Id) = sessionDao.findSessionFlow(id).map { it?.toModel() }
 
     override suspend fun createSession(session: Session, initialState: SessionState): Session.Id {
-        sessionDao.upsert(session.toEntity(initialState))
+        sessionDao.upsert(SessionEntity(session, initialState))
         return session.id
     }
 
@@ -152,25 +152,6 @@ internal abstract class SessionRoomRepository(private val db: SoulariumDatabase)
         cardPickDao.observeForConversation(conversationId.value).map { list ->
             list.map { it.toModel() }
         }
-
-    private fun Session.toEntity(state: SessionState) = SessionEntity(
-        id = id,
-        kind = kind,
-        startedAt = startedAt,
-        endedAt = endedAt,
-        bookmarkedAt = bookmarkedAt,
-        state = state,
-        selectionInstructionsShown = selectionInstructionsShown,
-    )
-
-    private fun SessionEntity.toModel() = Session(
-        id = id,
-        kind = kind,
-        startedAt = startedAt,
-        endedAt = endedAt,
-        bookmarkedAt = bookmarkedAt,
-        selectionInstructionsShown = selectionInstructionsShown,
-    )
 
     private fun ConversationEntity.toModel() = Conversation(
         id = Conversation.Id(id),

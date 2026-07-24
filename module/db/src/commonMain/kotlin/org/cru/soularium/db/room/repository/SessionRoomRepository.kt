@@ -2,7 +2,6 @@ package org.cru.soularium.db.room.repository
 
 import androidx.room.Dao
 import kotlin.time.Clock
-import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import org.cru.soularium.db.repository.SessionRepository
@@ -38,7 +37,7 @@ internal abstract class SessionRoomRepository(private val db: SoulariumDatabase)
         // Past Conversations → Completed (which filters on ended_at).
         val endedAt =
             if (state == SessionState.Concluded) {
-                current.endedAt ?: Clock.System.now().toEpochMilliseconds()
+                current.endedAt ?: Clock.System.now()
             } else {
                 current.endedAt
             }
@@ -52,13 +51,13 @@ internal abstract class SessionRoomRepository(private val db: SoulariumDatabase)
 
     override suspend fun setBookmarked(id: Session.Id, bookmarked: Boolean) {
         val current = sessionDao.findSession(id) ?: return
-        val bookmarkedAt = if (bookmarked) Clock.System.now().toEpochMilliseconds() else null
+        val bookmarkedAt = if (bookmarked) Clock.System.now() else null
         sessionDao.upsert(current.copy(bookmarkedAt = bookmarkedAt))
     }
 
     override suspend fun setEnded(id: Session.Id) {
         val current = sessionDao.findSession(id) ?: return
-        sessionDao.upsert(current.copy(endedAt = Clock.System.now().toEpochMilliseconds()))
+        sessionDao.upsert(current.copy(endedAt = Clock.System.now()))
     }
 
     override suspend fun upsertParticipants(sessionId: Session.Id, names: List<String>): List<Conversation.Id> {
@@ -157,9 +156,9 @@ internal abstract class SessionRoomRepository(private val db: SoulariumDatabase)
     private fun Session.toEntity(state: SessionState) = SessionEntity(
         id = id,
         kind = kind,
-        startedAt = startedAt.toEpochMilliseconds(),
-        endedAt = endedAt?.toEpochMilliseconds(),
-        bookmarkedAt = bookmarkedAt?.toEpochMilliseconds(),
+        startedAt = startedAt,
+        endedAt = endedAt,
+        bookmarkedAt = bookmarkedAt,
         state = state,
         selectionInstructionsShown = selectionInstructionsShown,
     )
@@ -167,9 +166,9 @@ internal abstract class SessionRoomRepository(private val db: SoulariumDatabase)
     private fun SessionEntity.toModel() = Session(
         id = id,
         kind = kind,
-        startedAt = Instant.fromEpochMilliseconds(startedAt),
-        endedAt = endedAt?.let(Instant::fromEpochMilliseconds),
-        bookmarkedAt = bookmarkedAt?.let(Instant::fromEpochMilliseconds),
+        startedAt = startedAt,
+        endedAt = endedAt,
+        bookmarkedAt = bookmarkedAt,
         selectionInstructionsShown = selectionInstructionsShown,
     )
 

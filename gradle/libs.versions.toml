@@ -57,6 +57,7 @@ firebase-analytics = { module = "com.google.firebase:firebase-analytics-ktx" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebase-bom" }
 firebase-crashlytics = { module = "com.google.firebase:firebase-crashlytics-ktx" }
 gtoSupport-androidx-core = { module = "org.ccci.gto.android:gto-support-androidx-core", version.ref = "gtoSupport" }
+gtoSupport-androidx-room = { module = "org.ccci.gto.android:gto-support-androidx-room", version.ref = "gtoSupport" }
 gtoSupport-androidx-test-junit = { module = "org.ccci.gto.android:gto-support-androidx-test-junit", version.ref = "gtoSupport" }
 gtoSupport-circuit-test = { module = "org.ccci.gto.android.testing:gto-support-circuit", version.ref = "gtoSupport" }
 gtoSupport-compose = { module = "org.ccci.gto.android:gto-support-compose", version.ref = "gtoSupport" }

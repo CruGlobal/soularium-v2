@@ -1,0 +1,59 @@
+package org.cru.soularium.model.game
+
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+/**
+ * The persisted snapshot of where a conversation is in its flow.
+ *
+ * Instances are serialized to JSON and stored in the `sessions` table
+ * (`state_snapshot_json`). The `@SerialName` on every variant pins the
+ * serialized type discriminator to a stable string so that renaming or moving
+ * these Kotlin types never breaks an already-persisted (e.g. bookmarked)
+ * session. Do not change an existing `@SerialName` value.
+ */
+@Serializable
+sealed interface SessionState {
+    @Serializable
+    @SerialName("not_started")
+    data object NotStarted : SessionState
+
+    @Serializable
+    @SerialName("adding_participants")
+    data object AddingParticipants : SessionState
+
+    @Serializable
+    @SerialName("in_question")
+    data class InQuestion(val questionNumber: Int, val activeParticipantIndex: Int, val activity: QuestionState) :
+        SessionState {
+        @Serializable
+        enum class QuestionState {
+            @SerialName("showing_prompt")
+            ShowingPrompt,
+
+            @SerialName("showing_instructions")
+            ShowingInstructions,
+
+            @SerialName("selecting")
+            Selecting,
+
+            @SerialName("finalizing")
+            Finalizing,
+
+            @SerialName("discussing")
+            Discussing,
+        }
+    }
+
+    @Serializable
+    @SerialName("summary")
+    data object Summary : SessionState
+
+    @Serializable
+    @SerialName("collecting_contact")
+    data class CollectingContact(val participantIndex: Int) : SessionState
+
+    @Serializable
+    @SerialName("concluded")
+    data object Concluded : SessionState
+}

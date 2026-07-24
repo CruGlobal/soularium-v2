@@ -2,6 +2,8 @@ package org.cru.soularium.domain.session
 
 import org.cru.soularium.domain.DomainError
 import org.cru.soularium.domain.content.Questions
+import org.cru.soularium.model.game.SessionState
+import org.cru.soularium.model.game.SessionState.InQuestion.QuestionState
 
 fun transition(state: SessionState, event: SessionEvent, ctx: SessionContext): TransitionResult = when (state) {
     SessionState.NotStarted -> transitionNotStarted(event)
@@ -61,7 +63,7 @@ private fun transitionAddingParticipants(event: SessionEvent, ctx: SessionContex
                 error = DomainError.InvalidStateTransition("AddingParticipants", "ConfirmParticipants(empty)"),
             )
         } else {
-            val next = SessionState.InQuestion(1, 0, QuestionActivity.ShowingPrompt)
+            val next = SessionState.InQuestion(1, 0, QuestionState.ShowingPrompt)
             TransitionResult(
                 next = next,
                 effects = listOf(Effect.PersistState(next)),
@@ -85,23 +87,23 @@ private fun transitionInQuestion(
         SessionEvent.BeginSelection -> {
             val targetActivity =
                 if (ctx.showInstructionsForThisSession &&
-                    state.activity == QuestionActivity.ShowingPrompt
+                    state.activity == QuestionState.ShowingPrompt
                 ) {
-                    QuestionActivity.ShowingInstructions
+                    QuestionState.ShowingInstructions
                 } else {
-                    QuestionActivity.Selecting
+                    QuestionState.Selecting
                 }
             val next = state.copy(activity = targetActivity)
             TransitionResult(next = next, effects = listOf(Effect.PersistState(next)))
         }
 
         SessionEvent.DismissInstructions -> {
-            val next = state.copy(activity = QuestionActivity.Selecting)
+            val next = state.copy(activity = QuestionState.Selecting)
             TransitionResult(next = next, effects = listOf(Effect.PersistState(next)))
         }
 
         SessionEvent.ConfirmSelection -> {
-            if (state.activity != QuestionActivity.Selecting) {
+            if (state.activity != QuestionState.Selecting) {
                 return TransitionResult(
                     next = state,
                     error = DomainError.InvalidStateTransition(state.toString(), event::class.simpleName ?: "?"),
@@ -116,7 +118,7 @@ private fun transitionInQuestion(
                     ),
                 )
             }
-            val next = state.copy(activity = QuestionActivity.Finalizing)
+            val next = state.copy(activity = QuestionState.Finalizing)
             TransitionResult(
                 next = next,
                 effects =
@@ -139,7 +141,7 @@ private fun transitionInQuestion(
                     error = DomainError.InvalidSelectionCount(question.requiredImageCount, ctx.currentDraftPicks.size),
                 )
             }
-            val next = state.copy(activity = QuestionActivity.Discussing)
+            val next = state.copy(activity = QuestionState.Discussing)
             TransitionResult(
                 next = next,
                 effects =
@@ -171,13 +173,13 @@ private fun transitionInQuestion(
                     !isLastParticipant ->
                         state.copy(
                             activeParticipantIndex = state.activeParticipantIndex + 1,
-                            activity = QuestionActivity.ShowingPrompt,
+                            activity = QuestionState.ShowingPrompt,
                         )
                     state.questionNumber < 5 ->
                         SessionState.InQuestion(
                             questionNumber = state.questionNumber + 1,
                             activeParticipantIndex = 0,
-                            activity = QuestionActivity.ShowingPrompt,
+                            activity = QuestionState.ShowingPrompt,
                         )
                     else -> SessionState.Summary
                 }

@@ -28,7 +28,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import org.cru.soularium.domain.ContactInfo
 import org.cru.soularium.generated.resources.Res
 import org.cru.soularium.generated.resources.action_save
 import org.cru.soularium.generated.resources.action_skip_for_now
@@ -39,6 +38,7 @@ import org.cru.soularium.generated.resources.contact_last_name
 import org.cru.soularium.generated.resources.contact_notes_label
 import org.cru.soularium.generated.resources.contact_phone_hint
 import org.cru.soularium.generated.resources.contact_title
+import org.cru.soularium.model.ContactInfo
 import org.jetbrains.compose.resources.stringResource
 
 /**

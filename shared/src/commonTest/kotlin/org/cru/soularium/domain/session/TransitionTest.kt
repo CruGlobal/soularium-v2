@@ -5,8 +5,10 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
-import org.cru.soularium.domain.ContactInfo
-import org.cru.soularium.domain.SessionKind
+import org.cru.soularium.model.ContactInfo
+import org.cru.soularium.model.Session
+import org.cru.soularium.model.game.SessionState
+import org.cru.soularium.model.game.SessionState.InQuestion.QuestionState
 
 class TransitionTest {
     private fun ctx(
@@ -19,7 +21,7 @@ class TransitionTest {
 
     @Test
     fun `NotStarted plus StartSession to AddingParticipants`() {
-        val r = transition(SessionState.NotStarted, SessionEvent.StartSession(SessionKind.SOLO), ctx(emptyList()))
+        val r = transition(SessionState.NotStarted, SessionEvent.StartSession(Session.Kind.SOLO), ctx(emptyList()))
         assertEquals(SessionState.AddingParticipants, r.next)
         assertNull(r.error)
         assertEquals(1, r.effects.filterIsInstance<Effect.LogAnalytics>().size)
@@ -56,7 +58,7 @@ class TransitionTest {
         val next = assertIs<SessionState.InQuestion>(r.next)
         assertEquals(1, next.questionNumber)
         assertEquals(0, next.activeParticipantIndex)
-        assertEquals(QuestionActivity.ShowingPrompt, next.activity)
+        assertEquals(QuestionState.ShowingPrompt, next.activity)
     }
 
     @Test
@@ -70,51 +72,51 @@ class TransitionTest {
 
     @Test
     fun `BeginSelection from ShowingPrompt without instructions goes to Selecting`() {
-        val s = SessionState.InQuestion(1, 0, QuestionActivity.ShowingPrompt)
+        val s = SessionState.InQuestion(1, 0, QuestionState.ShowingPrompt)
         val r = transition(s, SessionEvent.BeginSelection, ctx(showInstructions = false))
         val next = assertIs<SessionState.InQuestion>(r.next)
-        assertEquals(QuestionActivity.Selecting, next.activity)
+        assertEquals(QuestionState.Selecting, next.activity)
     }
 
     @Test
     fun `BeginSelection from ShowingPrompt with instructions goes to ShowingInstructions`() {
-        val s = SessionState.InQuestion(1, 0, QuestionActivity.ShowingPrompt)
+        val s = SessionState.InQuestion(1, 0, QuestionState.ShowingPrompt)
         val r = transition(s, SessionEvent.BeginSelection, ctx(showInstructions = true))
         val next = assertIs<SessionState.InQuestion>(r.next)
-        assertEquals(QuestionActivity.ShowingInstructions, next.activity)
+        assertEquals(QuestionState.ShowingInstructions, next.activity)
     }
 
     @Test
     fun `DismissInstructions to Selecting`() {
-        val s = SessionState.InQuestion(1, 0, QuestionActivity.ShowingInstructions)
+        val s = SessionState.InQuestion(1, 0, QuestionState.ShowingInstructions)
         val r = transition(s, SessionEvent.DismissInstructions, ctx())
         val next = assertIs<SessionState.InQuestion>(r.next)
-        assertEquals(QuestionActivity.Selecting, next.activity)
+        assertEquals(QuestionState.Selecting, next.activity)
     }
 
     @Test
     fun `BeginSelection from Finalizing returns to Selecting with picks intact`() {
-        val s = SessionState.InQuestion(1, 0, QuestionActivity.Finalizing)
+        val s = SessionState.InQuestion(1, 0, QuestionState.Finalizing)
         val r = transition(s, SessionEvent.BeginSelection, ctx())
         val next = assertIs<SessionState.InQuestion>(r.next)
-        assertEquals(QuestionActivity.Selecting, next.activity)
+        assertEquals(QuestionState.Selecting, next.activity)
     }
 
     // --- InQuestion: ConfirmSelection ---
 
     @Test
     fun `Q1 ConfirmSelection with exactly 3 picks goes to Finalizing`() {
-        val s = SessionState.InQuestion(1, 0, QuestionActivity.Selecting)
+        val s = SessionState.InQuestion(1, 0, QuestionState.Selecting)
         val r = transition(s, SessionEvent.ConfirmSelection, ctx(draft = listOf(1, 2, 3)))
         val next = assertIs<SessionState.InQuestion>(r.next)
-        assertEquals(QuestionActivity.Finalizing, next.activity)
+        assertEquals(QuestionState.Finalizing, next.activity)
         val picks = r.effects.filterIsInstance<Effect.PersistPicks>().single()
         assertEquals(true, picks.isFinal)
     }
 
     @Test
     fun `Q1 ConfirmSelection with wrong count errors`() {
-        val s = SessionState.InQuestion(1, 0, QuestionActivity.Selecting)
+        val s = SessionState.InQuestion(1, 0, QuestionState.Selecting)
         val r = transition(s, SessionEvent.ConfirmSelection, ctx(draft = listOf(1, 2)))
         assertEquals(s, r.next)
         assertNotNull(r.error)
@@ -122,17 +124,17 @@ class TransitionTest {
 
     @Test
     fun `Q3 ConfirmSelection with 1 pick goes to Finalizing`() {
-        val s = SessionState.InQuestion(3, 0, QuestionActivity.Selecting)
+        val s = SessionState.InQuestion(3, 0, QuestionState.Selecting)
         val r = transition(s, SessionEvent.ConfirmSelection, ctx(draft = listOf(7)))
         val next = assertIs<SessionState.InQuestion>(r.next)
-        assertEquals(QuestionActivity.Finalizing, next.activity)
+        assertEquals(QuestionState.Finalizing, next.activity)
         val picks = r.effects.filterIsInstance<Effect.PersistPicks>().single()
         assertEquals(true, picks.isFinal)
     }
 
     @Test
     fun `Q3 ConfirmSelection with zero picks errors`() {
-        val s = SessionState.InQuestion(3, 0, QuestionActivity.Selecting)
+        val s = SessionState.InQuestion(3, 0, QuestionState.Selecting)
         val r = transition(s, SessionEvent.ConfirmSelection, ctx(draft = emptyList()))
         assertEquals(s, r.next)
         assertNotNull(r.error)
@@ -142,16 +144,16 @@ class TransitionTest {
 
     @Test
     fun `ConfirmFinal with valid count advances to Discussing`() {
-        val s = SessionState.InQuestion(2, 0, QuestionActivity.Finalizing)
+        val s = SessionState.InQuestion(2, 0, QuestionState.Finalizing)
         val r = transition(s, SessionEvent.ConfirmFinal, ctx(draft = listOf(1, 2, 3)))
         val next = assertIs<SessionState.InQuestion>(r.next)
-        assertEquals(QuestionActivity.Discussing, next.activity)
+        assertEquals(QuestionState.Discussing, next.activity)
         assertEquals(1, r.effects.filterIsInstance<Effect.LogAnalytics>().count { it.event == "question_completed" })
     }
 
     @Test
     fun `ConfirmFinal with wrong count errors`() {
-        val s = SessionState.InQuestion(2, 0, QuestionActivity.Finalizing)
+        val s = SessionState.InQuestion(2, 0, QuestionState.Finalizing)
         val r = transition(s, SessionEvent.ConfirmFinal, ctx(draft = listOf(1, 2)))
         assertEquals(s, r.next)
         assertNotNull(r.error)
@@ -161,27 +163,27 @@ class TransitionTest {
 
     @Test
     fun `EndDiscussion to next participant within Q1`() {
-        val s = SessionState.InQuestion(1, 0, QuestionActivity.Discussing)
+        val s = SessionState.InQuestion(1, 0, QuestionState.Discussing)
         val r = transition(s, SessionEvent.EndDiscussion, ctx(names = listOf("Alice", "Bob")))
         val next = assertIs<SessionState.InQuestion>(r.next)
         assertEquals(1, next.questionNumber)
         assertEquals(1, next.activeParticipantIndex)
-        assertEquals(QuestionActivity.ShowingPrompt, next.activity)
+        assertEquals(QuestionState.ShowingPrompt, next.activity)
     }
 
     @Test
     fun `EndDiscussion last participant of Q1 advances to Q2`() {
-        val s = SessionState.InQuestion(1, 0, QuestionActivity.Discussing)
+        val s = SessionState.InQuestion(1, 0, QuestionState.Discussing)
         val r = transition(s, SessionEvent.EndDiscussion, ctx(names = listOf("Alice")))
         val next = assertIs<SessionState.InQuestion>(r.next)
         assertEquals(2, next.questionNumber)
         assertEquals(0, next.activeParticipantIndex)
-        assertEquals(QuestionActivity.ShowingPrompt, next.activity)
+        assertEquals(QuestionState.ShowingPrompt, next.activity)
     }
 
     @Test
     fun `EndDiscussion last participant of Q5 advances to Summary`() {
-        val s = SessionState.InQuestion(5, 0, QuestionActivity.Discussing)
+        val s = SessionState.InQuestion(5, 0, QuestionState.Discussing)
         val r = transition(s, SessionEvent.EndDiscussion, ctx(names = listOf("Alice")))
         assertEquals(SessionState.Summary, r.next)
     }

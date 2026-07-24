@@ -14,21 +14,17 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.ccci.gto.support.androidx.test.junit.runners.AndroidJUnit4
 import org.ccci.gto.support.androidx.test.junit.runners.RunOnAndroidWith
-import org.cru.soularium.domain.CardPick
-import org.cru.soularium.domain.CardPickId
-import org.cru.soularium.domain.ContactInfo
-import org.cru.soularium.domain.Conversation
-import org.cru.soularium.domain.ConversationId
-import org.cru.soularium.domain.Session
-import org.cru.soularium.domain.SessionId
-import org.cru.soularium.domain.SessionKind
+import org.cru.soularium.db.repository.SessionRepository
 import org.cru.soularium.domain.content.Questions
 import org.cru.soularium.domain.ports.AnalyticsTracker
 import org.cru.soularium.domain.ports.CrashReporter
-import org.cru.soularium.domain.ports.SessionRepository
 import org.cru.soularium.domain.ports.ShareResult
 import org.cru.soularium.domain.ports.Sharer
-import org.cru.soularium.domain.session.SessionState
+import org.cru.soularium.model.CardPick
+import org.cru.soularium.model.ContactInfo
+import org.cru.soularium.model.Conversation
+import org.cru.soularium.model.Session
+import org.cru.soularium.model.game.SessionState
 import org.cru.soularium.ui.nav.ConversationScreen
 import org.cru.soularium.ui.screens.PastConversationsPresenter
 
@@ -49,8 +45,8 @@ class ConversationFlowTest {
     fun `solo session completes from start through summary share and conclude`() = runTest {
         val repo = InMemorySessionRepository()
         val sharer = RecordingSharer()
-        val sessionId = SessionId.random()
-        val screen = ConversationScreen(sessionId, SessionKind.SOLO)
+        val sessionId = Session.Id.random()
+        val screen = ConversationScreen(sessionId, Session.Kind.SOLO)
         val navigator = FakeNavigator(screen)
 
         presenter(navigator, screen, repo, sharer = sharer).test {
@@ -81,8 +77,8 @@ class ConversationFlowTest {
     @Test
     fun `group session of three completes all five questions`() = runTest {
         val repo = InMemorySessionRepository()
-        val sessionId = SessionId.random()
-        val screen = ConversationScreen(sessionId, SessionKind.GROUP)
+        val sessionId = Session.Id.random()
+        val screen = ConversationScreen(sessionId, Session.Kind.GROUP)
         val navigator = FakeNavigator(screen)
 
         presenter(navigator, screen, repo).test {
@@ -115,8 +111,8 @@ class ConversationFlowTest {
     @Test
     fun `bookmarked session resumes from persisted state and completes`() = runTest {
         val repo = InMemorySessionRepository()
-        val sessionId = SessionId.random()
-        val screen = ConversationScreen(sessionId, SessionKind.SOLO)
+        val sessionId = Session.Id.random()
+        val screen = ConversationScreen(sessionId, Session.Kind.SOLO)
         val navigator = FakeNavigator(screen)
 
         // First sitting: play questions 1 and 2, then bookmark at question 3.
@@ -154,8 +150,8 @@ class ConversationFlowTest {
     @Test
     fun `bookmarked group session rehydrates participant names on resume`() = runTest {
         val repo = InMemorySessionRepository()
-        val sessionId = SessionId.random()
-        val screen = ConversationScreen(sessionId, SessionKind.GROUP)
+        val sessionId = Session.Id.random()
+        val screen = ConversationScreen(sessionId, Session.Kind.GROUP)
         val navigator = FakeNavigator(screen)
 
         presenter(navigator, screen, repo).test {
@@ -201,8 +197,8 @@ class ConversationFlowTest {
     @Test
     fun `deleting a past conversation removes it from the completed list`() = runTest {
         val repo = InMemorySessionRepository()
-        val sessionId = SessionId.random()
-        val screen = ConversationScreen(sessionId, SessionKind.SOLO)
+        val sessionId = Session.Id.random()
+        val screen = ConversationScreen(sessionId, Session.Kind.SOLO)
         val navigator = FakeNavigator(screen)
 
         // Run a full solo session so it lands in the completed list.
@@ -313,27 +309,27 @@ private fun ConversationPresenter.UiState.pick(count: Int) {
  * the [Session] timestamp fields.
  */
 private class InMemorySessionRepository : SessionRepository {
-    private val sessions = mutableMapOf<SessionId, Session>()
-    private val states = mutableMapOf<SessionId, SessionState>()
-    private val conversations = mutableMapOf<SessionId, MutableList<Conversation>>()
-    private val picks = mutableMapOf<ConversationId, MutableList<CardPick>>()
-    private val completedIds = mutableSetOf<SessionId>()
-    private val bookmarkedIds = mutableSetOf<SessionId>()
+    private val sessions = mutableMapOf<Session.Id, Session>()
+    private val states = mutableMapOf<Session.Id, SessionState>()
+    private val conversations = mutableMapOf<Session.Id, MutableList<Conversation>>()
+    private val picks = mutableMapOf<Conversation.Id, MutableList<CardPick>>()
+    private val completedIds = mutableSetOf<Session.Id>()
+    private val bookmarkedIds = mutableSetOf<Session.Id>()
     private val completed = MutableStateFlow<List<Session>>(emptyList())
     private val bookmarked = MutableStateFlow<List<Session>>(emptyList())
 
     fun bookmarkedSnapshot(): List<Session> = bookmarked.value
 
-    override suspend fun createSession(session: Session, initialState: SessionState): SessionId {
+    override suspend fun createSession(session: Session, initialState: SessionState): Session.Id {
         sessions[session.id] = session
         states[session.id] = initialState
         return session.id
     }
 
-    override suspend fun loadSession(id: SessionId): Session? = sessions[id]
-    override suspend fun loadState(id: SessionId): SessionState? = states[id]
+    override suspend fun loadSession(id: Session.Id): Session? = sessions[id]
+    override suspend fun loadState(id: Session.Id): SessionState? = states[id]
 
-    override suspend fun persistState(id: SessionId, state: SessionState) {
+    override suspend fun persistState(id: Session.Id, state: SessionState) {
         states[id] = state
         if (state == SessionState.Concluded) {
             completedIds += id
@@ -342,21 +338,21 @@ private class InMemorySessionRepository : SessionRepository {
         }
     }
 
-    override suspend fun setBookmarked(id: SessionId, bookmarked: Boolean) {
+    override suspend fun setBookmarked(id: Session.Id, bookmarked: Boolean) {
         if (bookmarked) bookmarkedIds += id else bookmarkedIds -= id
         refresh()
     }
 
-    override suspend fun setEnded(id: SessionId) {
+    override suspend fun setEnded(id: Session.Id) {
         completedIds += id
         refresh()
     }
 
-    override suspend fun upsertParticipants(sessionId: SessionId, names: List<String>): List<ConversationId> {
+    override suspend fun upsertParticipants(sessionId: Session.Id, names: List<String>): List<Conversation.Id> {
         val existing = conversations[sessionId].orEmpty()
         val list = names.mapIndexed { idx, name ->
             Conversation(
-                id = existing.getOrNull(idx)?.id ?: ConversationId.random(),
+                id = existing.getOrNull(idx)?.id ?: Conversation.Id.random(),
                 sessionId = sessionId,
                 displayOrder = idx,
                 contact = ContactInfo(name),
@@ -366,7 +362,7 @@ private class InMemorySessionRepository : SessionRepository {
         return list.map { it.id }
     }
 
-    override suspend fun upsertContact(conversationId: ConversationId, info: ContactInfo) {
+    override suspend fun upsertContact(conversationId: Conversation.Id, info: ContactInfo) {
         conversations.values.forEach { list ->
             val idx = list.indexOfFirst { it.id == conversationId }
             if (idx >= 0) list[idx] = list[idx].copy(contact = info)
@@ -374,7 +370,7 @@ private class InMemorySessionRepository : SessionRepository {
     }
 
     override suspend fun upsertPicks(
-        conversationId: ConversationId,
+        conversationId: Conversation.Id,
         questionNumber: Int,
         cardIds: List<Int>,
         isFinal: Boolean,
@@ -383,7 +379,7 @@ private class InMemorySessionRepository : SessionRepository {
         bucket.removeAll { it.questionNumber == questionNumber }
         cardIds.forEachIndexed { order, cardId ->
             bucket += CardPick(
-                id = CardPickId.random(),
+                id = CardPick.Id.random(),
                 conversationId = conversationId,
                 questionNumber = questionNumber,
                 cardId = cardId,
@@ -393,12 +389,12 @@ private class InMemorySessionRepository : SessionRepository {
         }
     }
 
-    override suspend fun loadPicks(conversationId: ConversationId): List<CardPick> = picks[conversationId].orEmpty()
+    override suspend fun loadPicks(conversationId: Conversation.Id): List<CardPick> = picks[conversationId].orEmpty()
 
     override fun observeCompletedSessions(): Flow<List<Session>> = completed.asStateFlow()
     override fun observeBookmarkedSessions(): Flow<List<Session>> = bookmarked.asStateFlow()
 
-    override suspend fun deleteSession(id: SessionId) {
+    override suspend fun deleteSession(id: Session.Id) {
         sessions.remove(id)
         states.remove(id)
         completedIds -= id
@@ -407,7 +403,7 @@ private class InMemorySessionRepository : SessionRepository {
         refresh()
     }
 
-    override suspend fun loadConversations(sessionId: SessionId): List<Conversation> =
+    override suspend fun loadConversations(sessionId: Session.Id): List<Conversation> =
         conversations[sessionId].orEmpty()
 
     private fun refresh() {

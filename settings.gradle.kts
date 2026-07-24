@@ -24,8 +24,12 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "soularium"
+enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 includeBuild("build-logic")
 
-include(":shared")
 include(":androidApp")
+include(":shared")
+
+include(":module:db")
+include(":module:model")

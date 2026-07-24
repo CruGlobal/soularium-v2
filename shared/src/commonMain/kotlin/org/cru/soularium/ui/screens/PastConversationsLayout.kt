@@ -41,8 +41,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.slack.circuit.codegen.annotations.CircuitInject
 import dev.zacsweers.metro.AppScope
-import org.cru.soularium.domain.SessionId
-import org.cru.soularium.domain.SessionKind
 import org.cru.soularium.generated.resources.Res
 import org.cru.soularium.generated.resources.action_back
 import org.cru.soularium.generated.resources.action_cancel
@@ -56,6 +54,7 @@ import org.cru.soularium.generated.resources.past_kind_solo
 import org.cru.soularium.generated.resources.past_tab_bookmarked
 import org.cru.soularium.generated.resources.past_tab_completed
 import org.cru.soularium.generated.resources.past_title
+import org.cru.soularium.model.Session
 import org.cru.soularium.ui.nav.PastConversationsScreen
 import org.jetbrains.compose.resources.stringResource
 
@@ -73,7 +72,7 @@ fun PastConversationsLayout(state: PastConversationsPresenter.UiState, modifier:
     val backLabel = stringResource(Res.string.action_back)
 
     var selectedTabIndex by remember { mutableIntStateOf(0) }
-    var pendingDeleteId by remember { mutableStateOf<SessionId?>(null) }
+    var pendingDeleteId by remember { mutableStateOf<Session.Id?>(null) }
 
     Scaffold(
         modifier = modifier,
@@ -175,8 +174,8 @@ fun PastConversationsLayout(state: PastConversationsPresenter.UiState, modifier:
 private fun SessionList(
     items: List<PastConversationItem>,
     emptyText: String,
-    onOpen: (SessionId) -> Unit,
-    onDeleteRequest: (SessionId) -> Unit,
+    onOpen: (Session.Id) -> Unit,
+    onDeleteRequest: (Session.Id) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (items.isEmpty()) {
@@ -215,8 +214,8 @@ private fun SessionRow(
     val groupLabel = stringResource(Res.string.past_kind_group)
     val deleteLabel = stringResource(Res.string.action_delete)
 
-    val kindLabel = if (item.kind == SessionKind.SOLO) soloLabel else groupLabel
-    val kindIcon = if (item.kind == SessionKind.SOLO) Icons.Default.Person else Icons.Default.Group
+    val kindLabel = if (item.kind == Session.Kind.SOLO) soloLabel else groupLabel
+    val kindIcon = if (item.kind == Session.Kind.SOLO) Icons.Default.Person else Icons.Default.Group
 
     val participantsText = item.participantNames.joinToString(", ")
 

@@ -20,20 +20,20 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import org.cru.soularium.domain.ContactInfo
+import org.cru.soularium.db.repository.SessionRepository
 import org.cru.soularium.domain.content.Questions
-import org.cru.soularium.domain.newSession
 import org.cru.soularium.domain.ports.AnalyticsTracker
 import org.cru.soularium.domain.ports.CrashReporter
-import org.cru.soularium.domain.ports.SessionRepository
 import org.cru.soularium.domain.ports.Sharer
 import org.cru.soularium.domain.session.Effect
-import org.cru.soularium.domain.session.QuestionActivity
 import org.cru.soularium.domain.session.SessionContext
 import org.cru.soularium.domain.session.SessionEvent
-import org.cru.soularium.domain.session.SessionState
 import org.cru.soularium.domain.session.transition
 import org.cru.soularium.domain.share.shareUrlFor
+import org.cru.soularium.model.ContactInfo
+import org.cru.soularium.model.Session
+import org.cru.soularium.model.game.SessionState
+import org.cru.soularium.model.game.SessionState.InQuestion.QuestionState
 import org.cru.soularium.ui.nav.ConversationScreen
 
 private const val TOTAL_QUESTIONS = 5
@@ -244,7 +244,7 @@ class ConversationPresenter(
                     if (existing == null || loadStateFailed) {
                         runCatching {
                             sessionRepository.createSession(
-                                session = newSession(screen.sessionId, screen.kind),
+                                session = Session(id = screen.sessionId, kind = screen.kind),
                                 initialState = SessionState.NotStarted,
                             )
                         }.onFailure { crashReporter.recordNonFatal(it, "createSession") }
@@ -398,7 +398,7 @@ class ConversationPresenter(
             val participantName =
                 ui.participantNames.getOrElse(sessionState.activeParticipantIndex) { "" }
             when (sessionState.activity) {
-                QuestionActivity.ShowingPrompt ->
+                QuestionState.ShowingPrompt ->
                     UiState.QuestionPrompt(
                         questionNumber = sessionState.questionNumber,
                         totalQuestions = TOTAL_QUESTIONS,
@@ -408,10 +408,10 @@ class ConversationPresenter(
                         eventSink = eventSink,
                     )
 
-                QuestionActivity.ShowingInstructions ->
+                QuestionState.ShowingInstructions ->
                     UiState.Instructions(showExitDialog, eventSink)
 
-                QuestionActivity.Selecting ->
+                QuestionState.Selecting ->
                     UiState.Selection(
                         questionNumber = sessionState.questionNumber,
                         selectedCardIds = ui.draftPicks,
@@ -420,7 +420,7 @@ class ConversationPresenter(
                         eventSink = eventSink,
                     )
 
-                QuestionActivity.Finalizing ->
+                QuestionState.Finalizing ->
                     UiState.Finalizing(
                         questionNumber = sessionState.questionNumber,
                         cardIds = ui.draftPicks,
@@ -428,7 +428,7 @@ class ConversationPresenter(
                         eventSink = eventSink,
                     )
 
-                QuestionActivity.Discussing ->
+                QuestionState.Discussing ->
                     UiState.Discussing(
                         questionNumber = sessionState.questionNumber,
                         participantName = participantName,
@@ -524,7 +524,7 @@ class ConversationPresenter(
      */
     private fun resetDraftIfNeeded(next: SessionState, ui: ConversationUiContext): ConversationUiContext {
         val nextQ = next as? SessionState.InQuestion
-        return if (nextQ?.activity == QuestionActivity.ShowingPrompt) {
+        return if (nextQ?.activity == QuestionState.ShowingPrompt) {
             ui.copy(draftPicks = emptyList())
         } else {
             ui
@@ -594,8 +594,8 @@ class ConversationPresenter(
  * selection.
  */
 private fun snapBackToPromptIfMidQuestion(state: SessionState): SessionState =
-    if (state is SessionState.InQuestion && state.activity != QuestionActivity.ShowingPrompt) {
-        state.copy(activity = QuestionActivity.ShowingPrompt)
+    if (state is SessionState.InQuestion && state.activity != QuestionState.ShowingPrompt) {
+        state.copy(activity = QuestionState.ShowingPrompt)
     } else {
         state
     }

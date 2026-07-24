@@ -16,12 +16,10 @@ import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
 import kotlinx.coroutines.launch
-import org.cru.soularium.domain.Session
-import org.cru.soularium.domain.SessionId
-import org.cru.soularium.domain.SessionKind
+import org.cru.soularium.db.repository.SessionRepository
 import org.cru.soularium.domain.ports.CrashReporter
-import org.cru.soularium.domain.ports.SessionRepository
 import org.cru.soularium.domain.startedAtLocalDate
+import org.cru.soularium.model.Session
 import org.cru.soularium.ui.nav.ConversationScreen
 import org.cru.soularium.ui.nav.PastConversationsScreen
 
@@ -29,8 +27,8 @@ import org.cru.soularium.ui.nav.PastConversationsScreen
  * Flat, UI-ready representation of a single past session row.
  */
 data class PastConversationItem(
-    val sessionId: SessionId,
-    val kind: SessionKind,
+    val sessionId: Session.Id,
+    val kind: Session.Kind,
     val formattedDate: String,
     val participantNames: List<String>,
 )
@@ -50,8 +48,8 @@ class PastConversationsPresenter(
 
     sealed interface UiEvent : CircuitUiEvent {
         data object Back : UiEvent
-        data class Open(val sessionId: SessionId) : UiEvent
-        data class Delete(val sessionId: SessionId) : UiEvent
+        data class Open(val sessionId: Session.Id) : UiEvent
+        data class Delete(val sessionId: Session.Id) : UiEvent
     }
 
     @Composable

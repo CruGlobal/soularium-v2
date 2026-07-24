@@ -13,28 +13,24 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.SerializationException
 import org.ccci.gto.support.androidx.test.junit.runners.AndroidJUnit4
 import org.ccci.gto.support.androidx.test.junit.runners.RunOnAndroidWith
-import org.cru.soularium.domain.CardPick
-import org.cru.soularium.domain.ContactInfo
-import org.cru.soularium.domain.Conversation
-import org.cru.soularium.domain.ConversationId
-import org.cru.soularium.domain.Session
-import org.cru.soularium.domain.SessionId
-import org.cru.soularium.domain.SessionKind
-import org.cru.soularium.domain.newSession
+import org.cru.soularium.db.repository.SessionRepository
 import org.cru.soularium.domain.ports.AnalyticsTracker
 import org.cru.soularium.domain.ports.CrashReporter
-import org.cru.soularium.domain.ports.SessionRepository
 import org.cru.soularium.domain.ports.ShareResult
 import org.cru.soularium.domain.ports.Sharer
-import org.cru.soularium.domain.session.QuestionActivity
-import org.cru.soularium.domain.session.SessionState
+import org.cru.soularium.model.CardPick
+import org.cru.soularium.model.ContactInfo
+import org.cru.soularium.model.Conversation
+import org.cru.soularium.model.Session
+import org.cru.soularium.model.game.SessionState
+import org.cru.soularium.model.game.SessionState.InQuestion.QuestionState
 import org.cru.soularium.ui.nav.ConversationScreen
 
 @RunOnAndroidWith(AndroidJUnit4::class)
 class ConversationPresenterTest {
 
-    private val sessionId = SessionId.random()
-    private val screen = ConversationScreen(sessionId, SessionKind.SOLO)
+    private val sessionId = Session.Id.random()
+    private val screen = ConversationScreen(sessionId, Session.Kind.SOLO)
     private val navigator = FakeNavigator(screen)
 
     private fun presenter(
@@ -96,9 +92,9 @@ class ConversationPresenterTest {
         val repo = FakeSessionRepository().apply {
             // Resume at question 3 ShowingPrompt; the test drives forward to a
             // Selection page so we can observe selectedCardIds toggling.
-            preloadedState = SessionState.InQuestion(3, 0, QuestionActivity.ShowingPrompt)
+            preloadedState = SessionState.InQuestion(3, 0, QuestionState.ShowingPrompt)
             preloadedConversations[sessionId] = listOf(
-                Conversation(ConversationId.random(), sessionId, 0, ContactInfo("Alice")),
+                Conversation(Conversation.Id.random(), sessionId, 0, ContactInfo("Alice")),
             )
         }
         presenter(repo).test {
@@ -137,9 +133,9 @@ class ConversationPresenterTest {
     @Test
     fun `fresh session shows instructions then DismissInstructions reaches Selecting`() = runTest {
         val repo = FakeSessionRepository().apply {
-            preloadedState = SessionState.InQuestion(1, 0, QuestionActivity.ShowingPrompt)
+            preloadedState = SessionState.InQuestion(1, 0, QuestionState.ShowingPrompt)
             preloadedConversations[sessionId] = listOf(
-                Conversation(ConversationId.random(), sessionId, 0, ContactInfo("Alice")),
+                Conversation(Conversation.Id.random(), sessionId, 0, ContactInfo("Alice")),
             )
         }
         presenter(repo).test {
@@ -159,7 +155,7 @@ class ConversationPresenterTest {
         // After the first dismissal, BeginSelection on a fresh prompt must skip
         // the Instructions page entirely and land on Selecting.
         val repo = FakeSessionRepository().apply {
-            preloadedState = SessionState.InQuestion(2, 0, QuestionActivity.ShowingPrompt)
+            preloadedState = SessionState.InQuestion(2, 0, QuestionState.ShowingPrompt)
         }
         presenter(repo).test {
             val firstPrompt = awaitStableState { it is ConversationPresenter.UiState.QuestionPrompt }
@@ -186,7 +182,7 @@ class ConversationPresenterTest {
     @Test
     fun `loadState rehydrates from repository on init`() = runTest {
         val repo = FakeSessionRepository().apply {
-            preloadedState = SessionState.InQuestion(3, 0, QuestionActivity.ShowingPrompt)
+            preloadedState = SessionState.InQuestion(3, 0, QuestionState.ShowingPrompt)
         }
         presenter(repo).test {
             val state = awaitStableState {
@@ -203,7 +199,7 @@ class ConversationPresenterTest {
             // Bookmarked mid-selection: volatile draft picks behind Finalizing
             // were never persisted, so resuming there would strand the user on
             // an empty selection screen.
-            preloadedState = SessionState.InQuestion(3, 0, QuestionActivity.Finalizing)
+            preloadedState = SessionState.InQuestion(3, 0, QuestionState.Finalizing)
         }
         presenter(repo).test {
             val state = awaitStableState {
@@ -218,11 +214,11 @@ class ConversationPresenterTest {
     fun `existing session with unreadable state snapshot restarts cleanly instead of stalling`() = runTest {
         // Simulates a mid-upgrade resume where the persisted state_snapshot_json
         // contains an enum value that no longer exists in this build (e.g. a
-        // removed QuestionActivity variant). The row exists, but decode throws.
+        // removed QuestionState variant). The row exists, but decode throws.
         // Recovery must cascade-delete the broken session (so its conversation
         // and pick children don't linger as orphans) then restart cleanly.
         val repo = FakeSessionRepository().apply {
-            preloadedSession = newSession(sessionId, SessionKind.SOLO)
+            preloadedSession = Session(id = sessionId, kind = Session.Kind.SOLO)
             loadStateError = SerializationException("unknown enum value")
         }
         presenter(repo).test {
@@ -237,33 +233,33 @@ private class FakeSessionRepository : SessionRepository {
     var preloadedState: SessionState? = null
     var preloadedSession: Session? = null
     var loadStateError: Throwable? = null
-    val preloadedConversations = mutableMapOf<SessionId, List<Conversation>>()
+    val preloadedConversations = mutableMapOf<Session.Id, List<Conversation>>()
     var lastUpsertedParticipants: List<String>? = null
-    val persistedStates = mutableListOf<Pair<SessionId, SessionState>>()
-    val deletedSessions = mutableListOf<SessionId>()
+    val persistedStates = mutableListOf<Pair<Session.Id, SessionState>>()
+    val deletedSessions = mutableListOf<Session.Id>()
 
-    override suspend fun createSession(session: Session, initialState: SessionState): SessionId = session.id
+    override suspend fun createSession(session: Session, initialState: SessionState): Session.Id = session.id
 
-    override suspend fun loadSession(id: SessionId): Session? = preloadedSession
+    override suspend fun loadSession(id: Session.Id): Session? = preloadedSession
 
-    override suspend fun loadState(id: SessionId): SessionState? {
+    override suspend fun loadState(id: Session.Id): SessionState? {
         loadStateError?.let { throw it }
         return preloadedState
     }
 
-    override suspend fun persistState(id: SessionId, state: SessionState) {
+    override suspend fun persistState(id: Session.Id, state: SessionState) {
         persistedStates += id to state
     }
 
-    override suspend fun setBookmarked(id: SessionId, bookmarked: Boolean) = Unit
+    override suspend fun setBookmarked(id: Session.Id, bookmarked: Boolean) = Unit
 
-    override suspend fun setEnded(id: SessionId) = Unit
+    override suspend fun setEnded(id: Session.Id) = Unit
 
-    override suspend fun upsertParticipants(sessionId: SessionId, names: List<String>): List<ConversationId> {
+    override suspend fun upsertParticipants(sessionId: Session.Id, names: List<String>): List<Conversation.Id> {
         lastUpsertedParticipants = names
         val existing = preloadedConversations[sessionId].orEmpty()
         val out = names.mapIndexed { idx, _ ->
-            existing.getOrNull(idx)?.id ?: ConversationId.random()
+            existing.getOrNull(idx)?.id ?: Conversation.Id.random()
         }
         preloadedConversations[sessionId] = out.mapIndexed { idx, cid ->
             Conversation(cid, sessionId, idx, ContactInfo(names[idx]))
@@ -271,16 +267,16 @@ private class FakeSessionRepository : SessionRepository {
         return out
     }
 
-    override suspend fun upsertContact(conversationId: ConversationId, info: ContactInfo) = Unit
+    override suspend fun upsertContact(conversationId: Conversation.Id, info: ContactInfo) = Unit
 
     override suspend fun upsertPicks(
-        conversationId: ConversationId,
+        conversationId: Conversation.Id,
         questionNumber: Int,
         cardIds: List<Int>,
         isFinal: Boolean,
     ) = Unit
 
-    override suspend fun loadPicks(conversationId: ConversationId): List<CardPick> = emptyList()
+    override suspend fun loadPicks(conversationId: Conversation.Id): List<CardPick> = emptyList()
 
     override fun observeCompletedSessions(): Flow<List<Session>> =
         MutableStateFlow<List<Session>>(emptyList()).asStateFlow()
@@ -288,11 +284,11 @@ private class FakeSessionRepository : SessionRepository {
     override fun observeBookmarkedSessions(): Flow<List<Session>> =
         MutableStateFlow<List<Session>>(emptyList()).asStateFlow()
 
-    override suspend fun deleteSession(id: SessionId) {
+    override suspend fun deleteSession(id: Session.Id) {
         deletedSessions += id
     }
 
-    override suspend fun loadConversations(sessionId: SessionId): List<Conversation> =
+    override suspend fun loadConversations(sessionId: Session.Id): List<Conversation> =
         preloadedConversations[sessionId].orEmpty()
 }
 

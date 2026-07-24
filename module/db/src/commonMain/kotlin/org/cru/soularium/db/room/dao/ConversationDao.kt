@@ -3,6 +3,7 @@ package org.cru.soularium.db.room.dao
 import androidx.room.Dao
 import androidx.room.Query
 import androidx.room.Upsert
+import kotlinx.coroutines.flow.Flow
 import org.cru.soularium.db.room.entities.ConversationEntity
 
 @Dao
@@ -17,6 +18,9 @@ interface ConversationDao {
 
     @Query("SELECT * FROM conversations WHERE session_id = :sessionId ORDER BY display_order")
     suspend fun forSession(sessionId: String): List<ConversationEntity>
+
+    @Query("SELECT * FROM conversations WHERE session_id = :sessionId ORDER BY display_order")
+    fun observeForSession(sessionId: String): Flow<List<ConversationEntity>>
 
     @Query("SELECT * FROM conversations WHERE id = :id")
     suspend fun byId(id: String): ConversationEntity?

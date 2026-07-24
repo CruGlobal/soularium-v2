@@ -85,7 +85,6 @@ kotlin {
                 implementation(libs.circuit.test)
                 implementation(libs.compose.ui.test)
                 implementation(libs.coroutines.test)
-                implementation(libs.gtoSupport.androidx.test.junit)
                 implementation(libs.gtoSupport.circuit.test)
                 implementation(libs.kotest.assertions)
                 implementation(libs.turbine)
@@ -95,9 +94,7 @@ kotlin {
         named("androidHostTest").configure {
             dependencies {
                 implementation(libs.androidx.compose.ui.test.manifest)
-                implementation(libs.androidx.test.junit)
                 implementation(libs.paparazzi)
-                implementation(libs.robolectric)
                 implementation(libs.testparameterinjector)
             }
         }

@@ -86,8 +86,9 @@ testparameterinjector = "com.google.testparameterinjector:test-parameter-injecto
 turbine = "app.cash.turbine:turbine:1.2.1"
 
 [bundles]
+android-test-framework = ["androidx-test-junit", "robolectric"]
 ktlint-rulesets = ["ktlint-rules-compose"]
-test-framework = ["kotlin-test"]
+test-framework = ["gtoSupport-androidx-test-junit", "kotlin-test"]
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

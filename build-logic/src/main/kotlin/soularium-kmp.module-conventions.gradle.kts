@@ -27,5 +27,11 @@ kotlin {
                 implementation(versionCatalog.findBundle("test-framework").get())
             }
         }
+
+        getByName("androidHostTest") {
+            dependencies {
+                implementation(versionCatalog.findBundle("android-test-framework").get())
+            }
+        }
     }
 }

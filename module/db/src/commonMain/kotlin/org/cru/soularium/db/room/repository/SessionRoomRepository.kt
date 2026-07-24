@@ -148,6 +148,16 @@ internal abstract class SessionRoomRepository(private val db: SoulariumDatabase)
             it.toDomain()
         }
 
+    override fun observeConversations(sessionId: Session.Id): Flow<List<Conversation>> =
+        conversationDao.observeForSession(sessionId.value).map { list ->
+            list.map { it.toDomain() }
+        }
+
+    override fun observePicks(conversationId: Conversation.Id): Flow<List<CardPick>> =
+        cardPickDao.observeForConversation(conversationId.value).map { list ->
+            list.map { it.toDomain() }
+        }
+
     private fun Session.toEntity(state: SessionState) = SessionEntity(
         id = id.value,
         kind = kind.name,

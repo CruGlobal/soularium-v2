@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Upsert
+import kotlinx.coroutines.flow.Flow
 import org.cru.soularium.db.room.entities.CardPickEntity
 
 @Dao
@@ -16,6 +17,12 @@ interface CardPickDao {
             "ORDER BY question_number, pick_order",
     )
     suspend fun forConversation(conversationId: String): List<CardPickEntity>
+
+    @Query(
+        "SELECT * FROM card_picks WHERE conversation_id = :conversationId " +
+            "ORDER BY question_number, pick_order",
+    )
+    fun observeForConversation(conversationId: String): Flow<List<CardPickEntity>>
 
     @Query(
         "DELETE FROM card_picks WHERE conversation_id = :conversationId " +

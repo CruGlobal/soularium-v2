@@ -239,7 +239,7 @@ private fun ParticipantSummaryContent(
  * Empty slots (fewer than 9 picks) are skipped; the grid simply has fewer rows.
  */
 @Composable
-private fun CardMosaic(cards: List<CardAsset>, modifier: Modifier = Modifier) {
+internal fun CardMosaic(cards: List<CardAsset>, modifier: Modifier = Modifier) {
     val rows = cards.take(MOSAIC_MAX_CARDS).chunked(MOSAIC_COLUMNS)
 
     Column(

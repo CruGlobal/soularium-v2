@@ -21,6 +21,7 @@ import org.cru.soularium.domain.ports.CrashReporter
 import org.cru.soularium.domain.startedAtLocalDate
 import org.cru.soularium.model.Session
 import org.cru.soularium.ui.nav.ConversationScreen
+import org.cru.soularium.ui.nav.ConversationSummaryScreen
 import org.cru.soularium.ui.nav.PastConversationsScreen
 
 /**
@@ -67,7 +68,6 @@ class PastConversationsPresenter(
             value = bookmarkedSessions.map { it.toItem(repository) }
         }
 
-        val all = completed + bookmarked
         return UiState(
             completed = completed,
             bookmarked = bookmarked,
@@ -75,9 +75,13 @@ class PastConversationsPresenter(
             when (event) {
                 UiEvent.Back -> navigator.pop()
                 is UiEvent.Open -> {
-                    val item = all.firstOrNull { it.sessionId == event.sessionId }
-                    if (item != null) {
-                        navigator.goTo(ConversationScreen(event.sessionId, item.kind))
+                    // Completed sessions open the read-only summary screen; bookmarked
+                    // sessions (mid-conversation) re-enter the gameplay loop to resume.
+                    val isCompleted = completed.any { it.sessionId == event.sessionId }
+                    val bookmark = bookmarked.firstOrNull { it.sessionId == event.sessionId }
+                    when {
+                        isCompleted -> navigator.goTo(ConversationSummaryScreen(event.sessionId))
+                        bookmark != null -> navigator.goTo(ConversationScreen(event.sessionId, bookmark.kind))
                     }
                 }
                 is UiEvent.Delete -> scope.launch {

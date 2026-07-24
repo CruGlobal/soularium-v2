@@ -1,5 +1,6 @@
 package org.cru.soularium.db.repository
 
+import app.cash.turbine.test
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -18,11 +19,39 @@ abstract class SessionRepositoryTest {
     abstract val repository: SessionRepository
 
     @Test
+    fun `findSession - returns the persisted session, or null when absent`() = runTest {
+        val sessionId = Session.Id.random()
+        repository.createSession(Session(id = sessionId, kind = Session.Kind.GROUP), SessionState.NotStarted)
+
+        assertEquals(Session.Kind.GROUP, repository.findSession(sessionId)?.kind)
+        assertNull(repository.findSession(Session.Id.random()), "an unknown id resolves to null")
+    }
+
+    @Test
+    fun `findSessionFlow - emits the session and re-emits on change`() = runTest {
+        val sessionId = Session.Id.random()
+        repository.createSession(Session(id = sessionId, kind = Session.Kind.SOLO), SessionState.NotStarted)
+
+        repository.findSessionFlow(sessionId).test {
+            assertNull(awaitItem()?.endedAt, "a fresh session has no endedAt")
+            repository.persistState(sessionId, SessionState.Concluded)
+            assertNotNull(awaitItem()?.endedAt, "Concluded stamps endedAt and re-emits")
+        }
+    }
+
+    @Test
+    fun `findSessionFlow - emits null for an unknown id`() = runTest {
+        repository.findSessionFlow(Session.Id.random()).test {
+            assertNull(awaitItem())
+        }
+    }
+
+    @Test
     fun `createSession - persists the session and its state`() = runTest {
         val sessionId = Session.Id.random()
         repository.createSession(Session(id = sessionId, kind = Session.Kind.GROUP), SessionState.AddingParticipants)
 
-        assertEquals(Session.Kind.GROUP, repository.loadSession(sessionId)?.kind)
+        assertEquals(Session.Kind.GROUP, repository.findSession(sessionId)?.kind)
         assertEquals(SessionState.AddingParticipants, repository.loadState(sessionId))
     }
 
@@ -31,9 +60,9 @@ abstract class SessionRepositoryTest {
         val sessionId = Session.Id.random()
         repository.createSession(Session(id = sessionId, kind = Session.Kind.SOLO), SessionState.NotStarted)
 
-        assertNull(repository.loadSession(sessionId)?.endedAt, "a fresh session has no endedAt")
+        assertNull(repository.findSession(sessionId)?.endedAt, "a fresh session has no endedAt")
         repository.persistState(sessionId, SessionState.Concluded)
-        assertNotNull(repository.loadSession(sessionId)?.endedAt, "Concluded stamps endedAt")
+        assertNotNull(repository.findSession(sessionId)?.endedAt, "Concluded stamps endedAt")
     }
 
     @Test
@@ -62,7 +91,7 @@ abstract class SessionRepositoryTest {
 
         repository.deleteSession(sessionId)
 
-        assertNull(repository.loadSession(sessionId))
+        assertNull(repository.findSession(sessionId))
         assertTrue(repository.loadConversations(sessionId).isEmpty())
         // The picks are removed via the ON DELETE CASCADE chain, which SQLite
         // enforces while foreign-key constraints are active.

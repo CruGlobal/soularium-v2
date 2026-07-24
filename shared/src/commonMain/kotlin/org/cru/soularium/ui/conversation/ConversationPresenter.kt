@@ -225,9 +225,9 @@ class ConversationPresenter(
                 bootstrapped = true
                 if (sessionState == SessionState.NotStarted) {
                     val existing =
-                        runCatching { sessionRepository.loadSession(screen.sessionId) }
+                        runCatching { sessionRepository.findSession(screen.sessionId) }
                             .getOrElse {
-                                crashReporter.recordNonFatal(it, "loadSession in ensureStarted")
+                                crashReporter.recordNonFatal(it, "findSession in ensureStarted")
                                 null
                             }
                     // If a session row exists but its state_snapshot_json could not be

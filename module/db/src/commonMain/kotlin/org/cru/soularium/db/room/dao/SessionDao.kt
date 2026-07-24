@@ -5,16 +5,19 @@ import androidx.room.Query
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 import org.cru.soularium.db.room.entities.SessionEntity
+import org.cru.soularium.model.Session
 
 @Dao
 interface SessionDao {
+    @Query("SELECT * FROM sessions WHERE id = :id")
+    suspend fun findSession(id: Session.Id): SessionEntity?
+    @Query("SELECT * FROM sessions WHERE id = :id")
+    fun findSessionFlow(id: Session.Id): Flow<SessionEntity?>
+
     // @Upsert (not @Insert REPLACE): REPLACE deletes the existing row first,
     // which cascades to child conversations/card_picks. @Upsert updates in place.
     @Upsert
     suspend fun upsert(session: SessionEntity)
-
-    @Query("SELECT * FROM sessions WHERE id = :id")
-    suspend fun byId(id: String): SessionEntity?
 
     @Query("SELECT * FROM sessions WHERE ended_at IS NOT NULL ORDER BY ended_at DESC")
     fun observeCompleted(): Flow<List<SessionEntity>>
@@ -23,5 +26,5 @@ interface SessionDao {
     fun observeBookmarked(): Flow<List<SessionEntity>>
 
     @Query("DELETE FROM sessions WHERE id = :id")
-    suspend fun delete(id: String)
+    suspend fun delete(id: Session.Id)
 }

@@ -29,6 +29,7 @@ kotlin {
         commonTest {
             dependencies {
                 implementation(libs.coroutines.test)
+                implementation(libs.turbine)
             }
         }
 

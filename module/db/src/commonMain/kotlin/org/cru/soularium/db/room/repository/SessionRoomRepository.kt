@@ -25,19 +25,20 @@ internal abstract class SessionRoomRepository(private val db: SoulariumDatabase)
     private val cardPickDao get() = db.cardPickDao
     private val json: Json = Json { ignoreUnknownKeys = true }
 
+    override suspend fun findSession(id: Session.Id) = sessionDao.findSession(id)?.toModel()
+    override fun findSessionFlow(id: Session.Id) = sessionDao.findSessionFlow(id).map { it?.toModel() }
+
     override suspend fun createSession(session: Session, initialState: SessionState): Session.Id {
         sessionDao.upsert(session.toEntity(initialState))
         return session.id
     }
 
-    override suspend fun loadSession(id: Session.Id): Session? = sessionDao.byId(id.value)?.toDomain()
-
-    override suspend fun loadState(id: Session.Id): SessionState? = sessionDao.byId(id.value)?.let {
+    override suspend fun loadState(id: Session.Id): SessionState? = sessionDao.findSession(id)?.let {
         json.decodeFromString<SessionState>(it.stateSnapshotJson)
     }
 
     override suspend fun persistState(id: Session.Id, state: SessionState) {
-        val current = sessionDao.byId(id.value) ?: return
+        val current = sessionDao.findSession(id) ?: return
         // Reaching Concluded ends the session, so it surfaces under
         // Past Conversations → Completed (which filters on ended_at).
         val endedAt =
@@ -55,13 +56,13 @@ internal abstract class SessionRoomRepository(private val db: SoulariumDatabase)
     }
 
     override suspend fun setBookmarked(id: Session.Id, bookmarked: Boolean) {
-        val current = sessionDao.byId(id.value) ?: return
+        val current = sessionDao.findSession(id) ?: return
         val bookmarkedAt = if (bookmarked) Clock.System.now().toEpochMilliseconds() else null
         sessionDao.upsert(current.copy(bookmarkedAt = bookmarkedAt))
     }
 
     override suspend fun setEnded(id: Session.Id) {
-        val current = sessionDao.byId(id.value) ?: return
+        val current = sessionDao.findSession(id) ?: return
         sessionDao.upsert(current.copy(endedAt = Clock.System.now().toEpochMilliseconds()))
     }
 
@@ -128,24 +129,24 @@ internal abstract class SessionRoomRepository(private val db: SoulariumDatabase)
 
     override suspend fun loadPicks(conversationId: Conversation.Id): List<CardPick> =
         cardPickDao.forConversation(conversationId.value).map {
-            it.toDomain()
+            it.toModel()
         }
 
     override fun observeCompletedSessions(): Flow<List<Session>> = sessionDao.observeCompleted().map { list ->
-        list.map { it.toDomain() }
+        list.map { it.toModel() }
     }
 
     override fun observeBookmarkedSessions(): Flow<List<Session>> = sessionDao.observeBookmarked().map { list ->
-        list.map { it.toDomain() }
+        list.map { it.toModel() }
     }
 
     override suspend fun deleteSession(id: Session.Id) {
-        sessionDao.delete(id.value)
+        sessionDao.delete(id)
     }
 
     override suspend fun loadConversations(sessionId: Session.Id): List<Conversation> =
         conversationDao.forSession(sessionId.value).map {
-            it.toDomain()
+            it.toModel()
         }
 
     override fun observeConversations(sessionId: Session.Id): Flow<List<Conversation>> =
@@ -159,8 +160,8 @@ internal abstract class SessionRoomRepository(private val db: SoulariumDatabase)
         }
 
     private fun Session.toEntity(state: SessionState) = SessionEntity(
-        id = id.value,
-        kind = kind.name,
+        id = id,
+        kind = kind,
         startedAt = startedAt.toEpochMilliseconds(),
         endedAt = endedAt?.toEpochMilliseconds(),
         bookmarkedAt = bookmarkedAt?.toEpochMilliseconds(),
@@ -168,26 +169,23 @@ internal abstract class SessionRoomRepository(private val db: SoulariumDatabase)
         selectionInstructionsShown = selectionInstructionsShown,
     )
 
-    private fun SessionEntity.toDomain() = Session(
-        id = Session.Id(id),
-        // Tolerate an unrecognised persisted kind (corruption / a value
-        // written by a newer build) rather than throwing and taking down
-        // the whole Past Conversations list.
-        kind = Session.Kind.entries.firstOrNull { it.name == kind } ?: Session.Kind.SOLO,
+    private fun SessionEntity.toModel() = Session(
+        id = id,
+        kind = kind,
         startedAt = Instant.fromEpochMilliseconds(startedAt),
         endedAt = endedAt?.let(Instant::fromEpochMilliseconds),
         bookmarkedAt = bookmarkedAt?.let(Instant::fromEpochMilliseconds),
         selectionInstructionsShown = selectionInstructionsShown,
     )
 
-    private fun ConversationEntity.toDomain() = Conversation(
+    private fun ConversationEntity.toModel() = Conversation(
         id = Conversation.Id(id),
         sessionId = Session.Id(sessionId),
         displayOrder = displayOrder,
         contact = ContactInfo(name, surname, email, phone, notes),
     )
 
-    private fun CardPickEntity.toDomain() = CardPick(
+    private fun CardPickEntity.toModel() = CardPick(
         id = CardPick.Id(id),
         conversationId = Conversation.Id(conversationId),
         questionNumber = questionNumber,

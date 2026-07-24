@@ -172,7 +172,8 @@ private class FakeSummarySessionRepository(
 
     // Unused by ConversationSummaryPresenter — stub with defaults.
     override suspend fun createSession(session: Session, initialState: SessionState): Session.Id = session.id
-    override suspend fun loadSession(id: Session.Id): Session? = null
+    override suspend fun findSession(id: Session.Id): Session? = null
+    override fun findSessionFlow(id: Session.Id): Flow<Session?> = flowOf(null)
     override suspend fun loadState(id: Session.Id): SessionState? = null
     override suspend fun persistState(id: Session.Id, state: SessionState) = Unit
     override suspend fun setBookmarked(id: Session.Id, bookmarked: Boolean) = Unit

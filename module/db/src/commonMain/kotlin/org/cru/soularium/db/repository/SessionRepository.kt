@@ -1,6 +1,7 @@
 package org.cru.soularium.db.repository
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import org.cru.soularium.model.CardPick
 import org.cru.soularium.model.ContactInfo
 import org.cru.soularium.model.Conversation
@@ -8,9 +9,10 @@ import org.cru.soularium.model.Session
 import org.cru.soularium.model.game.SessionState
 
 interface SessionRepository {
-    suspend fun createSession(session: Session, initialState: SessionState): Session.Id
+    suspend fun findSession(id: Session.Id): Session? = findSessionFlow(id).first()
+    fun findSessionFlow(id: Session.Id): Flow<Session?>
 
-    suspend fun loadSession(id: Session.Id): Session?
+    suspend fun createSession(session: Session, initialState: SessionState): Session.Id
 
     suspend fun loadState(id: Session.Id): SessionState?
 

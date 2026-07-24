@@ -5,13 +5,11 @@ import kotlin.time.Clock
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import org.cru.soularium.db.repository.SessionRepository
 import org.cru.soularium.db.room.SoulariumDatabase
-import org.cru.soularium.db.room.entities.CardPickEntity
-import org.cru.soularium.db.room.entities.ConversationEntity
-import org.cru.soularium.db.room.entities.SessionEntity
+import org.cru.soularium.db.room.entity.CardPickEntity
+import org.cru.soularium.db.room.entity.ConversationEntity
+import org.cru.soularium.db.room.entity.SessionEntity
 import org.cru.soularium.model.CardPick
 import org.cru.soularium.model.ContactInfo
 import org.cru.soularium.model.Conversation
@@ -23,7 +21,6 @@ internal abstract class SessionRoomRepository(private val db: SoulariumDatabase)
     private val sessionDao get() = db.sessionDao
     private val conversationDao get() = db.conversationDao
     private val cardPickDao get() = db.cardPickDao
-    private val json: Json = Json { ignoreUnknownKeys = true }
 
     override suspend fun findSession(id: Session.Id) = sessionDao.findSession(id)?.toModel()
     override fun findSessionFlow(id: Session.Id) = sessionDao.findSessionFlow(id).map { it?.toModel() }
@@ -33,9 +30,7 @@ internal abstract class SessionRoomRepository(private val db: SoulariumDatabase)
         return session.id
     }
 
-    override suspend fun loadState(id: Session.Id): SessionState? = sessionDao.findSession(id)?.let {
-        json.decodeFromString<SessionState>(it.stateSnapshotJson)
-    }
+    override suspend fun loadState(id: Session.Id): SessionState? = sessionDao.findSession(id)?.state
 
     override suspend fun persistState(id: Session.Id, state: SessionState) {
         val current = sessionDao.findSession(id) ?: return
@@ -49,7 +44,7 @@ internal abstract class SessionRoomRepository(private val db: SoulariumDatabase)
             }
         sessionDao.upsert(
             current.copy(
-                stateSnapshotJson = json.encodeToString(state),
+                state = state,
                 endedAt = endedAt,
             ),
         )
@@ -151,12 +146,12 @@ internal abstract class SessionRoomRepository(private val db: SoulariumDatabase)
 
     override fun observeConversations(sessionId: Session.Id): Flow<List<Conversation>> =
         conversationDao.observeForSession(sessionId.value).map { list ->
-            list.map { it.toDomain() }
+            list.map { it.toModel() }
         }
 
     override fun observePicks(conversationId: Conversation.Id): Flow<List<CardPick>> =
         cardPickDao.observeForConversation(conversationId.value).map { list ->
-            list.map { it.toDomain() }
+            list.map { it.toModel() }
         }
 
     private fun Session.toEntity(state: SessionState) = SessionEntity(
@@ -165,7 +160,7 @@ internal abstract class SessionRoomRepository(private val db: SoulariumDatabase)
         startedAt = startedAt.toEpochMilliseconds(),
         endedAt = endedAt?.toEpochMilliseconds(),
         bookmarkedAt = bookmarkedAt?.toEpochMilliseconds(),
-        stateSnapshotJson = json.encodeToString(state),
+        state = state,
         selectionInstructionsShown = selectionInstructionsShown,
     )
 

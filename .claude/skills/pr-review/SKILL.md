@@ -165,7 +165,7 @@ way: `:androidApp` → `:shared` → `:module:db` → `:module:model` (`:shared`
 
 ### Persistence Layer (`:module:db`)
 
-- [ ] The Room stack lives in `:module:db` (`org.cru.soularium.db.room`): `SoulariumDatabase` (internal `abstract val` DAO/repository accessors), DAOs (`db.room.dao`), entities (`db.room.entities`), and `RoomBindings` + `Android`/`Ios RoomBindings`. A repository impl is a Room `@Dao internal abstract class` (e.g. `SessionRoomRepository`) that implements a `db.repository` contract and is provided to the graph by `RoomBindings` (NOT `@ContributesBinding`)
+- [ ] The Room stack lives in `:module:db` (`org.cru.soularium.db.room`): `SoulariumDatabase` (internal `abstract val` DAO/repository accessors), DAOs (`db.room.dao`), entities (`db.room.entity`), and `RoomBindings` + `Android`/`Ios RoomBindings`. A repository impl is a Room `@Dao internal abstract class` (e.g. `SessionRoomRepository`) that implements a `db.repository` contract and is provided to the graph by `RoomBindings` (NOT `@ContributesBinding`)
 - [ ] New Room entity columns are nullable-correct — repository mapping is total (no `!!` on optional columns)
 - [ ] DAOs use `suspend fun` for single-shot queries and `Flow<T>` for reactive queries; `@Upsert` for inserts that may collide
 - [ ] FK columns have `@ColumnInfo(index = true)` and FK declarations use cascade semantics consistent with existing entities. Room enforces foreign keys by default (no manual `PRAGMA foreign_keys` callback)

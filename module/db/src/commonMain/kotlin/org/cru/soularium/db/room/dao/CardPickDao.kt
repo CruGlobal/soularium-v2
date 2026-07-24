@@ -5,7 +5,7 @@ import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
-import org.cru.soularium.db.room.entities.CardPickEntity
+import org.cru.soularium.db.room.entity.CardPickEntity
 
 @Dao
 interface CardPickDao {

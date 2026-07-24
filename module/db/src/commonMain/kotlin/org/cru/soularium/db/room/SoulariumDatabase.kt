@@ -7,9 +7,9 @@ import androidx.room.RoomDatabaseConstructor
 import org.cru.soularium.db.room.dao.CardPickDao
 import org.cru.soularium.db.room.dao.ConversationDao
 import org.cru.soularium.db.room.dao.SessionDao
-import org.cru.soularium.db.room.entities.CardPickEntity
-import org.cru.soularium.db.room.entities.ConversationEntity
-import org.cru.soularium.db.room.entities.SessionEntity
+import org.cru.soularium.db.room.entity.CardPickEntity
+import org.cru.soularium.db.room.entity.ConversationEntity
+import org.cru.soularium.db.room.entity.SessionEntity
 import org.cru.soularium.db.room.repository.SessionRoomRepository
 
 @Database(

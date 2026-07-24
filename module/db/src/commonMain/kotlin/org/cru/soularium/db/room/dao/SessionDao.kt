@@ -4,7 +4,7 @@ import androidx.room.Dao
 import androidx.room.Query
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
-import org.cru.soularium.db.room.entities.SessionEntity
+import org.cru.soularium.db.room.entity.SessionEntity
 import org.cru.soularium.model.Session
 
 @Dao

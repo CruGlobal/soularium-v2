@@ -22,6 +22,7 @@ kotlin {
 
                 api(libs.coroutines.core)
                 api(libs.room.runtime)
+                implementation(libs.gtoSupport.androidx.room)
                 implementation(libs.kotlinx.serialization.json)
             }
         }
@@ -29,6 +30,7 @@ kotlin {
         commonTest {
             dependencies {
                 implementation(libs.coroutines.test)
+                implementation(libs.turbine)
             }
         }
 

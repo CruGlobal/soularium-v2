@@ -8,13 +8,12 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.SerializationException
 import org.ccci.gto.support.androidx.test.junit.runners.AndroidJUnit4
 import org.ccci.gto.support.androidx.test.junit.runners.RunOnAndroidWith
+import org.cru.soularium.db.repository.FakeSessionRepository
 import org.cru.soularium.db.repository.SessionRepository
 import org.cru.soularium.domain.ports.AnalyticsTracker
 import org.cru.soularium.domain.ports.CrashReporter
@@ -24,7 +23,6 @@ import org.cru.soularium.model.CardPick
 import org.cru.soularium.model.ContactInfo
 import org.cru.soularium.model.Conversation
 import org.cru.soularium.model.Session
-import org.cru.soularium.model.game.SessionState
 import org.cru.soularium.ui.nav.ConversationSummaryScreen
 
 @RunOnAndroidWith(AndroidJUnit4::class)
@@ -47,13 +45,11 @@ class ConversationSummaryPresenterTest {
     fun `Loaded UiState composes participants from conversations and their final picks`() = runTest {
         val alice = Conversation(Conversation.Id.random(), sessionId, 0, ContactInfo("Alice"))
         val bob = Conversation(Conversation.Id.random(), sessionId, 1, ContactInfo("Bob"))
-        val repo = FakeSummarySessionRepository(
-            conversations = listOf(alice, bob),
-            picks = mapOf(
-                alice.id to listOf(finalPick(alice.id, 1, cardId = 3), finalPick(alice.id, 2, cardId = 7)),
-                bob.id to listOf(finalPick(bob.id, 1, cardId = 12)),
-            ),
-        )
+        val repo = FakeSessionRepository().apply {
+            seedConversations(sessionId, listOf(alice, bob))
+            seedPicks(alice.id, listOf(finalPick(alice.id, 1, cardId = 3), finalPick(alice.id, 2, cardId = 7)))
+            seedPicks(bob.id, listOf(finalPick(bob.id, 1, cardId = 12)))
+        }
         presenter(repo).test {
             val loaded = awaitUntil { !it.isLoading && it.error == null && it.participants.size == 2 }
             assertEquals(listOf("Alice", "Bob"), loaded.participants.map { it.name })
@@ -66,10 +62,11 @@ class ConversationSummaryPresenterTest {
     @Test
     fun `picks are filtered to final and sorted by questionNumber then pickOrder`() = runTest {
         val alice = Conversation(Conversation.Id.random(), sessionId, 0, ContactInfo("Alice"))
-        val repo = FakeSummarySessionRepository(
-            conversations = listOf(alice),
-            picks = mapOf(
-                alice.id to listOf(
+        val repo = FakeSessionRepository().apply {
+            seedConversations(sessionId, listOf(alice))
+            seedPicks(
+                alice.id,
+                listOf(
                     // Draft picks (isFinal=false) must be filtered out.
                     pick(alice.id, questionNumber = 1, cardId = 99, pickOrder = 0, isFinal = false),
                     // Out-of-order final picks: presenter must sort by (question, pickOrder).
@@ -77,8 +74,8 @@ class ConversationSummaryPresenterTest {
                     finalPick(alice.id, questionNumber = 1, cardId = 11, pickOrder = 1),
                     finalPick(alice.id, questionNumber = 1, cardId = 10, pickOrder = 0),
                 ),
-            ),
-        )
+            )
+        }
         presenter(repo).test {
             val loaded = awaitUntil { !it.isLoading && it.participants.size == 1 }
             assertEquals(listOf(10, 11, 22), loaded.participants.single().cardIds)
@@ -88,11 +85,9 @@ class ConversationSummaryPresenterTest {
 
     @Test
     fun `observeConversations throwing surfaces as UiState error`() = runTest {
-        val repo = FakeSummarySessionRepository(
-            conversations = emptyList(),
-            picks = emptyMap(),
-            observeConversationsThrows = SerializationException("db decode failure"),
-        )
+        val repo = FakeSessionRepository().apply {
+            observeConversationsError = SerializationException("db decode failure")
+        }
         presenter(repo).test {
             val errored = awaitUntil { it.error != null }
             assertNotNull(errored.error)
@@ -105,11 +100,9 @@ class ConversationSummaryPresenterTest {
     fun `initial emission is loading before flows resolve`() = runTest {
         // A never-emitting flow keeps the collector on the initial Loading value —
         // proves the presenter starts in Loading rather than jumping to Loaded/empty.
-        val repo = FakeSummarySessionRepository(
-            conversations = emptyList(),
-            picks = emptyMap(),
-            observeConversationsOverride = flow { /* never emits */ },
-        )
+        val repo = FakeSessionRepository().apply {
+            observeConversationsOverride = flow { /* never emits */ }
+        }
         presenter(repo).test {
             val first = awaitItem()
             assertTrue(first.isLoading)
@@ -149,47 +142,6 @@ private fun pick(
     pickOrder = pickOrder,
     isFinal = isFinal,
 )
-
-private class FakeSummarySessionRepository(
-    private val conversations: List<Conversation>,
-    private val picks: Map<Conversation.Id, List<CardPick>>,
-    private val observeConversationsThrows: Throwable? = null,
-    private val observeConversationsOverride: Flow<List<Conversation>>? = null,
-) : SessionRepository {
-    override fun observeConversations(sessionId: Session.Id): Flow<List<Conversation>> = when {
-        observeConversationsOverride != null -> observeConversationsOverride
-        observeConversationsThrows != null -> flow { throw observeConversationsThrows }
-        else -> flowOf(conversations)
-    }
-
-    override fun observePicks(conversationId: Conversation.Id): Flow<List<CardPick>> =
-        flowOf(picks[conversationId] ?: emptyList())
-
-    override suspend fun loadConversations(sessionId: Session.Id): List<Conversation> = conversations
-
-    override suspend fun loadPicks(conversationId: Conversation.Id): List<CardPick> =
-        picks[conversationId] ?: emptyList()
-
-    // Unused by ConversationSummaryPresenter — stub with defaults.
-    override suspend fun createSession(session: Session, initialState: SessionState): Session.Id = session.id
-    override suspend fun loadSession(id: Session.Id): Session? = null
-    override suspend fun loadState(id: Session.Id): SessionState? = null
-    override suspend fun persistState(id: Session.Id, state: SessionState) = Unit
-    override suspend fun setBookmarked(id: Session.Id, bookmarked: Boolean) = Unit
-    override suspend fun setEnded(id: Session.Id) = Unit
-    override suspend fun upsertParticipants(sessionId: Session.Id, names: List<String>): List<Conversation.Id> =
-        emptyList()
-    override suspend fun upsertContact(conversationId: Conversation.Id, info: ContactInfo) = Unit
-    override suspend fun upsertPicks(
-        conversationId: Conversation.Id,
-        questionNumber: Int,
-        cardIds: List<Int>,
-        isFinal: Boolean,
-    ) = Unit
-    override fun observeCompletedSessions(): Flow<List<Session>> = flowOf(emptyList())
-    override fun observeBookmarkedSessions(): Flow<List<Session>> = flowOf(emptyList())
-    override suspend fun deleteSession(id: Session.Id) = Unit
-}
 
 private object SummaryNoOpAnalytics : AnalyticsTracker {
     override fun screenView(screenName: String) = Unit

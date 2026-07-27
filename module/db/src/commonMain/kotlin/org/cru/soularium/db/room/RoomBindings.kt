@@ -14,6 +14,7 @@ object RoomBindings {
     @Provides
     @SingleIn(AppScope::class)
     internal fun providesDatabase(builder: RoomDatabase.Builder<SoulariumDatabase>): SoulariumDatabase = builder
+        .fallbackToDestructiveMigration(dropAllTables = true)
         .build()
 
     @Provides

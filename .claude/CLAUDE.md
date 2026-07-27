@@ -21,11 +21,15 @@ the repo's Gradle wrapper (`./gradlew`), never a system Gradle. The JDK is pinne
 
 The app modules are `:shared`, `:module:model`, and `:module:db` (KMP libraries via
 `com.android.kotlin.multiplatform.library`) plus `:androidApp` (an Android-only shell);
-`iosApp/` is the native SwiftUI shell hosting the Compose framework. Shared build logic
-lives in the `build-logic/` composite build's convention plugins. A module lists
+`iosApp/` is the native SwiftUI shell hosting the Compose framework.
+`:module:db:test-fixtures` is a sibling KMP library exposing `:module:db`'s shared test
+doubles (`FakeSessionRepository`) to other modules' `commonTest` source sets. Shared build
+logic lives in the `build-logic/` composite build's convention plugins. A module lists
 `soularium-kmp.module-conventions` explicitly even when it also applies the
-metro/serialization conventions, so its KMP-library nature is obvious. Exact dependency
-versions are pinned in `gradle/libs.versions.toml` — the single source of truth.
+metro/serialization conventions, so its KMP-library nature is obvious; a `test-fixtures`
+module instead applies `soularium-kmp.test-fixtures-conventions` (module-conventions with
+Kover disabled). Exact dependency versions are pinned in `gradle/libs.versions.toml` — the
+single source of truth.
 
 ## Architecture: Hexagonal
 
@@ -173,9 +177,11 @@ must contain no Android- or iOS-specific imports.
   `@RunOnAndroidWith(AndroidJUnit4::class)`. They render a composable, drive it
   (`onNode(...).performClick()`, `mainClock` for animation control) and assert. See
   `HomeMenuOverlayTest`.
-- Test doubles are plain in-memory classes defined in the test sources (e.g.
-  `InMemorySessionRepository`, `FakeSessionRepository`, `RecordingSharer`). There are no
-  `test-fixtures` modules.
+- Test doubles: reusable fakes live in a sibling `test-fixtures` module (modeled after
+  mpdx-kmp) — `:module:db:test-fixtures` provides `FakeSessionRepository`, a full
+  in-memory `SessionRepository` with seeding, interaction recording, and fault
+  injection. Single-use doubles (e.g. `RecordingSharer`) stay as plain private classes
+  in the test sources.
 - Coroutine tests use `runTest { }` with an injected `TestDispatcher` — never
   `runBlocking`. Flow tests use Turbine (`flow.test { awaitItem() }`).
 - Test functions use backtick-quoted names. **Presenter tests** name each case by the

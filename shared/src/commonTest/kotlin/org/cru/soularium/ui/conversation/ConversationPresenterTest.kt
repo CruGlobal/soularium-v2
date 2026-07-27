@@ -7,7 +7,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.SerializationException
 import org.ccci.gto.support.androidx.test.junit.runners.AndroidJUnit4
 import org.ccci.gto.support.androidx.test.junit.runners.RunOnAndroidWith
 import org.cru.soularium.db.repository.FakeSessionRepository
@@ -216,19 +215,29 @@ class ConversationPresenterTest {
     @Test
     fun `existing session with unreadable state snapshot restarts cleanly instead of stalling`() = runTest {
         // Simulates a mid-upgrade resume where the persisted state_snapshot_json
-        // contains an enum value that no longer exists in this build (e.g. a
-        // removed QuestionState variant). The row exists, but decode throws.
-        // Recovery must cascade-delete the broken session (so its conversation
-        // and pick children don't linger as orphans) then restart cleanly.
+        // no longer decodes in this build (e.g. a removed QuestionState variant).
+        // The repository surfaces an unreadable snapshot as a null state, and the
+        // presenter restarts the existing session in place.
         val repo = FakeSessionRepository().apply {
             seedSession(Session(id = sessionId, kind = Session.Kind.SOLO))
-            findSessionStateError = SerializationException("unknown enum value")
         }
         presenter(repo).test {
             awaitStableState { it is ConversationPresenter.UiState.AddingParticipants }
             cancelAndIgnoreRemainingEvents()
         }
-        assertEquals(listOf(sessionId), repo.deletedSessions)
+        assertTrue(repo.deletedSessions.isEmpty(), "restart reuses the session row instead of deleting it")
+    }
+
+    @Test
+    fun `findSessionState failure falls back to recreating the session instead of stalling`() = runTest {
+        val repo = FakeSessionRepository().apply {
+            seedSession(Session(id = sessionId, kind = Session.Kind.SOLO))
+            findSessionStateError = RuntimeException("db read failed")
+        }
+        presenter(repo).test {
+            awaitStableState { it is ConversationPresenter.UiState.AddingParticipants }
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 }
 

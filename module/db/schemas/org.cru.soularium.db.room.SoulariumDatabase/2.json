@@ -1,12 +1,12 @@
 {
   "formatVersion": 1,
   "database": {
-    "version": 1,
-    "identityHash": "cff7d5e7e0d3f5f0ed6befd76884d746",
+    "version": 2,
+    "identityHash": "a6c0bfb0b5b21ca2896efa7cdc3021c8",
     "entities": [
       {
         "tableName": "sessions",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `kind` TEXT NOT NULL, `started_at` INTEGER NOT NULL, `ended_at` INTEGER, `bookmarked_at` INTEGER, `selection_instructions_shown` INTEGER NOT NULL, `state_snapshot_json` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `kind` TEXT NOT NULL, `started_at` INTEGER NOT NULL, `ended_at` INTEGER, `bookmarked_at` INTEGER, `selection_instructions_shown` INTEGER NOT NULL, `state_snapshot_json` TEXT DEFAULT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -46,7 +46,7 @@
             "fieldPath": "state",
             "columnName": "state_snapshot_json",
             "affinity": "TEXT",
-            "notNull": true
+            "defaultValue": "NULL"
           }
         ],
         "primaryKey": {
@@ -221,7 +221,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'cff7d5e7e0d3f5f0ed6befd76884d746')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'a6c0bfb0b5b21ca2896efa7cdc3021c8')"
     ]
   }
 }

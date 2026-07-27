@@ -16,7 +16,7 @@ import org.cru.soularium.db.room.repository.SessionRoomRepository
 
 @Database(
     entities = [SessionEntity::class, ConversationEntity::class, CardPickEntity::class],
-    version = 1,
+    version = 2,
 )
 @ConstructedBy(SoulariumDatabaseConstructor::class)
 @TypeConverters(KotlinTimeConverters::class)

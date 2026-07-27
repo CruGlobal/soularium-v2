@@ -230,17 +230,6 @@ class ConversationPresenter(
                                 crashReporter.recordNonFatal(it, "findSession in ensureStarted")
                                 null
                             }
-                    // If a session row exists but its state_snapshot_json could not be
-                    // deserialized (schema change, corruption, etc.), the session is
-                    // unrecoverable. Cascade-delete the row and its conversation/pick
-                    // children so we don't leave orphans behind, then fall through to
-                    // createSession + StartSession for a clean restart.
-                    if (existing != null && loadStateFailed) {
-                        runCatching { sessionRepository.deleteSession(screen.sessionId) }
-                            .onFailure {
-                                crashReporter.recordNonFatal(it, "deleteSession during recovery")
-                            }
-                    }
                     if (existing == null || loadStateFailed) {
                         runCatching {
                             sessionRepository.createSession(

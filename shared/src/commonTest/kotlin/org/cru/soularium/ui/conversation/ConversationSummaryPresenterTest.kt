@@ -57,14 +57,20 @@ class ConversationSummaryPresenterTest {
         presenter(repo).test {
             val loaded = awaitUntil { !it.isLoading && it.error == null && it.participants.size == 2 }
             assertEquals(listOf("Alice", "Bob"), loaded.participants.map { it.name })
-            assertEquals(listOf(3, 7), loaded.participants[0].cardIds)
-            assertEquals(listOf(12), loaded.participants[1].cardIds)
+            assertEquals(
+                listOf(QuestionSelections(1, listOf(3)), QuestionSelections(2, listOf(7))),
+                loaded.participants[0].selections,
+            )
+            assertEquals(
+                listOf(QuestionSelections(1, listOf(12))),
+                loaded.participants[1].selections,
+            )
             cancelAndIgnoreRemainingEvents()
         }
     }
 
     @Test
-    fun `picks are filtered to final and sorted by questionNumber then pickOrder`() = runTest {
+    fun `picks are grouped by question and sorted by pickOrder within a question`() = runTest {
         val alice = Conversation(Conversation.Id.random(), sessionId, 0, ContactInfo("Alice"))
         val repo = FakeSummarySessionRepository(
             conversations = listOf(alice),
@@ -72,7 +78,8 @@ class ConversationSummaryPresenterTest {
                 alice.id to listOf(
                     // Draft picks (isFinal=false) must be filtered out.
                     pick(alice.id, questionNumber = 1, cardId = 99, pickOrder = 0, isFinal = false),
-                    // Out-of-order final picks: presenter must sort by (question, pickOrder).
+                    // Out-of-order final picks: presenter must group by question and sort
+                    // by pickOrder within each group; sections themselves sort by questionNumber.
                     finalPick(alice.id, questionNumber = 2, cardId = 22, pickOrder = 0),
                     finalPick(alice.id, questionNumber = 1, cardId = 11, pickOrder = 1),
                     finalPick(alice.id, questionNumber = 1, cardId = 10, pickOrder = 0),
@@ -81,7 +88,13 @@ class ConversationSummaryPresenterTest {
         )
         presenter(repo).test {
             val loaded = awaitUntil { !it.isLoading && it.participants.size == 1 }
-            assertEquals(listOf(10, 11, 22), loaded.participants.single().cardIds)
+            assertEquals(
+                listOf(
+                    QuestionSelections(1, listOf(10, 11)),
+                    QuestionSelections(2, listOf(22)),
+                ),
+                loaded.participants.single().selections,
+            )
             cancelAndIgnoreRemainingEvents()
         }
     }

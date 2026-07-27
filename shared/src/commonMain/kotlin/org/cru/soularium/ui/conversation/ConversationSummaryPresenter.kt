@@ -94,10 +94,19 @@ class ConversationSummaryPresenter(
                                 ParticipantSummary(
                                     participantIndex = conversation.displayOrder,
                                     name = conversation.contact.name,
-                                    cardIds = picks
+                                    selections = picks
                                         .filter { it.isFinal }
-                                        .sortedWith(compareBy({ it.questionNumber }, { it.pickOrder }))
-                                        .map { it.cardId },
+                                        .groupBy { it.questionNumber }
+                                        .entries
+                                        .sortedBy { it.key }
+                                        .map { (questionNumber, questionPicks) ->
+                                            QuestionSelections(
+                                                questionNumber = questionNumber,
+                                                cardIds = questionPicks
+                                                    .sortedBy { it.pickOrder }
+                                                    .map { it.cardId },
+                                            )
+                                        },
                                 )
                             }
                         },

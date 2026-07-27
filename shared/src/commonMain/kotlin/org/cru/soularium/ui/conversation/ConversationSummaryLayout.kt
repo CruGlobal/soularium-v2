@@ -1,5 +1,6 @@
 package org.cru.soularium.ui.conversation
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -37,7 +38,6 @@ import org.cru.soularium.generated.resources.action_share
 import org.cru.soularium.generated.resources.summary_load_failed
 import org.cru.soularium.generated.resources.summary_share_prompt
 import org.cru.soularium.generated.resources.summary_title
-import org.cru.soularium.ui.content.CardAsset
 import org.cru.soularium.ui.nav.ConversationSummaryScreen
 import org.jetbrains.compose.resources.stringResource
 
@@ -162,12 +162,16 @@ private fun SummaryParticipantContent(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-        CardMosaic(
-            cards = participant.cardIds.map(CardAsset::fromId),
+        Column(
             modifier = Modifier.fillMaxWidth(),
-        )
+            verticalArrangement = Arrangement.spacedBy(24.dp),
+        ) {
+            participant.selections.forEach { section ->
+                QuestionSelectionsSection(section, modifier = Modifier.fillMaxWidth())
+            }
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
 

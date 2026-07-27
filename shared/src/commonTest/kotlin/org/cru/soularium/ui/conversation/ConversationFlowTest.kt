@@ -62,7 +62,7 @@ class ConversationFlowTest {
             val summary = awaitStable {
                 (it as? ConversationPresenter.UiState.Summary)?.participants?.size == 1
             } as ConversationPresenter.UiState.Summary
-            assertEquals(9, summary.participants.single().cardIds.size)
+            assertEquals(9, summary.participants.single().selections.sumOf { it.cardIds.size })
 
             summary.eventSink(ConversationPresenter.UiEvent.Summary.Share(0))
             advanceUntilIdle()
@@ -103,7 +103,13 @@ class ConversationFlowTest {
                 (it as? ConversationPresenter.UiState.Summary)?.participants?.size == 3
             } as ConversationPresenter.UiState.Summary
             summary.participants.forEach { participant ->
-                assertEquals(9, participant.cardIds.size, "${participant.name} should have 9 final picks")
+                val totalPicks = participant.selections.sumOf { it.cardIds.size }
+                assertEquals(9, totalPicks, "${participant.name} should have 9 final picks")
+                assertEquals(
+                    listOf(1, 2, 3, 4, 5),
+                    participant.selections.map { it.questionNumber },
+                    "${participant.name}'s picks should be grouped by all 5 questions in order",
+                )
             }
             cancelAndIgnoreRemainingEvents()
         }

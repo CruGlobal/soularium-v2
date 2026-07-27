@@ -35,4 +35,8 @@ interface SessionRepository {
     suspend fun deleteSession(id: Session.Id)
 
     suspend fun loadConversations(sessionId: Session.Id): List<Conversation>
+
+    fun observeConversations(sessionId: Session.Id): Flow<List<Conversation>>
+
+    fun observePicks(conversationId: Conversation.Id): Flow<List<CardPick>>
 }

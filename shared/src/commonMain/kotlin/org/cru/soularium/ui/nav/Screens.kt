@@ -26,3 +26,16 @@ data class ConversationScreen(
             ConversationScreen(sessionId.value, kind)
     }
 }
+
+@Parcelize
+data class ConversationSummaryScreen(
+    /** Backing string id — value-class types aren't directly parcelable. */
+    val sessionIdValue: String,
+) : Screen {
+    val sessionId: Session.Id get() = Session.Id(sessionIdValue)
+
+    companion object {
+        operator fun invoke(sessionId: Session.Id): ConversationSummaryScreen =
+            ConversationSummaryScreen(sessionId.value)
+    }
+}

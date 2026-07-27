@@ -1,7 +1,7 @@
 package org.cru.soularium.domain.session
 
 import org.cru.soularium.domain.DomainError
-import org.cru.soularium.domain.content.Questions
+import org.cru.soularium.game.content.Questions
 import org.cru.soularium.model.game.SessionState
 import org.cru.soularium.model.game.SessionState.InQuestion.QuestionState
 

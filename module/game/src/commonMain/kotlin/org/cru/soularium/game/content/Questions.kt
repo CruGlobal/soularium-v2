@@ -1,4 +1,4 @@
-package org.cru.soularium.domain.content
+package org.cru.soularium.game.content
 
 object Questions {
     val all: List<Question> =

@@ -4,10 +4,10 @@ import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
-import org.cru.soularium.domain.content.CardImage
-import org.cru.soularium.domain.content.Question
-import org.cru.soularium.domain.content.Questions
 import org.cru.soularium.domain.ports.ContentRepository
+import org.cru.soularium.game.content.CardImage
+import org.cru.soularium.game.content.Question
+import org.cru.soularium.game.content.Questions
 
 @Inject
 @SingleIn(AppScope::class)

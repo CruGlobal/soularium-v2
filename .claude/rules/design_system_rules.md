@@ -1,3 +1,9 @@
+---
+paths:
+  - "shared/src/**/ui/**"
+  - "shared/src/**/composeResources/**"
+---
+
 # Design System Rules — Soularium v2 (Compose Multiplatform)
 
 This document defines the design-system conventions for Soularium v2 so that UI work —

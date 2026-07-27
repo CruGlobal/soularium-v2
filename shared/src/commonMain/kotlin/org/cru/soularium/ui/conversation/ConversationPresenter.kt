@@ -203,7 +203,7 @@ class ConversationPresenter(
         // session id.
         LaunchedEffect(screen.sessionId) {
             var loadStateFailed = false
-            val loaded = runCatching { sessionRepository.loadState(screen.sessionId) }
+            val loaded = runCatching { sessionRepository.findSessionState(screen.sessionId) }
                 .onFailure {
                     loadStateFailed = true
                     crashReporter.recordNonFatal(it, "loadState on init")

@@ -329,7 +329,7 @@ private class InMemorySessionRepository : SessionRepository {
 
     override suspend fun findSession(id: Session.Id): Session? = sessions[id]
     override fun findSessionFlow(id: Session.Id): Flow<Session?> = flowOf(sessions[id])
-    override suspend fun loadState(id: Session.Id): SessionState? = states[id]
+    override suspend fun findSessionState(id: Session.Id): SessionState? = states[id]
 
     override suspend fun persistState(id: Session.Id, state: SessionState) {
         states[id] = state

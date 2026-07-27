@@ -19,7 +19,7 @@ abstract class SessionRepositoryTest {
     abstract val repository: SessionRepository
 
     @Test
-    fun `findSession - returns the persisted session, or null when absent`() = runTest {
+    fun `findSession - returns the persisted session or null when absent`() = runTest {
         val sessionId = Session.Id.random()
         repository.createSession(Session(id = sessionId, kind = Session.Kind.GROUP), SessionState.NotStarted)
 
@@ -47,12 +47,27 @@ abstract class SessionRepositoryTest {
     }
 
     @Test
+    fun `findSessionState - returns the latest persisted state or null when absent`() = runTest {
+        val sessionId = Session.Id.random()
+        repository.createSession(Session(id = sessionId, kind = Session.Kind.SOLO), SessionState.NotStarted)
+
+        assertEquals(SessionState.NotStarted, repository.findSessionState(sessionId))
+        repository.persistState(sessionId, SessionState.AddingParticipants)
+        assertEquals(
+            SessionState.AddingParticipants,
+            repository.findSessionState(sessionId),
+            "reflects the latest persisted state",
+        )
+        assertNull(repository.findSessionState(Session.Id.random()), "an unknown id resolves to null")
+    }
+
+    @Test
     fun `createSession - persists the session and its state`() = runTest {
         val sessionId = Session.Id.random()
         repository.createSession(Session(id = sessionId, kind = Session.Kind.GROUP), SessionState.AddingParticipants)
 
         assertEquals(Session.Kind.GROUP, repository.findSession(sessionId)?.kind)
-        assertEquals(SessionState.AddingParticipants, repository.loadState(sessionId))
+        assertEquals(SessionState.AddingParticipants, repository.findSessionState(sessionId))
     }
 
     @Test

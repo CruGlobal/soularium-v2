@@ -10,11 +10,10 @@ import org.cru.soularium.model.game.SessionState
 
 interface SessionRepository {
     suspend fun findSession(id: Session.Id): Session? = findSessionFlow(id).first()
+    suspend fun findSessionState(id: Session.Id): SessionState?
     fun findSessionFlow(id: Session.Id): Flow<Session?>
 
     suspend fun createSession(session: Session, initialState: SessionState): Session.Id
-
-    suspend fun loadState(id: Session.Id): SessionState?
 
     suspend fun persistState(id: Session.Id, state: SessionState)
 

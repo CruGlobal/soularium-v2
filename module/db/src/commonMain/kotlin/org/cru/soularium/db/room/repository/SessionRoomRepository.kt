@@ -22,14 +22,13 @@ internal abstract class SessionRoomRepository(private val db: SoulariumDatabase)
     private val cardPickDao get() = db.cardPickDao
 
     override suspend fun findSession(id: Session.Id) = sessionDao.findSession(id)?.toModel()
+    override suspend fun findSessionState(id: Session.Id): SessionState? = sessionDao.findSession(id)?.state
     override fun findSessionFlow(id: Session.Id) = sessionDao.findSessionFlow(id).map { it?.toModel() }
 
     override suspend fun createSession(session: Session, initialState: SessionState): Session.Id {
         sessionDao.upsert(SessionEntity(session, initialState))
         return session.id
     }
-
-    override suspend fun loadState(id: Session.Id): SessionState? = sessionDao.findSession(id)?.state
 
     override suspend fun persistState(id: Session.Id, state: SessionState) {
         val current = sessionDao.findSession(id) ?: return

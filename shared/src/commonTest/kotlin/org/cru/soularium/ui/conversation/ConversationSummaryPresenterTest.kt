@@ -174,7 +174,7 @@ private class FakeSummarySessionRepository(
     override suspend fun createSession(session: Session, initialState: SessionState): Session.Id = session.id
     override suspend fun findSession(id: Session.Id): Session? = null
     override fun findSessionFlow(id: Session.Id): Flow<Session?> = flowOf(null)
-    override suspend fun loadState(id: Session.Id): SessionState? = null
+    override suspend fun findSessionState(id: Session.Id): SessionState? = null
     override suspend fun persistState(id: Session.Id, state: SessionState) = Unit
     override suspend fun setBookmarked(id: Session.Id, bookmarked: Boolean) = Unit
     override suspend fun setEnded(id: Session.Id) = Unit

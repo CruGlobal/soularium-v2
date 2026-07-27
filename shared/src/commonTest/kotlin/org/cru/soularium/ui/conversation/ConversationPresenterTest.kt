@@ -245,7 +245,7 @@ private class FakeSessionRepository : SessionRepository {
 
     override fun findSessionFlow(id: Session.Id): Flow<Session?> = flowOf(preloadedSession)
 
-    override suspend fun loadState(id: Session.Id): SessionState? {
+    override suspend fun findSessionState(id: Session.Id): SessionState? {
         loadStateError?.let { throw it }
         return preloadedState
     }

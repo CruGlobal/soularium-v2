@@ -1,5 +1,6 @@
 package org.cru.soularium.ui.conversation
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -34,15 +35,14 @@ import org.cru.soularium.generated.resources.Res
 import org.cru.soularium.generated.resources.action_back
 import org.cru.soularium.generated.resources.summary_load_failed
 import org.cru.soularium.generated.resources.summary_title
-import org.cru.soularium.ui.content.CardAsset
 import org.cru.soularium.ui.nav.ConversationSummaryScreen
 import org.jetbrains.compose.resources.stringResource
 
 /**
  * Read-only summary rendered when a completed session is reopened from
- * PastConversations. Shows each participant's final-picks mosaic; Back returns
- * to the past-conversations list. No gameplay affordances (no Add Contact, no
- * Done → Conclude).
+ * PastConversations. Shows each participant's picks broken down per question;
+ * Back returns to the past-conversations list. No gameplay affordances (no
+ * Add Contact, no Done → Conclude).
  */
 @CircuitInject(ConversationSummaryScreen::class, AppScope::class)
 @Composable
@@ -151,11 +151,15 @@ private fun SummaryParticipantContent(participant: ParticipantSummary, modifier:
             modifier = Modifier.fillMaxWidth(),
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-        CardMosaic(
-            cards = participant.cardIds.map(CardAsset::fromId),
+        Column(
             modifier = Modifier.fillMaxWidth(),
-        )
+            verticalArrangement = Arrangement.spacedBy(24.dp),
+        ) {
+            participant.selections.forEach { section ->
+                QuestionSelectionsSection(section, modifier = Modifier.fillMaxWidth())
+            }
+        }
     }
 }

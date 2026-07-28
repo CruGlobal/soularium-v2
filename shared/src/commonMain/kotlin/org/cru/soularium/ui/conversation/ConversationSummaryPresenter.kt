@@ -28,9 +28,9 @@ import org.cru.soularium.ui.nav.ConversationSummaryScreen
 
 /**
  * Read-only summary of a completed session, opened from PastConversations.
- * Collects the participant mosaic (final picks per question, per participant)
- * reactively from the repository — no state-machine involvement. Back returns
- * to Past Conversations.
+ * Collects each participant's picks broken down per question reactively from
+ * the repository — no state-machine involvement. Back returns to Past
+ * Conversations.
  */
 @AssistedInject
 class ConversationSummaryPresenter(
@@ -83,10 +83,7 @@ class ConversationSummaryPresenter(
                                 ParticipantSummary(
                                     participantIndex = conversation.displayOrder,
                                     name = conversation.contact.name,
-                                    cardIds = picks
-                                        .filter { it.isFinal }
-                                        .sortedWith(compareBy({ it.questionNumber }, { it.pickOrder }))
-                                        .map { it.cardId },
+                                    selections = picks.toQuestionSelections(),
                                 )
                             }
                         },

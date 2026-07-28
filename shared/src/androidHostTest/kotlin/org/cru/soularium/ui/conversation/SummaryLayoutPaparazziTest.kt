@@ -4,63 +4,36 @@ import app.cash.paparazzi.DeviceConfig
 import com.android.resources.NightMode
 import com.google.testing.junit.testparameterinjector.TestParameter
 import com.google.testing.junit.testparameterinjector.TestParameterInjector
-import org.cru.soularium.domain.DomainError
 import org.cru.soularium.ui.test.BasePaparazziTest
 import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(TestParameterInjector::class)
-class ConversationSummaryLayoutPaparazziTest(
+class SummaryLayoutPaparazziTest(
     @TestParameter(valuesProvider = DeviceConfigProvider::class) deviceConfig: DeviceConfig,
     @TestParameter nightMode: NightMode,
 ) : BasePaparazziTest(deviceConfig = deviceConfig, nightMode = nightMode) {
-    // Loading state: the reactive collect hasn't emitted yet.
+    // Single participant: no TabRow; renders the "That's a Wrap" flourish, the
+    // participant heading, the per-question sections, and Share + Add Contact.
     @Test
-    fun `ConversationSummaryLayout() - loading`() = snapshot {
-        ConversationSummaryLayout(
-            state = ConversationSummaryPresenter.UiState(
-                participants = emptyList(),
-                isLoading = true,
-                error = null,
-                eventSink = {},
-            ),
-        )
-    }
-
-    // Error state: repository observation failed; render the error affordance.
-    @Test
-    fun `ConversationSummaryLayout() - error`() = snapshot {
-        ConversationSummaryLayout(
-            state = ConversationSummaryPresenter.UiState(
-                participants = emptyList(),
-                isLoading = false,
-                error = DomainError.PersistenceFailed,
-                eventSink = {},
-            ),
-        )
-    }
-
-    // Single participant: no TabRow; per-question breakdown + share + back.
-    @Test
-    fun `ConversationSummaryLayout() - single participant`() = snapshot {
-        ConversationSummaryLayout(
-            state = ConversationSummaryPresenter.UiState(
+    fun `SummaryLayout() - single participant`() = snapshot {
+        SummaryLayout(
+            state = ConversationPresenter.UiState.Summary(
                 participants = listOf(ada()),
-                isLoading = false,
-                error = null,
+                showExitDialog = false,
                 eventSink = {},
             ),
         )
     }
 
-    // Multiple participants: TabRow at the top.
+    // Multiple participants: TabRow at the top; the selected participant's
+    // sections render below (default: tab 0).
     @Test
-    fun `ConversationSummaryLayout() - multiple participants`() = snapshot {
-        ConversationSummaryLayout(
-            state = ConversationSummaryPresenter.UiState(
+    fun `SummaryLayout() - multiple participants`() = snapshot {
+        SummaryLayout(
+            state = ConversationPresenter.UiState.Summary(
                 participants = listOf(ada(), grace(), alan()),
-                isLoading = false,
-                error = null,
+                showExitDialog = false,
                 eventSink = {},
             ),
         )

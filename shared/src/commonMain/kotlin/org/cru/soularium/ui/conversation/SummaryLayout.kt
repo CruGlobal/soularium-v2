@@ -35,29 +35,60 @@ import androidx.compose.ui.unit.dp
 import org.cru.soularium.generated.resources.Res
 import org.cru.soularium.generated.resources.action_done
 import org.cru.soularium.generated.resources.contact_save_conversation
+import org.cru.soularium.generated.resources.q1_prompt
+import org.cru.soularium.generated.resources.q2_prompt
+import org.cru.soularium.generated.resources.q3_prompt
+import org.cru.soularium.generated.resources.q4_prompt
+import org.cru.soularium.generated.resources.q5_prompt
+import org.cru.soularium.generated.resources.question_index
 import org.cru.soularium.generated.resources.summary_great_talking
 import org.cru.soularium.generated.resources.summary_thats_a_wrap
 import org.cru.soularium.generated.resources.summary_title
+import org.cru.soularium.model.CardPick
 import org.cru.soularium.ui.content.CardAsset
+import org.cru.soularium.ui.theme.QuestionProgressColors
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
-private const val MOSAIC_COLUMNS = 3
-private const val MOSAIC_MAX_CARDS = 9
+private const val SELECTIONS_COLUMNS = 3
+private const val TOTAL_QUESTIONS = 5
 
 /**
  * Holds the data for a single participant's summary card.
  *
  * @param participantIndex zero-based index of the participant.
  * @param name display name.
- * @param cardIds the participant's up-to-9 final image picks
- *   (Q1: 3 cards, Q2: 3 cards, Q3–Q5: 1 card each).
+ * @param selections the participant's final picks grouped by question, sorted
+ *   by questionNumber. Q1/Q2 hold 3 cards; Q3–Q5 hold 1 card each. A question
+ *   with no picks is omitted from the list.
  */
-data class ParticipantSummary(val participantIndex: Int, val name: String, val cardIds: List<Int>,)
+data class ParticipantSummary(val participantIndex: Int, val name: String, val selections: List<QuestionSelections>)
+
+/**
+ * One question's worth of picks within a [ParticipantSummary].
+ */
+data class QuestionSelections(val questionNumber: Int, val cardIds: List<Int>)
+
+/**
+ * Groups a conversation's picks into per-question [QuestionSelections]: keeps only the
+ * final picks, orders the sections by question number, and orders each section's cards by
+ * pick order. Shared by both summary entry points so they can't drift apart.
+ */
+internal fun List<CardPick>.toQuestionSelections(): List<QuestionSelections> = filter { it.isFinal }
+    .groupBy { it.questionNumber }
+    .entries
+    .sortedBy { it.key }
+    .map { (questionNumber, questionPicks) ->
+        QuestionSelections(
+            questionNumber = questionNumber,
+            cardIds = questionPicks.sortedBy { it.pickOrder }.map { it.cardId },
+        )
+    }
 
 /**
  * End-of-conversation summary ("Life in Pictures") screen. Shows each
- * participant's 9-card mosaic with an add-contact action.
+ * participant's picks broken down per question with an add-contact action.
  */
 @Composable
 fun SummaryLayout(state: ConversationPresenter.UiState.Summary, modifier: Modifier = Modifier) {
@@ -175,13 +206,17 @@ private fun ParticipantSummaryContent(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-        // 3×3 card mosaic
-        CardMosaic(
-            cards = participant.cardIds.map(CardAsset::fromId),
+        // Per-question breakdown sections
+        Column(
             modifier = Modifier.fillMaxWidth(),
-        )
+            verticalArrangement = Arrangement.spacedBy(24.dp),
+        ) {
+            participant.selections.forEach { section ->
+                QuestionSelectionsSection(section, modifier = Modifier.fillMaxWidth())
+            }
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -201,38 +236,59 @@ private fun ParticipantSummaryContent(
 }
 
 /**
- * Renders up to 9 card thumbnails in a 3-column grid.
- *
- * Empty slots (fewer than 9 picks) are skipped; the grid simply has fewer rows.
+ * One question's block: numbered "Question N of 5" label in the question's
+ * accent color, the question prompt, and a row of the selected images. Rows
+ * always render [SELECTIONS_COLUMNS] cells wide so that a one-image question
+ * (Q3–Q5) left-aligns its pick within the same grid as the three-image
+ * questions (Q1/Q2).
  */
 @Composable
-internal fun CardMosaic(cards: List<CardAsset>, modifier: Modifier = Modifier) {
-    val rows = cards.take(MOSAIC_MAX_CARDS).chunked(MOSAIC_COLUMNS)
+internal fun QuestionSelectionsSection(section: QuestionSelections, modifier: Modifier = Modifier) {
+    val accentColor = QuestionProgressColors.getOrElse(section.questionNumber - 1) {
+        QuestionProgressColors.first()
+    }
+    val cards = section.cardIds.map(CardAsset::fromId)
 
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        rows.forEach { row ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                row.forEach { card ->
-                    Image(
-                        painter = painterResource(card.thumbnail ?: card.full),
-                        contentDescription = card.contentDescription?.let { stringResource(it) },
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .weight(1f)
-                            .aspectRatio(1f),
-                    )
-                }
-                // Pad a short final row with empty slots to preserve grid alignment
-                repeat(MOSAIC_COLUMNS - row.size) {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
+        Text(
+            text = stringResource(Res.string.question_index, section.questionNumber, TOTAL_QUESTIONS),
+            style = MaterialTheme.typography.labelLarge,
+            color = accentColor,
+        )
+        Text(
+            text = stringResource(questionPromptResource(section.questionNumber)),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            cards.forEach { card ->
+                Image(
+                    painter = painterResource(card.thumbnail ?: card.full),
+                    contentDescription = card.contentDescription?.let { stringResource(it) },
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .weight(1f)
+                        .aspectRatio(1f),
+                )
+            }
+            // Pad short rows so single-image questions align to the grid
+            repeat(SELECTIONS_COLUMNS - cards.size) {
+                Spacer(modifier = Modifier.weight(1f))
             }
         }
     }
+}
+
+private fun questionPromptResource(questionNumber: Int): StringResource = when (questionNumber) {
+    1 -> Res.string.q1_prompt
+    2 -> Res.string.q2_prompt
+    3 -> Res.string.q3_prompt
+    4 -> Res.string.q4_prompt
+    else -> Res.string.q5_prompt
 }

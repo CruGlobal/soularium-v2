@@ -496,18 +496,13 @@ class ConversationPresenter(
         }
     }
 
-    /** Loads each participant's final 9 picks for the Summary screen. */
+    /** Loads each participant's final picks (grouped per question) for the Summary screen. */
     private suspend fun loadSummaries(): List<ParticipantSummary> =
         sessionRepository.loadConversations(screen.sessionId).map { conversation ->
-            val cardIds =
-                sessionRepository.loadPicks(conversation.id)
-                    .filter { it.isFinal }
-                    .sortedWith(compareBy({ it.questionNumber }, { it.pickOrder }))
-                    .map { it.cardId }
             ParticipantSummary(
                 participantIndex = conversation.displayOrder,
                 name = conversation.contact.name,
-                cardIds = cardIds,
+                selections = sessionRepository.loadPicks(conversation.id).toQuestionSelections(),
             )
         }
 

@@ -1,6 +1,6 @@
 package org.cru.soularium.game
 
-import org.cru.soularium.game.content.Questions
+import org.cru.soularium.game.content.Question
 import org.cru.soularium.model.game.SessionState
 import org.cru.soularium.model.game.SessionState.InQuestion.QuestionState
 
@@ -81,7 +81,7 @@ private fun transitionInQuestion(
     event: SessionEvent,
     ctx: SessionContext,
 ): TransitionResult {
-    val question = Questions.byNumber(state.questionNumber)
+    val question = Question.forNumber(state.questionNumber)
     return when (event) {
         SessionEvent.BeginSelection -> {
             val targetActivity =

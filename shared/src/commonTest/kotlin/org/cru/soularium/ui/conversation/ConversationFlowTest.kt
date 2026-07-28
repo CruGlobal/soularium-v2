@@ -15,7 +15,7 @@ import org.cru.soularium.db.repository.FakeSessionRepository
 import org.cru.soularium.db.repository.SessionRepository
 import org.cru.soularium.domain.ports.AnalyticsTracker
 import org.cru.soularium.domain.ports.CrashReporter
-import org.cru.soularium.game.content.Questions
+import org.cru.soularium.game.content.Question
 import org.cru.soularium.model.Session
 import org.cru.soularium.ui.nav.ConversationScreen
 import org.cru.soularium.ui.screens.PastConversationsPresenter
@@ -263,7 +263,7 @@ private suspend fun ReceiveTurbine<ConversationPresenter.UiState>.playAllTurns(
         val prompt = (firstPrompt ?: awaitStable { it is ConversationPresenter.UiState.QuestionPrompt })
             as ConversationPresenter.UiState.QuestionPrompt
         firstPrompt = null
-        val question = Questions.byNumber(prompt.questionNumber)
+        val question = Question.forNumber(prompt.questionNumber)
         prompt.eventSink(ConversationPresenter.UiEvent.QuestionPrompt.BeginSelection)
 
         val afterBegin = awaitStable {

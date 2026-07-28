@@ -50,7 +50,7 @@ convention.
   are *returned as data* (`Effect`) for the Presenter to execute. Keep it pure and
   exhaustively tested. The state itself (`SessionState`) lives in `:module:model`
   (`org.cru.soularium.model.game`), so `transition()` operates over it. The content
-  catalog the machine consumes (`Question`, `Questions`, `CardImage`) lives at
+  catalog the machine consumes (the `Question` enum) lives at
   `org.cru.soularium.game.content`.
 - **Errors**: `GameError` sealed interface (`:module:game`). There is no `Result<T>`
   wrapper — transition errors surface via `TransitionResult.error`.

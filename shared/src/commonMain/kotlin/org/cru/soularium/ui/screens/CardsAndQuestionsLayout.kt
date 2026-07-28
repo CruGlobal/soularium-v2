@@ -45,7 +45,6 @@ import androidx.compose.ui.unit.dp
 import com.slack.circuit.codegen.annotations.CircuitInject
 import dev.zacsweers.metro.AppScope
 import org.cru.soularium.game.content.Question
-import org.cru.soularium.game.content.Questions
 import org.cru.soularium.generated.resources.Res
 import org.cru.soularium.generated.resources.action_back
 import org.cru.soularium.generated.resources.cards_and_questions_title
@@ -190,7 +189,7 @@ private fun CardThumbnailItem(card: CardAsset, onTap: () -> Unit, modifier: Modi
 
 @Composable
 private fun QuestionsList(modifier: Modifier = Modifier) {
-    val questions = remember { Questions.all }
+    val questions = remember { Question.entries }
     LazyColumn(modifier = modifier) {
         items(questions) { question ->
             QuestionItem(question = question)

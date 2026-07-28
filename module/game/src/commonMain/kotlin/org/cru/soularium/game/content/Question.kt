@@ -1,15 +1,15 @@
 package org.cru.soularium.game.content
 
-data class Question(
-    val number: Int,
-    val requiredImageCount: Int,
-    val promptKey: String,
-    val selectionKey: String,
-    val finalizingKey: String,
-    val discussionKey: String,
-) {
-    init {
-        require(number in 1..5) { "Question number must be 1..5, was $number" }
-        require(requiredImageCount in 1..3) { "Required image count must be 1..3, was $requiredImageCount" }
+enum class Question(val number: Int, val requiredImageCount: Int) {
+    CURRENT_LIFE(1, 3),
+    DESIRED_LIFE(2, 3),
+    GOD(3, 1),
+    SPIRITUAL_EXPERIENCE(4, 1),
+    DESIRED_SPIRITUAL_LIFE(5, 1),
+
+    ;
+
+    companion object {
+        fun forNumber(n: Int): Question = entries.first { it.number == n }
     }
 }

@@ -7,25 +7,16 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.ccci.gto.support.androidx.test.junit.runners.AndroidJUnit4
 import org.ccci.gto.support.androidx.test.junit.runners.RunOnAndroidWith
+import org.cru.soularium.db.repository.FakeSessionRepository
 import org.cru.soularium.db.repository.SessionRepository
 import org.cru.soularium.domain.content.Questions
 import org.cru.soularium.domain.ports.AnalyticsTracker
 import org.cru.soularium.domain.ports.CrashReporter
-import org.cru.soularium.domain.ports.ShareResult
-import org.cru.soularium.domain.ports.Sharer
-import org.cru.soularium.model.CardPick
-import org.cru.soularium.model.ContactInfo
-import org.cru.soularium.model.Conversation
 import org.cru.soularium.model.Session
-import org.cru.soularium.model.game.SessionState
 import org.cru.soularium.ui.nav.ConversationScreen
 import org.cru.soularium.ui.screens.PastConversationsPresenter
 
@@ -43,14 +34,13 @@ import org.cru.soularium.ui.screens.PastConversationsPresenter
 class ConversationFlowTest {
 
     @Test
-    fun `solo session completes from start through summary share and conclude`() = runTest {
-        val repo = InMemorySessionRepository()
-        val sharer = RecordingSharer()
+    fun `solo session completes from start through summary and conclude`() = runTest {
+        val repo = FakeSessionRepository()
         val sessionId = Session.Id.random()
         val screen = ConversationScreen(sessionId, Session.Kind.SOLO)
         val navigator = FakeNavigator(screen)
 
-        presenter(navigator, screen, repo, sharer = sharer).test {
+        presenter(navigator, screen, repo).test {
             val added = awaitStable { it is ConversationPresenter.UiState.AddingParticipants }
             added.addParticipant("Jordan")
             awaitStable {
@@ -64,20 +54,15 @@ class ConversationFlowTest {
             } as ConversationPresenter.UiState.Summary
             assertEquals(9, summary.participants.single().selections.sumOf { it.cardIds.size })
 
-            summary.eventSink(ConversationPresenter.UiEvent.Summary.Share(0))
-            advanceUntilIdle()
-
             summary.eventSink(ConversationPresenter.UiEvent.Summary.Done)
             awaitStable { it is ConversationPresenter.UiState.Loading }
             cancelAndIgnoreRemainingEvents()
         }
-        assertEquals(1, sharer.shared.size)
-        assertTrue(sharer.shared.single().isNotEmpty(), "share text should be a non-empty URL")
     }
 
     @Test
     fun `group session of three completes all five questions`() = runTest {
-        val repo = InMemorySessionRepository()
+        val repo = FakeSessionRepository()
         val sessionId = Session.Id.random()
         val screen = ConversationScreen(sessionId, Session.Kind.GROUP)
         val navigator = FakeNavigator(screen)
@@ -117,7 +102,7 @@ class ConversationFlowTest {
 
     @Test
     fun `bookmarked session resumes from persisted state and completes`() = runTest {
-        val repo = InMemorySessionRepository()
+        val repo = FakeSessionRepository()
         val sessionId = Session.Id.random()
         val screen = ConversationScreen(sessionId, Session.Kind.SOLO)
         val navigator = FakeNavigator(screen)
@@ -156,7 +141,7 @@ class ConversationFlowTest {
 
     @Test
     fun `bookmarked group session rehydrates participant names on resume`() = runTest {
-        val repo = InMemorySessionRepository()
+        val repo = FakeSessionRepository()
         val sessionId = Session.Id.random()
         val screen = ConversationScreen(sessionId, Session.Kind.GROUP)
         val navigator = FakeNavigator(screen)
@@ -203,7 +188,7 @@ class ConversationFlowTest {
 
     @Test
     fun `deleting a past conversation removes it from the completed list`() = runTest {
-        val repo = InMemorySessionRepository()
+        val repo = FakeSessionRepository()
         val sessionId = Session.Id.random()
         val screen = ConversationScreen(sessionId, Session.Kind.SOLO)
         val navigator = FakeNavigator(screen)
@@ -241,14 +226,12 @@ class ConversationFlowTest {
         navigator: FakeNavigator,
         screen: ConversationScreen,
         repo: SessionRepository,
-        sharer: Sharer = RecordingSharer(),
     ): ConversationPresenter = ConversationPresenter(
         navigator = navigator,
         screen = screen,
         sessionRepository = repo,
         analytics = SilentAnalytics,
         crashReporter = SilentCrash,
-        sharer = sharer,
     )
 }
 
@@ -308,129 +291,6 @@ private suspend fun ReceiveTurbine<ConversationPresenter.UiState>.playAllTurns(
 
 private fun ConversationPresenter.UiState.pick(count: Int) {
     repeat(count) { eventSink(ConversationPresenter.UiEvent.Selection.ToggleCard(it + 1)) }
-}
-
-/**
- * In-memory [SessionRepository] that fully persists state, picks, and contacts.
- * Completed/bookmarked status is tracked with id sets rather than by mutating
- * the [Session] timestamp fields.
- */
-private class InMemorySessionRepository : SessionRepository {
-    private val sessions = mutableMapOf<Session.Id, Session>()
-    private val states = mutableMapOf<Session.Id, SessionState>()
-    private val conversations = mutableMapOf<Session.Id, MutableList<Conversation>>()
-    private val picks = mutableMapOf<Conversation.Id, MutableList<CardPick>>()
-    private val completedIds = mutableSetOf<Session.Id>()
-    private val bookmarkedIds = mutableSetOf<Session.Id>()
-    private val completed = MutableStateFlow<List<Session>>(emptyList())
-    private val bookmarked = MutableStateFlow<List<Session>>(emptyList())
-
-    fun bookmarkedSnapshot(): List<Session> = bookmarked.value
-
-    override suspend fun createSession(session: Session, initialState: SessionState): Session.Id {
-        sessions[session.id] = session
-        states[session.id] = initialState
-        return session.id
-    }
-
-    override suspend fun loadSession(id: Session.Id): Session? = sessions[id]
-    override suspend fun loadState(id: Session.Id): SessionState? = states[id]
-
-    override suspend fun persistState(id: Session.Id, state: SessionState) {
-        states[id] = state
-        if (state == SessionState.Concluded) {
-            completedIds += id
-            bookmarkedIds -= id
-            refresh()
-        }
-    }
-
-    override suspend fun setBookmarked(id: Session.Id, bookmarked: Boolean) {
-        if (bookmarked) bookmarkedIds += id else bookmarkedIds -= id
-        refresh()
-    }
-
-    override suspend fun setEnded(id: Session.Id) {
-        completedIds += id
-        refresh()
-    }
-
-    override suspend fun upsertParticipants(sessionId: Session.Id, names: List<String>): List<Conversation.Id> {
-        val existing = conversations[sessionId].orEmpty()
-        val list = names.mapIndexed { idx, name ->
-            Conversation(
-                id = existing.getOrNull(idx)?.id ?: Conversation.Id.random(),
-                sessionId = sessionId,
-                displayOrder = idx,
-                contact = ContactInfo(name),
-            )
-        }
-        conversations[sessionId] = list.toMutableList()
-        return list.map { it.id }
-    }
-
-    override suspend fun upsertContact(conversationId: Conversation.Id, info: ContactInfo) {
-        conversations.values.forEach { list ->
-            val idx = list.indexOfFirst { it.id == conversationId }
-            if (idx >= 0) list[idx] = list[idx].copy(contact = info)
-        }
-    }
-
-    override suspend fun upsertPicks(
-        conversationId: Conversation.Id,
-        questionNumber: Int,
-        cardIds: List<Int>,
-        isFinal: Boolean,
-    ) {
-        val bucket = picks.getOrPut(conversationId) { mutableListOf() }
-        bucket.removeAll { it.questionNumber == questionNumber }
-        cardIds.forEachIndexed { order, cardId ->
-            bucket += CardPick(
-                id = CardPick.Id.random(),
-                conversationId = conversationId,
-                questionNumber = questionNumber,
-                cardId = cardId,
-                pickOrder = order,
-                isFinal = isFinal,
-            )
-        }
-    }
-
-    override suspend fun loadPicks(conversationId: Conversation.Id): List<CardPick> = picks[conversationId].orEmpty()
-
-    override fun observeCompletedSessions(): Flow<List<Session>> = completed.asStateFlow()
-    override fun observeBookmarkedSessions(): Flow<List<Session>> = bookmarked.asStateFlow()
-
-    override suspend fun deleteSession(id: Session.Id) {
-        sessions.remove(id)
-        states.remove(id)
-        completedIds -= id
-        bookmarkedIds -= id
-        conversations.remove(id)?.forEach { picks.remove(it.id) }
-        refresh()
-    }
-
-    override suspend fun loadConversations(sessionId: Session.Id): List<Conversation> =
-        conversations[sessionId].orEmpty()
-
-    override fun observeConversations(sessionId: Session.Id): Flow<List<Conversation>> =
-        flowOf(conversations[sessionId].orEmpty())
-
-    override fun observePicks(conversationId: Conversation.Id): Flow<List<CardPick>> =
-        flowOf(picks[conversationId].orEmpty())
-
-    private fun refresh() {
-        completed.value = completedIds.mapNotNull { sessions[it] }
-        bookmarked.value = bookmarkedIds.filterNot { it in completedIds }.mapNotNull { sessions[it] }
-    }
-}
-
-private class RecordingSharer : Sharer {
-    val shared = mutableListOf<String>()
-    override suspend fun share(text: String, subject: String?): ShareResult {
-        shared += text
-        return ShareResult.Succeeded
-    }
 }
 
 private object SilentAnalytics : AnalyticsTracker {

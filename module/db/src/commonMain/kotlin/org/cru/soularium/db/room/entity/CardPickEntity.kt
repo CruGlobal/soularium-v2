@@ -1,4 +1,4 @@
-package org.cru.soularium.db.room.entities
+package org.cru.soularium.db.room.entity
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity

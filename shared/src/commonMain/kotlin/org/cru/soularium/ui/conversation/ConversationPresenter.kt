@@ -24,12 +24,10 @@ import org.cru.soularium.db.repository.SessionRepository
 import org.cru.soularium.domain.content.Questions
 import org.cru.soularium.domain.ports.AnalyticsTracker
 import org.cru.soularium.domain.ports.CrashReporter
-import org.cru.soularium.domain.ports.Sharer
 import org.cru.soularium.domain.session.Effect
 import org.cru.soularium.domain.session.SessionContext
 import org.cru.soularium.domain.session.SessionEvent
 import org.cru.soularium.domain.session.transition
-import org.cru.soularium.domain.share.shareUrlFor
 import org.cru.soularium.model.ContactInfo
 import org.cru.soularium.model.Session
 import org.cru.soularium.model.game.SessionState
@@ -57,7 +55,6 @@ class ConversationPresenter(
     private val sessionRepository: SessionRepository,
     private val analytics: AnalyticsTracker,
     private val crashReporter: CrashReporter,
-    private val sharer: Sharer,
 ) : Presenter<ConversationPresenter.UiState> {
 
     /**
@@ -172,8 +169,6 @@ class ConversationPresenter(
         }
 
         sealed interface Summary : UiEvent {
-            data class Share(val participantIndex: Int) : Summary
-
             /** Start collecting this participant's contact info. */
             data class StartCollectingContact(val participantIndex: Int) : Summary
             data object Done : Summary
@@ -203,7 +198,7 @@ class ConversationPresenter(
         // session id.
         LaunchedEffect(screen.sessionId) {
             var loadStateFailed = false
-            val loaded = runCatching { sessionRepository.loadState(screen.sessionId) }
+            val loaded = runCatching { sessionRepository.findSessionState(screen.sessionId) }
                 .onFailure {
                     loadStateFailed = true
                     crashReporter.recordNonFatal(it, "loadState on init")
@@ -225,22 +220,11 @@ class ConversationPresenter(
                 bootstrapped = true
                 if (sessionState == SessionState.NotStarted) {
                     val existing =
-                        runCatching { sessionRepository.loadSession(screen.sessionId) }
+                        runCatching { sessionRepository.findSession(screen.sessionId) }
                             .getOrElse {
-                                crashReporter.recordNonFatal(it, "loadSession in ensureStarted")
+                                crashReporter.recordNonFatal(it, "findSession in ensureStarted")
                                 null
                             }
-                    // If a session row exists but its state_snapshot_json could not be
-                    // deserialized (schema change, corruption, etc.), the session is
-                    // unrecoverable. Cascade-delete the row and its conversation/pick
-                    // children so we don't leave orphans behind, then fall through to
-                    // createSession + StartSession for a clean restart.
-                    if (existing != null && loadStateFailed) {
-                        runCatching { sessionRepository.deleteSession(screen.sessionId) }
-                            .onFailure {
-                                crashReporter.recordNonFatal(it, "deleteSession during recovery")
-                            }
-                    }
                     if (existing == null || loadStateFailed) {
                         runCatching {
                             sessionRepository.createSession(
@@ -323,7 +307,6 @@ class ConversationPresenter(
                 UiEvent.Discussing.Done ->
                     dispatch(SessionEvent.EndDiscussion)
 
-                is UiEvent.Summary.Share -> shareParticipant(event.participantIndex, scope, repoMutex)
                 is UiEvent.Summary.StartCollectingContact -> {
                     val name = ui.participantNames.getOrElse(event.participantIndex) { "" }
                     dispatch(SessionEvent.CollectContact(event.participantIndex, ContactInfo(name)))
@@ -497,24 +480,6 @@ class ConversationPresenter(
                 .onFailure { crashReporter.recordNonFatal(it, "applyEffects after $event") }
         }
         return result.next to nextUi
-    }
-
-    private fun shareParticipant(participantIndex: Int, scope: CoroutineScope, repoMutex: Mutex) {
-        scope.launch {
-            runCatching {
-                val url =
-                    repoMutex.withLock {
-                        val conversation =
-                            sessionRepository.loadConversations(screen.sessionId)
-                                .firstOrNull { it.displayOrder == participantIndex }
-                                ?: return@withLock null
-                        val picks = sessionRepository.loadPicks(conversation.id)
-                        shareUrlFor(conversation, picks)
-                    } ?: return@launch
-                sharer.share(text = url)
-                analytics.event("share_initiated", mapOf("channel" to "other"))
-            }.onFailure { crashReporter.recordNonFatal(it, "shareSummary") }
-        }
     }
 
     /**

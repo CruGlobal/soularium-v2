@@ -82,6 +82,8 @@ kotlin {
 
         commonTest {
             dependencies {
+                implementation(projects.module.db.testFixtures)
+
                 implementation(libs.circuit.test)
                 implementation(libs.compose.ui.test)
                 implementation(libs.coroutines.test)

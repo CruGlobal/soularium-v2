@@ -34,7 +34,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import org.cru.soularium.generated.resources.Res
 import org.cru.soularium.generated.resources.action_done
-import org.cru.soularium.generated.resources.action_share
 import org.cru.soularium.generated.resources.contact_save_conversation
 import org.cru.soularium.generated.resources.q1_prompt
 import org.cru.soularium.generated.resources.q2_prompt
@@ -43,7 +42,6 @@ import org.cru.soularium.generated.resources.q4_prompt
 import org.cru.soularium.generated.resources.q5_prompt
 import org.cru.soularium.generated.resources.question_index
 import org.cru.soularium.generated.resources.summary_great_talking
-import org.cru.soularium.generated.resources.summary_share_prompt
 import org.cru.soularium.generated.resources.summary_thats_a_wrap
 import org.cru.soularium.generated.resources.summary_title
 import org.cru.soularium.model.CardPick
@@ -90,7 +88,7 @@ internal fun List<CardPick>.toQuestionSelections(): List<QuestionSelections> = f
 
 /**
  * End-of-conversation summary ("Life in Pictures") screen. Shows each
- * participant's picks broken down per question with share / add-contact actions.
+ * participant's picks broken down per question with an add-contact action.
  */
 @Composable
 fun SummaryLayout(state: ConversationPresenter.UiState.Summary, modifier: Modifier = Modifier) {
@@ -130,9 +128,6 @@ fun SummaryLayout(state: ConversationPresenter.UiState.Summary, modifier: Modifi
                 val current = participants[selectedTabIndex.coerceIn(0, participants.lastIndex)]
                 ParticipantSummaryContent(
                     participant = current,
-                    onShare = {
-                        state.eventSink(ConversationPresenter.UiEvent.Summary.Share(current.participantIndex))
-                    },
                     onAddContact = {
                         state.eventSink(
                             ConversationPresenter.UiEvent.Summary.StartCollectingContact(current.participantIndex),
@@ -169,12 +164,10 @@ fun SummaryLayout(state: ConversationPresenter.UiState.Summary, modifier: Modifi
 @Composable
 private fun ParticipantSummaryContent(
     participant: ParticipantSummary,
-    onShare: () -> Unit,
     onAddContact: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val headingText = stringResource(Res.string.summary_title, participant.name)
-    val sharePromptText = stringResource(Res.string.summary_share_prompt, participant.name)
 
     Column(
         modifier = modifier
@@ -226,32 +219,6 @@ private fun ParticipantSummaryContent(
         }
 
         Spacer(modifier = Modifier.height(24.dp))
-
-        // Share prompt and button
-        Text(
-            text = sharePromptText,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Share button
-        Button(
-            onClick = onShare,
-            modifier = Modifier
-                .fillMaxWidth()
-                .sizeIn(minHeight = 48.dp)
-        ) {
-            Text(
-                text = stringResource(Res.string.action_share),
-                style = MaterialTheme.typography.labelLarge,
-            )
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
 
         // Add contact / Save Conversation button
         OutlinedButton(

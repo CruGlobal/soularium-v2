@@ -28,7 +28,7 @@ Use the branch name and commit log as the "title" in the review header.
 
 4. Pre-flight checks — run ktlint, lint, and the iOS simulator test suite, recording results for the review:
 ```
-./gradlew ktlintCheck
+./gradlew :build-logic:ktlintCheck ktlintCheck
 ./gradlew lint
 ./gradlew iosSimulatorArm64Test
 ```
@@ -165,18 +165,19 @@ way: `:androidApp` → `:shared` → `:module:db` → `:module:model` (`:shared`
 
 ### Persistence Layer (`:module:db`)
 
-- [ ] The Room stack lives in `:module:db` (`org.cru.soularium.db.room`): `SoulariumDatabase` (internal `abstract val` DAO/repository accessors), DAOs (`db.room.dao`), entities (`db.room.entities`), and `RoomBindings` + `Android`/`Ios RoomBindings`. A repository impl is a Room `@Dao internal abstract class` (e.g. `SessionRoomRepository`) that implements a `db.repository` contract and is provided to the graph by `RoomBindings` (NOT `@ContributesBinding`)
+- [ ] The Room stack lives in `:module:db` (`org.cru.soularium.db.room`): `SoulariumDatabase` (internal `abstract val` DAO/repository accessors), DAOs (`db.room.dao`), entities (`db.room.entity`), and `RoomBindings` + `Android`/`Ios RoomBindings`. A repository impl is a Room `@Dao internal abstract class` (e.g. `SessionRoomRepository`) that implements a `db.repository` contract and is provided to the graph by `RoomBindings` (NOT `@ContributesBinding`)
 - [ ] New Room entity columns are nullable-correct — repository mapping is total (no `!!` on optional columns)
 - [ ] DAOs use `suspend fun` for single-shot queries and `Flow<T>` for reactive queries; `@Upsert` for inserts that may collide
+- [ ] Single-item repository/DAO lookups are named `find*` and return `T?` (`Flow<T?>` variants are `find*Flow`) — matching the existing `SessionRepository` surface (`findSession`, `findSessionState`, `findSessionFlow`)
 - [ ] FK columns have `@ColumnInfo(index = true)` and FK declarations use cascade semantics consistent with existing entities. Room enforces foreign keys by default (no manual `PRAGMA foreign_keys` callback)
 - [ ] **`SessionState` snapshot compatibility** — renaming or removing a `@Serializable` field in the `model.game.SessionState` sealed hierarchy (or any type reachable from it) breaks already-persisted sessions. Treat such changes as a schema change and call them out as **❌ Must Fix** unless a migration path is documented
-- [ ] A `@Database(version = N)` bump ships a matching exported schema JSON in `module/db/schemas/` AND a migration registered on the database builder
+- [ ] A `@Database(version = N)` bump ships a matching exported schema JSON in `module/db/schemas/`. While the app is unreleased, `fallbackToDestructiveMigration(dropAllTables = true)` on the builder is the accepted migration path; once builds ship outside the team, bumps need a real `Migration`. **Never edit an existing exported schema JSON in place** — any change to the schema (even nullability/defaults) changes the Room identity hash and must go through a version bump
 - [ ] The SQLite driver is set per platform in `Android`/`Ios RoomBindings` (`AndroidSQLiteDriver` on Android, `BundledSQLiteDriver` on iOS)
-- [ ] Repositories map Room entities ↔ `:module:model` models; models never leak Room/entity types out of `:module:db`
+- [ ] Room entities own the entity ↔ `:module:model` mapping (`toModel()` / companion factory on the entity); models never leak Room/entity types out of `:module:db`
 
 ### Data Layer (`:shared` / `org.cru.soularium.data`)
 
-- [ ] Device flags (intro seen, ToS agreed, locale) persist via DataStore Preferences — not Room
+- [ ] Device flags (intro seen, ToS agreed) persist via DataStore Preferences — not Room. The app language is the platform per-app language setting read through `LanguageRepository`, not a DataStore value
 
 ### UI Layer — Circuit Presenter / Layout
 
@@ -188,7 +189,16 @@ way: `:androidApp` → `:shared` → `:module:db` → `:module:model` (`:shared`
 - [ ] Implements Circuit's `Presenter<UiState>`
 - [ ] `UiState` is a nested `data class` implementing `CircuitUiState`, exposing `val eventSink: (UiEvent) -> Unit`
 - [ ] `UiEvent` is a nested `sealed interface` implementing `CircuitUiEvent`
+- [ ] The `eventSink` lambda is passed directly when constructing `UiState` — not extracted to a local variable first:
+  ```kotlin
+  // Correct
+  return UiState(items = items) { event -> when (event) { … } }
+  // Wrong
+  val eventSink: (UiEvent) -> Unit = { … }
+  return UiState(items = items, eventSink = eventSink)
+  ```
 - [ ] State derived in `@Composable present()` via `remember { mutableStateOf(...) }`, `LaunchedEffect`, `produceState`, and repository `Flow`s collected with `collectAsState()`
+- [ ] Data a screen displays is derived from a reactive query (`findSessionFlow`, `observe*`) collected via `collectAsState()`/`produceState` — not a one-shot `load*()` call from a `LaunchedEffect`-launched coroutine. One-shot loads leave the screen stale when the underlying rows change and force manual error plumbing; reserve them for genuinely one-shot reads
 - [ ] User intent flows in through `state.eventSink(...)` — no direct method calls from the Layout
 - [ ] Cross-screen navigation goes through `navigator.goTo(SomeScreen(...))`; back is `navigator.pop()` — no ad-hoc navigation handles
 - [ ] `navigator.pop()` (or any navigation call) placed *inside* the `launch { }` block when it follows an async persistence write — `rememberCoroutineScope()` is canceled on composition disposal and can cancel an in-flight write before it completes
@@ -242,15 +252,15 @@ DI is compile-time via [Metro](https://github.com/ZacSweers/metro). The graph is
 - [ ] Platform-specific bindings live in `expect class PlatformBindings` actuals. Android actual takes `(context: Context)` and provides it as `@Provides @SingleIn(AppScope::class) internal val context`; iOS actual is empty (Sharer/AnalyticsTracker/CrashReporter impls are common with `@ContributesBinding`)
 - [ ] Set multibindings (`Set<Presenter.Factory>`, `Set<Ui.Factory>`) declared with `@Multibinds(allowEmpty = true)` in `CircuitBindings`; new factories contributed via `@Provides @IntoSet` or `@ContributesIntoSet(AppScope::class)`
 - [ ] The `SoulariumAppGraph` interface is NOT extended with new accessor properties. Code that needs to pull a value out of the graph defines its own `@ContributesTo(AppScope::class)` accessor interface (e.g. `AppGraphAccessor { val languageRepository: LanguageRepository }`, merged in as a graph supertype) and reads it from a graph instance via Metro's `asContribution<Accessor>()` — see `RecomposeOnAppLanguageChange` reaching the graph through `LocalSoulariumAppGraph.current`. Constructor-injectable consumers (Presenters, impls) still take deps via `@Inject`; the contributed-accessor path is for consumers that can't be — e.g. composables. The pre-existing `circuit`/`deviceStateRepo` accessors on `SoulariumAppGraph` are grandfathered.
-- [ ] New screens declare a `Screen` (in `ui/nav/Screens.kt` or co-located in the feature package, e.g. `ui/terms/TermsScreen.kt`); the Presenter+Layout `@CircuitInject` annotations drive factory codegen — no manual factory registration. Presenter deps come from the graph via `@Inject` constructor params
 - [ ] `createSoulariumAppGraph(PlatformBindings(...))` is called once per entry point — `SoulariumApplication.onCreate()` on Android, `MainViewController()` on iOS — and the graph is passed into `App(graph)` rather than rebuilt per recomposition
 - [ ] No use of Koin, Hilt, Dagger, or Anvil annotations — DI is Metro-only
 
 ### Module Build Files
 
 - [ ] `:androidApp` stays a pure `com.android.application` shell — does NOT apply the Kotlin Multiplatform plugin
-- [ ] Cross-module Gradle conventions live in `build-logic/src/main/kotlin/*-conventions.gradle.kts` and are applied via `id("<name>-conventions")`: `soularium-kmp.module-conventions` (the KMP baseline — targets, SDK/JVM, host tests, and the `test-framework`/`android-test-framework` catalog bundles), `serialization-conventions`, `metro-conventions`, plus `ktlint-conventions`, `kover-conventions`, `paparazzi-conventions`. A KMP module lists `soularium-kmp.module-conventions` explicitly even when it also applies `metro-conventions`/`serialization-conventions`. Module-specific config stays in each module's `build.gradle.kts` using `libs.versions.toml` aliases. A convention plugin with a single current consumer is intentional — do NOT flag it as a defect on that basis alone
+- [ ] Cross-module Gradle conventions live in `build-logic/src/main/kotlin/*-conventions.gradle.kts` and are applied via `id("<name>-conventions")`: `soularium-kmp.module-conventions` (the KMP baseline — targets, SDK/JVM, host tests, and the `test-framework`/`android-test-framework` catalog bundles), `serialization-conventions`, `metro-conventions`, `soularium-kmp.test-fixtures-conventions` (module-conventions with Kover disabled, for `test-fixtures` modules), plus `ktlint-conventions`, `kover-conventions`, `paparazzi-conventions`. A KMP module lists `soularium-kmp.module-conventions` explicitly even when it also applies `metro-conventions`/`serialization-conventions`. Module-specific config stays in each module's `build.gradle.kts` using `libs.versions.toml` aliases. A convention plugin with a single current consumer is intentional — do NOT flag it as a defect on that basis alone
 - [ ] All dependency coordinates use `libs.*` aliases from `gradle/libs.versions.toml` — no inline `"group:artifact:version"` strings
+- [ ] Dependencies use `implementation()` unless their types appear in the module's public API surface. **Caveat:** types referenced by Metro-generated contribution factories count as public API — e.g. `room.runtime` must stay `api` in `:module:db` because the generated `RoomBindings` factory exposes `RoomDatabase.Builder<SoulariumDatabase>` to `:shared`'s merged graph. Verify with a consumer-module compile before suggesting a narrowing
 - [ ] New dependencies add entries to `libs.versions.toml` and follow existing naming
 - [ ] `minSdk 24`, `compileSdk 37`, `targetSdk 37`, JVM target 17 — version bumps need explicit justification. The SDK levels live in `gradle/libs.versions.toml` under `android-sdk-compile` / `android-sdk-min` and are read via `libs.versions.android.sdk.*`; `targetSdk` reuses `android-sdk-compile`
 - [ ] Application id stays `org.cru.soularium` (debug builds get the `.dev` suffix automatically); the application id and build types live in `:androidApp`, NOT `:shared`
@@ -267,13 +277,12 @@ DI is compile-time via [Metro](https://github.com/ZacSweers/metro). The graph is
 
 ### Testing
 
-- [ ] Unit tests (domain, presenter, data) live in `commonTest`; Paparazzi screenshot tests live in `androidHostTest`. There are still no on-device Android instrumented tests. Compose-UI interaction tests using `runComposeUiTest` (the `androidx.compose.ui.test.v2` API) are allowed in `commonTest`, annotated `@RunOnAndroidWith(AndroidJUnit4::class)` — see `HomeMenuOverlayTest`
-- [ ] Frameworks: `kotlin.test` (`@Test`, `@BeforeTest`, `@AfterTest`), Kotest assertions (`io.kotest.matchers.*`), Turbine for `Flow` assertions, `kotlinx-coroutines-test` (`runTest`, `TestDispatcher`, `advanceUntilIdle`) — no JUnit4, no `runBlocking`, no manual `collect` + coroutine coordination
+- [ ] Unit tests (domain, presenter, data) live in `commonTest`; Paparazzi screenshot tests live in `androidHostTest`. There are still no on-device Android instrumented tests. Compose-UI interaction tests using `runComposeUiTest` are allowed in `commonTest`, annotated `@RunOnAndroidWith(AndroidJUnit4::class)` — see `HomeMenuOverlayTest`. The import must be `androidx.compose.ui.test.v2.runComposeUiTest` — the v1 `androidx.compose.ui.test.runComposeUiTest` is deprecated and is a **Must Fix**
+- [ ] Frameworks: `kotlin.test` (`@Test`, `@BeforeTest`, `@AfterTest`), Kotest assertions (`io.kotest.matchers.*`), Turbine for `Flow` assertions, `kotlinx-coroutines-test` (`runTest` with an injected `TestDispatcher`, `advanceUntilIdle`) — no JUnit4, no `runBlocking`, no manual `collect` + coroutine coordination
 - [ ] Presenter tests are written with Circuit's `circuit-test` (`FakeNavigator`, `presenter.test { awaitItem().eventSink(...) }`)
 - [ ] Presenter tests are annotated `@RunOnAndroidWith(AndroidJUnit4::class)` so the Android-host variant runs them under Robolectric — required because the Compose Runtime's Android artifact touches `android.util.Log` on its error path. Pure domain tests are unannotated
 - [ ] `:module:db` repository integration tests follow the abstract-contract pattern — a persistence-agnostic `…RepositoryTest` (in `db.repository`, `commonTest`) plus a Room subclass (in `db.room.repository`) that supplies `repository` from the database, annotated `@RunOnAndroidWith(AndroidJUnit4::class)`. The in-memory DB comes from an `expect fun buildInMemorySoulariumDatabase()` (android/ios actuals) so the test runs on both Android host (Robolectric) and iOS
-- [ ] Test doubles are plain in-memory classes in the test sources (e.g. `InMemorySessionRepository`, `RecordingSharer`) — no `mockk`, no `test-fixtures` modules
-- [ ] Coroutine tests use `runTest { }` with an injected `TestDispatcher`; Flow tests use Turbine (`flow.test { awaitItem() }`)
+- [ ] Test doubles: reusable fakes live in a sibling `test-fixtures` module — `:module:db:test-fixtures` provides `FakeSessionRepository` (a full in-memory `SessionRepository` with seeding, interaction recording, and fault injection); single-use doubles (e.g. `RecordingSharer`) stay plain private classes in the test sources — no `mockk`
 - [ ] Test function names are backtick-quoted. Presenter tests use the structured form `UiEvent - <Event> - <behavior>` (event handling) or `UiState - <field> - <behavior>` (state derivation) — e.g. `` `UiEvent - Back - pops the navigator` ``. Other tests use a descriptive sentence, e.g. `` `solo session completes from start through summary` ``
 - [ ] The pure session state machine (`transition()`) has exhaustive case coverage; share-URL generation and other pure utilities have explicit edge-case tests
 
@@ -311,7 +320,6 @@ Ktlint with the `android_studio` code style (plus `.editorconfig`) enforces most
     ```
 - [ ] Package prefix: `org.cru.soularium` (with `org.cru.soularium.app` reserved for `:androidApp`)
 - [ ] `@Composable` functions may use capitalized names (ktlint rule exempt); other functions are camelCase
-- [ ] Files end with a trailing newline; no trailing whitespace
 
 ### Deprecated API Usage
 

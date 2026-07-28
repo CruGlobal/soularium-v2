@@ -18,14 +18,6 @@ apps, built with Kotlin Multiplatform and Compose Multiplatform (Android + iOS).
 
 See `.claude/CLAUDE.md` for the full architecture.
 
-## Documentation
-
-Project docs live in `docs/superpowers/`:
-
-- `specs/2026-05-20-soularium-v2-design.md` — design spec
-- `plans/2026-05-20-soularium-v2-mobile.md` — implementation plan
-- `HANDOFF.md` — current state and what's next
-
 ## Building
 
 JDK is pinned via `.tool-versions` (currently `temurin-25.0.3+9.0.LTS`); the

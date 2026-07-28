@@ -15,6 +15,12 @@ Soularium v2 convention — not to silence a real finding.
 **Dismissed**: 2026-07-17
 **Dismissed by**: Daniel Frett
 
+## Paparazzi snapshots recorded locally instead of via the record-snapshots workflow
+**Pattern**: Flagging snapshot PNGs (LFS pointers under `shared/src/androidHostTest/snapshots/`) because they were committed by hand in a feature commit rather than produced by the `record-snapshots.yml` workflow's "Record updated snapshots" commit.
+**Reason**: CI's `verifyPaparazzi` check validates every snapshot against CI rendering with zero tolerance — if a locally recorded baseline drifted from CI, the check would fail. Any real problem with the screenshots is raised by that CI check, so how the PNGs were produced doesn't need review attention.
+**Dismissed**: 2026-07-28
+**Dismissed by**: Daniel Frett
+
 <!--
 Template:
 

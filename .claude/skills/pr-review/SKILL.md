@@ -32,7 +32,7 @@ Use the branch name and commit log as the "title" in the review header.
 ./gradlew lint
 ./gradlew iosSimulatorArm64Test
 ```
-`iosSimulatorArm64Test` (no project prefix) runs the iOS suite across every module that has one (`:shared`, `:module:model`, `:module:db`).
+`iosSimulatorArm64Test` (no project prefix) runs the iOS suite across every module that has one.
 Any failures are reported as **❌ Must Fix** items in the review output. They do not stop the rest of the review.
 Run the iOS simulator suite even when the diff looks Android-only: Kotlin/Native compiles and runs
 differently from the Android host, and tests have failed on iOS while passing on Android (ktlint and lint never
@@ -136,15 +136,14 @@ To dismiss a finding so it won't appear in future reviews, say:
 
 ### Architecture & Hexagonal Layering
 
-The app spans four modules — `:module:model` (`@Serializable` domain models), `:module:db`
-(the Room persistence layer + the `SessionRepository` contract), `:shared` (domain ports,
-session state machine, UI, DI), and `:androidApp` (the Android shell). Dependencies flow one
-way: `:androidApp` → `:shared` → `:module:db` → `:module:model` (`:shared` also depends on
-`:module:model` directly). Layering is enforced by package/module convention:
+The app is `:androidApp` (the Android shell), `:shared` (domain ports, UI, DI), and focused
+KMP library modules under `module/` (models, game rules, persistence — CLAUDE.md carries the
+current module map). Dependencies flow one way: `:androidApp` → `:shared` → the library
+modules, which depend only on other library modules (bottoming out at `:module:model`) and
+never on `:shared`. Layering is enforced by package/module convention:
 
 - [ ] Code in `org.cru.soularium.domain` does NOT depend on our `ui` layer. It may use models (`:module:model`) and platform APIs (a domain port's Android/iOS `actual` may use e.g. `Context`), but not our UI logic
 - [ ] Code in `org.cru.soularium.data` does NOT import from `ui`
-- [ ] `:module:model` depends on nothing else in-repo; `:module:db` depends only on `:module:model` — neither depends on `:shared`
 - [ ] No Android (`android.*`, `androidx.*`) or iOS (`platform.*`, `kotlinx.cinterop`) imports in `commonMain` — bridge via `expect`/`actual`
 - [ ] `:androidApp` depends on `:shared`; `:shared` has no dependency on `:androidApp`
 - [ ] Inter-module dependencies use the type-safe project accessors (`projects.module.model`, `projects.module.db`)
@@ -158,10 +157,10 @@ way: `:androidApp` → `:shared` → `:module:db` → `:module:model` (`:shared`
 
 ### Domain Layer (`:shared` / `org.cru.soularium.domain`)
 
-- [ ] Ports (`ContentRepository`, `DeviceStateRepository`, `AnalyticsTracker`, `CrashReporter`, `Sharer`) are interfaces in `domain/ports/`. The `SessionRepository` contract lives in `:module:db` (`org.cru.soularium.db.repository`). Cross-platform impls live in `data` / `:module:db`; platform-specific ones live in `androidMain`/`iosMain` (e.g. `AndroidSharer`, `IosSharer`) and are bound via `@ContributesBinding(AppScope::class)`
-- [ ] `transition(state, event, ctx)` in `domain/session/` is **pure** — no I/O, no suspending calls, no `Dispatchers.*`. Side effects are returned as `Effect` data for the Presenter to execute. It operates over `model.game.SessionState`
+- [ ] Ports (`DeviceStateRepository`, `AnalyticsTracker`, `CrashReporter`, `Sharer`) are interfaces in `domain/ports/`. The `SessionRepository` contract lives in `:module:db` (`org.cru.soularium.db.repository`). Cross-platform impls live in `data` / `:module:db`; platform-specific ones live in `androidMain`/`iosMain` (e.g. `AndroidSharer`, `IosSharer`) and are bound via `@ContributesBinding(AppScope::class)`
+- [ ] `transition(state, event, ctx)` in `:module:game` (`org.cru.soularium.game`) is **pure** — no I/O, no suspending calls, no `Dispatchers.*`. Side effects are returned as `Effect` data for the Presenter to execute. It operates over `model.game.SessionState`
 - [ ] New `SessionEvent` variants are added to the sealed hierarchy and handled exhaustively in `transition()` (no `else ->` swallowing)
-- [ ] Errors surface via `TransitionResult.error` (`DomainError` sealed interface) — no `Result<T>` wrapper, no thrown exceptions for control flow
+- [ ] Errors surface via `TransitionResult.error` (`GameError` sealed interface in `:module:game`) — no `Result<T>` wrapper, no thrown exceptions for control flow
 
 ### Persistence Layer (`:module:db`)
 
@@ -215,7 +214,7 @@ way: `:androidApp` → `:shared` → `:module:db` → `:module:model` (`:shared`
 **Screen & wiring**
 - [ ] New `Screen` destinations are `@Parcelize` `data object`/`data class` types — either in `ui/nav/Screens.kt` or co-located in a self-contained feature package next to its Presenter/Layout (e.g. `ui/terms/TermsScreen.kt`)
 - [ ] Presenter + Layout wired via `@CircuitInject(<Feature>Screen::class, AppScope::class)` codegen — Metro generates the `Presenter.Factory` / `Ui.Factory` and contributes them to the multibindings consumed by `CircuitBindings.providesCircuit`. There is no hand-written factory or switch table
-- [ ] Loading / error / empty states are first-class on every screen that loads data (the app is offline-first, but `DomainError.PersistenceFailed` still needs a path)
+- [ ] Loading / error / empty states are first-class on every screen that loads data (the app is offline-first, but a persistence failure still needs a rendered path — e.g. `ConversationSummaryPresenter.UiState.loadFailed`)
 
 ### Compose / Design System
 

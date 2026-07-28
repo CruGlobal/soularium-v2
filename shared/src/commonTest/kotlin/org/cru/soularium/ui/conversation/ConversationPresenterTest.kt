@@ -13,8 +13,6 @@ import org.cru.soularium.db.repository.FakeSessionRepository
 import org.cru.soularium.db.repository.SessionRepository
 import org.cru.soularium.domain.ports.AnalyticsTracker
 import org.cru.soularium.domain.ports.CrashReporter
-import org.cru.soularium.domain.ports.ShareResult
-import org.cru.soularium.domain.ports.Sharer
 import org.cru.soularium.model.ContactInfo
 import org.cru.soularium.model.Conversation
 import org.cru.soularium.model.Session
@@ -29,18 +27,14 @@ class ConversationPresenterTest {
     private val screen = ConversationScreen(sessionId, Session.Kind.SOLO)
     private val navigator = FakeNavigator(screen)
 
-    private fun presenter(
-        repo: SessionRepository,
-        analytics: AnalyticsTracker = NoOpAnalytics,
-        sharer: Sharer = NoOpSharer,
-    ) = ConversationPresenter(
-        navigator = navigator,
-        screen = screen,
-        sessionRepository = repo,
-        analytics = analytics,
-        crashReporter = NoOpCrash,
-        sharer = sharer,
-    )
+    private fun presenter(repo: SessionRepository, analytics: AnalyticsTracker = NoOpAnalytics,) =
+        ConversationPresenter(
+            navigator = navigator,
+            screen = screen,
+            sessionRepository = repo,
+            analytics = analytics,
+            crashReporter = NoOpCrash,
+        )
 
     /** Drives the presenter to its first stable state (post-bootstrap). */
     private suspend fun ReceiveTurbine<ConversationPresenter.UiState>.awaitStableState(
@@ -261,8 +255,4 @@ private object NoOpAnalytics : AnalyticsTracker {
 private object NoOpCrash : CrashReporter {
     override fun recordNonFatal(throwable: Throwable, breadcrumb: String?) = Unit
     override fun setKey(key: String, value: String) = Unit
-}
-
-private object NoOpSharer : Sharer {
-    override suspend fun share(text: String, subject: String?): ShareResult = ShareResult.Succeeded
 }

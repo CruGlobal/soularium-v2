@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -33,9 +32,7 @@ import com.slack.circuit.codegen.annotations.CircuitInject
 import dev.zacsweers.metro.AppScope
 import org.cru.soularium.generated.resources.Res
 import org.cru.soularium.generated.resources.action_back
-import org.cru.soularium.generated.resources.action_share
 import org.cru.soularium.generated.resources.summary_load_failed
-import org.cru.soularium.generated.resources.summary_share_prompt
 import org.cru.soularium.generated.resources.summary_title
 import org.cru.soularium.ui.content.CardAsset
 import org.cru.soularium.ui.nav.ConversationSummaryScreen
@@ -43,9 +40,9 @@ import org.jetbrains.compose.resources.stringResource
 
 /**
  * Read-only summary rendered when a completed session is reopened from
- * PastConversations. Shows each participant's final-picks mosaic with a Share
- * action; Back returns to the past-conversations list. No gameplay affordances
- * (no Add Contact, no Done → Conclude).
+ * PastConversations. Shows each participant's final-picks mosaic; Back returns
+ * to the past-conversations list. No gameplay affordances (no Add Contact, no
+ * Done → Conclude).
  */
 @CircuitInject(ConversationSummaryScreen::class, AppScope::class)
 @Composable
@@ -90,9 +87,6 @@ fun ConversationSummaryLayout(state: ConversationSummaryPresenter.UiState, modif
                     val current = participants[selectedTabIndex.coerceIn(0, participants.lastIndex)]
                     SummaryParticipantContent(
                         participant = current,
-                        onShare = {
-                            state.eventSink(ConversationSummaryPresenter.UiEvent.Share(current.participantIndex))
-                        },
                         modifier = panelModifier,
                     )
                 }
@@ -140,13 +134,8 @@ private fun SummaryErrorPanel(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun SummaryParticipantContent(
-    participant: ParticipantSummary,
-    onShare: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+private fun SummaryParticipantContent(participant: ParticipantSummary, modifier: Modifier = Modifier) {
     val headingText = stringResource(Res.string.summary_title, participant.name)
-    val sharePromptText = stringResource(Res.string.summary_share_prompt, participant.name)
 
     Column(
         modifier = modifier
@@ -168,29 +157,5 @@ private fun SummaryParticipantContent(
             cards = participant.cardIds.map(CardAsset::fromId),
             modifier = Modifier.fillMaxWidth(),
         )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Text(
-            text = sharePromptText,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Button(
-            onClick = onShare,
-            modifier = Modifier
-                .fillMaxWidth()
-                .sizeIn(minHeight = 48.dp),
-        ) {
-            Text(
-                text = stringResource(Res.string.action_share),
-                style = MaterialTheme.typography.labelLarge,
-            )
-        }
     }
 }

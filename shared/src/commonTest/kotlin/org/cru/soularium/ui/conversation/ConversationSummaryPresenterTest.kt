@@ -15,10 +15,7 @@ import org.ccci.gto.support.androidx.test.junit.runners.AndroidJUnit4
 import org.ccci.gto.support.androidx.test.junit.runners.RunOnAndroidWith
 import org.cru.soularium.db.repository.FakeSessionRepository
 import org.cru.soularium.db.repository.SessionRepository
-import org.cru.soularium.domain.ports.AnalyticsTracker
 import org.cru.soularium.domain.ports.CrashReporter
-import org.cru.soularium.domain.ports.ShareResult
-import org.cru.soularium.domain.ports.Sharer
 import org.cru.soularium.model.CardPick
 import org.cru.soularium.model.ContactInfo
 import org.cru.soularium.model.Conversation
@@ -36,8 +33,6 @@ class ConversationSummaryPresenterTest {
         navigator = navigator,
         screen = screen,
         sessionRepository = repo,
-        sharer = SummaryNoOpSharer,
-        analytics = SummaryNoOpAnalytics,
         crashReporter = SummaryNoOpCrash,
     )
 
@@ -143,16 +138,7 @@ private fun pick(
     isFinal = isFinal,
 )
 
-private object SummaryNoOpAnalytics : AnalyticsTracker {
-    override fun screenView(screenName: String) = Unit
-    override fun event(name: String, params: Map<String, Any>) = Unit
-}
-
 private object SummaryNoOpCrash : CrashReporter {
     override fun recordNonFatal(throwable: Throwable, breadcrumb: String?) = Unit
     override fun setKey(key: String, value: String) = Unit
-}
-
-private object SummaryNoOpSharer : Sharer {
-    override suspend fun share(text: String, subject: String?): ShareResult = ShareResult.Succeeded
 }

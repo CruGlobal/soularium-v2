@@ -7,7 +7,5 @@ sealed interface DomainError {
 
     data class InvalidSelectionCount(val expected: Int, val got: Int) : DomainError
 
-    data object ShareUnavailable : DomainError
-
     data class ContentLoadFailed(val resource: String) : DomainError
 }

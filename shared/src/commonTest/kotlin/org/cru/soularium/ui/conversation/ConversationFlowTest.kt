@@ -16,8 +16,6 @@ import org.cru.soularium.db.repository.SessionRepository
 import org.cru.soularium.domain.content.Questions
 import org.cru.soularium.domain.ports.AnalyticsTracker
 import org.cru.soularium.domain.ports.CrashReporter
-import org.cru.soularium.domain.ports.ShareResult
-import org.cru.soularium.domain.ports.Sharer
 import org.cru.soularium.model.Session
 import org.cru.soularium.ui.nav.ConversationScreen
 import org.cru.soularium.ui.screens.PastConversationsPresenter
@@ -36,14 +34,13 @@ import org.cru.soularium.ui.screens.PastConversationsPresenter
 class ConversationFlowTest {
 
     @Test
-    fun `solo session completes from start through summary share and conclude`() = runTest {
+    fun `solo session completes from start through summary and conclude`() = runTest {
         val repo = FakeSessionRepository()
-        val sharer = RecordingSharer()
         val sessionId = Session.Id.random()
         val screen = ConversationScreen(sessionId, Session.Kind.SOLO)
         val navigator = FakeNavigator(screen)
 
-        presenter(navigator, screen, repo, sharer = sharer).test {
+        presenter(navigator, screen, repo).test {
             val added = awaitStable { it is ConversationPresenter.UiState.AddingParticipants }
             added.addParticipant("Jordan")
             awaitStable {
@@ -57,15 +54,10 @@ class ConversationFlowTest {
             } as ConversationPresenter.UiState.Summary
             assertEquals(9, summary.participants.single().cardIds.size)
 
-            summary.eventSink(ConversationPresenter.UiEvent.Summary.Share(0))
-            advanceUntilIdle()
-
             summary.eventSink(ConversationPresenter.UiEvent.Summary.Done)
             awaitStable { it is ConversationPresenter.UiState.Loading }
             cancelAndIgnoreRemainingEvents()
         }
-        assertEquals(1, sharer.shared.size)
-        assertTrue(sharer.shared.single().isNotEmpty(), "share text should be a non-empty URL")
     }
 
     @Test
@@ -228,14 +220,12 @@ class ConversationFlowTest {
         navigator: FakeNavigator,
         screen: ConversationScreen,
         repo: SessionRepository,
-        sharer: Sharer = RecordingSharer(),
     ): ConversationPresenter = ConversationPresenter(
         navigator = navigator,
         screen = screen,
         sessionRepository = repo,
         analytics = SilentAnalytics,
         crashReporter = SilentCrash,
-        sharer = sharer,
     )
 }
 
@@ -295,14 +285,6 @@ private suspend fun ReceiveTurbine<ConversationPresenter.UiState>.playAllTurns(
 
 private fun ConversationPresenter.UiState.pick(count: Int) {
     repeat(count) { eventSink(ConversationPresenter.UiEvent.Selection.ToggleCard(it + 1)) }
-}
-
-private class RecordingSharer : Sharer {
-    val shared = mutableListOf<String>()
-    override suspend fun share(text: String, subject: String?): ShareResult {
-        shared += text
-        return ShareResult.Succeeded
-    }
 }
 
 private object SilentAnalytics : AnalyticsTracker {

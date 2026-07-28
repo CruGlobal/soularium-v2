@@ -11,6 +11,14 @@ kotlin {
         commonMain {
             dependencies {
                 api(projects.module.model)
+                api(libs.coroutines.core)
+            }
+        }
+
+        commonTest {
+            dependencies {
+                implementation(libs.coroutines.test)
+                implementation(libs.turbine)
             }
         }
     }

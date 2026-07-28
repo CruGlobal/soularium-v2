@@ -18,6 +18,8 @@ sealed interface SessionEvent {
 
     data object ConfirmSelection : SessionEvent
 
+    data class ToggleCard(val cardId: Int) : SessionEvent
+
     data object ConfirmFinal : SessionEvent
 
     data object EndDiscussion : SessionEvent

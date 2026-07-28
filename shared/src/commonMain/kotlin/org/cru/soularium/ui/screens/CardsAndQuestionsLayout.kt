@@ -51,14 +51,9 @@ import org.cru.soularium.generated.resources.cards_and_questions_title
 import org.cru.soularium.generated.resources.cards_question_number
 import org.cru.soularium.generated.resources.cards_tab_cards
 import org.cru.soularium.generated.resources.cards_tab_questions
-import org.cru.soularium.generated.resources.q1_prompt
-import org.cru.soularium.generated.resources.q2_prompt
-import org.cru.soularium.generated.resources.q3_prompt
-import org.cru.soularium.generated.resources.q4_prompt
-import org.cru.soularium.generated.resources.q5_prompt
 import org.cru.soularium.ui.content.CardAsset
+import org.cru.soularium.ui.conversation.promptRes
 import org.cru.soularium.ui.nav.CardsAndQuestionsScreen
-import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -200,7 +195,7 @@ private fun QuestionsList(modifier: Modifier = Modifier) {
 
 @Composable
 private fun QuestionItem(question: Question, modifier: Modifier = Modifier) {
-    val promptRes = questionPromptRes(question.number)
+    val promptRes = question.promptRes
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -218,15 +213,6 @@ private fun QuestionItem(question: Question, modifier: Modifier = Modifier) {
             color = MaterialTheme.colorScheme.onSurface,
         )
     }
-}
-
-@Composable
-private fun questionPromptRes(questionNumber: Int): StringResource = when (questionNumber) {
-    1 -> Res.string.q1_prompt
-    2 -> Res.string.q2_prompt
-    3 -> Res.string.q3_prompt
-    4 -> Res.string.q4_prompt
-    else -> Res.string.q5_prompt
 }
 
 @Composable

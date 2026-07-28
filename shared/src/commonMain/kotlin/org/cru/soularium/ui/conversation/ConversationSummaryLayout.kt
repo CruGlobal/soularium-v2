@@ -43,9 +43,9 @@ import org.jetbrains.compose.resources.stringResource
 
 /**
  * Read-only summary rendered when a completed session is reopened from
- * PastConversations. Shows each participant's final-picks mosaic with a Share
- * action; Back returns to the past-conversations list. No gameplay affordances
- * (no Add Contact, no Done → Conclude).
+ * PastConversations. Shows each participant's picks broken down per question with
+ * a Share action; Back returns to the past-conversations list. No gameplay
+ * affordances (no Add Contact, no Done → Conclude).
  */
 @CircuitInject(ConversationSummaryScreen::class, AppScope::class)
 @Composable

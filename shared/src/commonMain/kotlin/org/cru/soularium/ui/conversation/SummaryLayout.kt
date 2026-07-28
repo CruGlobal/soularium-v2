@@ -46,6 +46,7 @@ import org.cru.soularium.generated.resources.summary_great_talking
 import org.cru.soularium.generated.resources.summary_share_prompt
 import org.cru.soularium.generated.resources.summary_thats_a_wrap
 import org.cru.soularium.generated.resources.summary_title
+import org.cru.soularium.model.CardPick
 import org.cru.soularium.ui.content.CardAsset
 import org.cru.soularium.ui.theme.QuestionProgressColors
 import org.jetbrains.compose.resources.StringResource
@@ -64,12 +65,28 @@ private const val TOTAL_QUESTIONS = 5
  *   by questionNumber. Q1/Q2 hold 3 cards; Q3–Q5 hold 1 card each. A question
  *   with no picks is omitted from the list.
  */
-data class ParticipantSummary(val participantIndex: Int, val name: String, val selections: List<QuestionSelections>,)
+data class ParticipantSummary(val participantIndex: Int, val name: String, val selections: List<QuestionSelections>)
 
 /**
  * One question's worth of picks within a [ParticipantSummary].
  */
 data class QuestionSelections(val questionNumber: Int, val cardIds: List<Int>)
+
+/**
+ * Groups a conversation's picks into per-question [QuestionSelections]: keeps only the
+ * final picks, orders the sections by question number, and orders each section's cards by
+ * pick order. Shared by both summary entry points so they can't drift apart.
+ */
+internal fun List<CardPick>.toQuestionSelections(): List<QuestionSelections> = filter { it.isFinal }
+    .groupBy { it.questionNumber }
+    .entries
+    .sortedBy { it.key }
+    .map { (questionNumber, questionPicks) ->
+        QuestionSelections(
+            questionNumber = questionNumber,
+            cardIds = questionPicks.sortedBy { it.pickOrder }.map { it.cardId },
+        )
+    }
 
 /**
  * End-of-conversation summary ("Life in Pictures") screen. Shows each

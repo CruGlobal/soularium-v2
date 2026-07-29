@@ -5,20 +5,21 @@ import com.slack.circuit.test.FakeNavigator
 import com.slack.circuit.test.test
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.ccci.gto.support.androidx.test.junit.runners.AndroidJUnit4
 import org.ccci.gto.support.androidx.test.junit.runners.RunOnAndroidWith
-import org.cru.soularium.analytics.AnalyticsTracker
 import org.cru.soularium.analytics.CrashReporter
-import org.cru.soularium.data.game.GameSessionStoreImpl
 import org.cru.soularium.db.repository.FakeSessionRepository
 import org.cru.soularium.db.repository.SessionRepository
+import org.cru.soularium.game.FakeGameEngine
 import org.cru.soularium.game.GameEngine
+import org.cru.soularium.game.GameState
+import org.cru.soularium.game.SessionEvent
+import org.cru.soularium.model.CardPick
 import org.cru.soularium.model.ContactInfo
 import org.cru.soularium.model.Conversation
 import org.cru.soularium.model.Session
@@ -26,6 +27,11 @@ import org.cru.soularium.model.game.SessionState
 import org.cru.soularium.model.game.SessionState.InQuestion.QuestionState
 import org.cru.soularium.ui.nav.ConversationScreen
 
+/**
+ * Presenter behavior pinned against a scripted [FakeGameEngine]: UiEvent-routing tests assert on
+ * [FakeGameEngine.dispatched], UiState-projection tests script [FakeGameEngine.stateFlow]. The
+ * full turn-by-turn gameplay flow (real engine + real store) lives in `GameEngineFlowTest`.
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunOnAndroidWith(AndroidJUnit4::class)
 class ConversationPresenterTest {
@@ -34,21 +40,16 @@ class ConversationPresenterTest {
     private val screen = ConversationScreen(sessionId, Session.Kind.SOLO)
     private val navigator = FakeNavigator(screen)
 
-    private fun TestScope.presenter(repo: SessionRepository, analytics: AnalyticsTracker = NoOpAnalytics) =
-        ConversationPresenter(
-            navigator = navigator,
-            screen = screen,
-            sessionRepository = repo,
-            gameEngineFactory = GameEngine.Factory { sid, kind ->
-                GameEngine(
-                    sid,
-                    kind,
-                    GameSessionStoreImpl(repo, analytics, NoOpCrash),
-                    StandardTestDispatcher(testScheduler),
-                )
-            },
-            crashReporter = NoOpCrash,
-        )
+    private fun presenter(
+        repo: SessionRepository = FakeSessionRepository(),
+        fakeEngine: FakeGameEngine = FakeGameEngine(),
+    ) = ConversationPresenter(
+        navigator = navigator,
+        screen = screen,
+        sessionRepository = repo,
+        gameEngineFactory = GameEngine.Factory { _, _ -> fakeEngine },
+        crashReporter = NoOpCrash,
+    )
 
     /** Drives the presenter to its first stable state (post-bootstrap). */
     private suspend fun ReceiveTurbine<ConversationPresenter.UiState>.awaitStableState(
@@ -59,215 +60,306 @@ class ConversationPresenterTest {
         return item
     }
 
+    // ── Bootstrap ─────────────────────────────────────────────────────────
+
     @Test
-    fun `bootstrap from NotStarted transitions to AddingParticipants and logs analytics`() = runTest {
-        val analytics = RecordingAnalytics()
-        presenter(FakeSessionRepository(), analytics = analytics).test {
-            awaitStableState { it is ConversationPresenter.UiState.AddingParticipants }
+    fun `bootstrap starts the engine exactly once`() = runTest {
+        val fakeEngine = FakeGameEngine()
+        presenter(fakeEngine = fakeEngine).test {
+            awaitItem()
             cancelAndIgnoreRemainingEvents()
         }
-        // The engine logs analytics asynchronously off its own effect queue.
-        advanceUntilIdle()
+        assertEquals(1, fakeEngine.startCount)
+    }
+
+    // ── UiState projections ──────────────────────────────────────────────
+
+    @Test
+    fun `UiState - AddingParticipants participantNames - reflects the engine's participant list`() = runTest {
+        val fakeEngine = FakeGameEngine(
+            GameState(session = SessionState.AddingParticipants, participantNames = listOf("Alice", "Bob")),
+        )
+        presenter(fakeEngine = fakeEngine).test {
+            val state = awaitItem() as ConversationPresenter.UiState.AddingParticipants
+            assertEquals(listOf("Alice", "Bob"), state.participantNames)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `UiState - QuestionPrompt questionNumber - reflects the engine's current question`() = runTest {
+        val fakeEngine = FakeGameEngine(
+            GameState(
+                session = SessionState.InQuestion(3, 0, QuestionState.ShowingPrompt),
+                participantNames = listOf("Alice"),
+            ),
+        )
+        presenter(fakeEngine = fakeEngine).test {
+            val prompt = awaitItem() as ConversationPresenter.UiState.QuestionPrompt
+            assertEquals(3, prompt.questionNumber)
+            assertEquals(5, prompt.totalQuestions)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `UiState - QuestionPrompt participantName - resolves the active participant and group flag`() = runTest {
+        val fakeEngine = FakeGameEngine(
+            GameState(
+                session = SessionState.InQuestion(2, 1, QuestionState.ShowingPrompt),
+                participantNames = listOf("Alice", "Bob"),
+            ),
+        )
+        presenter(fakeEngine = fakeEngine).test {
+            val prompt = awaitItem() as ConversationPresenter.UiState.QuestionPrompt
+            assertEquals("Bob", prompt.participantName)
+            assertTrue(prompt.isGroup)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `UiState - Instructions - renders when the engine reports ShowingInstructions`() = runTest {
+        val fakeEngine = FakeGameEngine(
+            GameState(session = SessionState.InQuestion(2, 0, QuestionState.ShowingInstructions)),
+        )
+        presenter(fakeEngine = fakeEngine).test {
+            assertTrue(awaitItem() is ConversationPresenter.UiState.Instructions)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `UiState - Selection selectedCardIds - reflects the engine's draft picks`() = runTest {
+        val fakeEngine = FakeGameEngine(
+            GameState(session = SessionState.InQuestion(1, 0, QuestionState.Selecting), draftPicks = listOf(7, 12)),
+        )
+        presenter(fakeEngine = fakeEngine).test {
+            val selection = awaitItem() as ConversationPresenter.UiState.Selection
+            assertEquals(listOf(7, 12), selection.selectedCardIds)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `UiState - Selection isConfirmEnabled - true only once picks equal the required count`() = runTest {
+        val fakeEngine = FakeGameEngine(
+            GameState(session = SessionState.InQuestion(1, 0, QuestionState.Selecting), draftPicks = listOf(1, 2)),
+        )
+        presenter(fakeEngine = fakeEngine).test {
+            val partial = awaitItem() as ConversationPresenter.UiState.Selection
+            assertFalse(partial.isConfirmEnabled)
+            fakeEngine.stateFlow.value = fakeEngine.stateFlow.value.copy(draftPicks = listOf(1, 2, 3))
+            val full = awaitItem() as ConversationPresenter.UiState.Selection
+            assertTrue(full.isConfirmEnabled)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `UiState - Summary participants - populates once the engine reports idle`() = runTest {
+        val conversation = Conversation(Conversation.Id.random(), sessionId, 0, ContactInfo("Alice"))
+        val repo = FakeSessionRepository().apply {
+            seedConversations(sessionId, listOf(conversation))
+            seedPicks(
+                conversation.id,
+                listOf(
+                    CardPick(
+                        CardPick.Id.random(),
+                        conversation.id,
+                        questionNumber = 1,
+                        cardId = 3,
+                        pickOrder = 0,
+                        isFinal = true,
+                    ),
+                    CardPick(
+                        CardPick.Id.random(),
+                        conversation.id,
+                        questionNumber = 2,
+                        cardId = 9,
+                        pickOrder = 0,
+                        isFinal = true,
+                    ),
+                ),
+            )
+        }
+        val fakeEngine = FakeGameEngine(GameState(session = SessionState.Summary))
+        presenter(repo, fakeEngine).test {
+            val summary = awaitStableState {
+                (it as? ConversationPresenter.UiState.Summary)?.participants?.isNotEmpty() == true
+            } as ConversationPresenter.UiState.Summary
+            assertEquals(
+                listOf(QuestionSelections(1, listOf(3)), QuestionSelections(2, listOf(9))),
+                summary.participants.single().selections,
+            )
+            cancelAndIgnoreRemainingEvents()
+        }
         assertTrue(
-            analytics.events.any { it.first == "session_started" && it.second["kind"] == "solo" },
-            "expected a session_started analytics event, got ${analytics.events}",
+            fakeEngine.awaitIdleCount >= 1,
+            "expected the presenter to await the engine before loading summaries",
         )
     }
 
     @Test
-    fun `AddParticipant updates context and persists`() = runTest {
-        val repo = FakeSessionRepository()
-        presenter(repo).test {
-            val started = awaitStableState { it is ConversationPresenter.UiState.AddingParticipants }
-            started.eventSink(ConversationPresenter.UiEvent.AddingParticipants.AddParticipant("Alice"))
-            val withAlice = awaitStableState {
-                (it as? ConversationPresenter.UiState.AddingParticipants)?.participantNames == listOf("Alice")
-            }
-            withAlice.eventSink(ConversationPresenter.UiEvent.AddingParticipants.AddParticipant("Bob"))
-            val withBoth = awaitStableState {
-                (it as? ConversationPresenter.UiState.AddingParticipants)?.participantNames == listOf("Alice", "Bob")
-            } as ConversationPresenter.UiState.AddingParticipants
-            assertEquals(listOf("Alice", "Bob"), withBoth.participantNames)
+    fun `UiState - Concluded - pops the navigator`() = runTest {
+        val fakeEngine = FakeGameEngine(GameState(session = SessionState.Concluded))
+        presenter(fakeEngine = fakeEngine).test {
+            awaitItem()
             cancelAndIgnoreRemainingEvents()
         }
-        // The engine persists asynchronously off its own effect queue.
-        advanceUntilIdle()
-        assertEquals(listOf("Alice", "Bob"), repo.lastUpsertedParticipants)
+        navigator.awaitPop()
+    }
+
+    // ── UiEvent routing ───────────────────────────────────────────────────
+
+    @Test
+    fun `UiEvent - AddingParticipants AddParticipant - dispatches AddParticipant to the engine`() = runTest {
+        val fakeEngine = FakeGameEngine(GameState(session = SessionState.AddingParticipants))
+        presenter(fakeEngine = fakeEngine).test {
+            awaitItem().eventSink(ConversationPresenter.UiEvent.AddingParticipants.AddParticipant("Alice"))
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertEquals(SessionEvent.AddParticipant("Alice"), fakeEngine.dispatched.single())
     }
 
     @Test
-    fun `ToggleCard accumulates and removes picks without invoking transition`() = runTest {
-        val repo = FakeSessionRepository().apply {
-            // Resume at question 3 ShowingPrompt; the test drives forward to a
-            // Selection page so we can observe selectedCardIds toggling.
-            seedState(sessionId, SessionState.InQuestion(3, 0, QuestionState.ShowingPrompt))
-            seedConversations(
-                sessionId,
-                listOf(
-                    Conversation(Conversation.Id.random(), sessionId, 0, ContactInfo("Alice")),
-                ),
-            )
-        }
-        presenter(repo).test {
-            val prompt = awaitStableState { it is ConversationPresenter.UiState.QuestionPrompt }
-            prompt.eventSink(ConversationPresenter.UiEvent.QuestionPrompt.BeginSelection)
-            val afterBegin = awaitStableState {
-                it is ConversationPresenter.UiState.Instructions ||
-                    it is ConversationPresenter.UiState.Selection
-            }
-            val selection = if (afterBegin is ConversationPresenter.UiState.Instructions) {
-                afterBegin.eventSink(ConversationPresenter.UiEvent.Instructions.Dismiss)
-                awaitStableState { it is ConversationPresenter.UiState.Selection }
-            } else {
-                afterBegin
-            } as ConversationPresenter.UiState.Selection
-
-            // Picking 7 (not present) adds it; the page stays on Selection.
-            selection.eventSink(ConversationPresenter.UiEvent.Selection.ToggleCard(7))
-            val one = awaitStableState {
-                (it as? ConversationPresenter.UiState.Selection)?.selectedCardIds == listOf(7)
-            } as ConversationPresenter.UiState.Selection
-            one.eventSink(ConversationPresenter.UiEvent.Selection.ToggleCard(12))
-            val two = awaitStableState {
-                (it as? ConversationPresenter.UiState.Selection)?.selectedCardIds == listOf(7, 12)
-            } as ConversationPresenter.UiState.Selection
-            // Toggling 7 again removes it.
-            two.eventSink(ConversationPresenter.UiEvent.Selection.ToggleCard(7))
-            val final = awaitStableState {
-                (it as? ConversationPresenter.UiState.Selection)?.selectedCardIds == listOf(12)
-            } as ConversationPresenter.UiState.Selection
-            assertEquals(listOf(12), final.selectedCardIds)
+    fun `UiEvent - AddingParticipants RemoveParticipant - dispatches RemoveParticipant to the engine`() = runTest {
+        val fakeEngine = FakeGameEngine(
+            GameState(session = SessionState.AddingParticipants, participantNames = listOf("Alice", "Bob")),
+        )
+        presenter(fakeEngine = fakeEngine).test {
+            awaitItem().eventSink(ConversationPresenter.UiEvent.AddingParticipants.RemoveParticipant(0))
             cancelAndIgnoreRemainingEvents()
         }
+        assertEquals(SessionEvent.RemoveParticipant(0), fakeEngine.dispatched.single())
     }
 
     @Test
-    fun `fresh session shows instructions then DismissInstructions reaches Selecting`() = runTest {
-        val repo = FakeSessionRepository().apply {
-            seedState(sessionId, SessionState.InQuestion(1, 0, QuestionState.ShowingPrompt))
-            seedConversations(
-                sessionId,
-                listOf(
-                    Conversation(Conversation.Id.random(), sessionId, 0, ContactInfo("Alice")),
-                ),
-            )
-        }
-        presenter(repo).test {
-            val prompt = awaitStableState {
-                it is ConversationPresenter.UiState.QuestionPrompt && it.participantName == "Alice"
-            }
-            prompt.eventSink(ConversationPresenter.UiEvent.QuestionPrompt.BeginSelection)
-            awaitStableState { it is ConversationPresenter.UiState.Instructions }
-                .eventSink(ConversationPresenter.UiEvent.Instructions.Dismiss)
-            awaitStableState { it is ConversationPresenter.UiState.Selection }
+    fun `UiEvent - AddingParticipants Confirm - dispatches ConfirmParticipants`() = runTest {
+        val fakeEngine = FakeGameEngine(
+            GameState(session = SessionState.AddingParticipants, participantNames = listOf("Alice")),
+        )
+        presenter(fakeEngine = fakeEngine).test {
+            awaitItem().eventSink(ConversationPresenter.UiEvent.AddingParticipants.Confirm)
             cancelAndIgnoreRemainingEvents()
         }
+        assertEquals(SessionEvent.ConfirmParticipants, fakeEngine.dispatched.single())
     }
 
     @Test
-    fun `DismissInstructions suppresses the Instructions page for the rest of the session`() = runTest {
-        // After the first dismissal, BeginSelection on a fresh prompt must skip
-        // the Instructions page entirely and land on Selecting.
-        val repo = FakeSessionRepository().apply {
-            seedState(sessionId, SessionState.InQuestion(2, 0, QuestionState.ShowingPrompt))
-        }
-        presenter(repo).test {
-            val firstPrompt = awaitStableState { it is ConversationPresenter.UiState.QuestionPrompt }
-            firstPrompt.eventSink(ConversationPresenter.UiEvent.QuestionPrompt.BeginSelection)
-            val instructions = awaitStableState { it is ConversationPresenter.UiState.Instructions }
-            instructions.eventSink(ConversationPresenter.UiEvent.Instructions.Dismiss)
-            val selection = awaitStableState { it is ConversationPresenter.UiState.Selection }
-
-            // Re-fire BeginSelection: with instructions already dismissed, the
-            // presenter must skip the Instructions page entirely.
-            selection.eventSink(ConversationPresenter.UiEvent.QuestionPrompt.BeginSelection)
-            val seen = mutableListOf<ConversationPresenter.UiState>()
-            repeat(2) {
-                runCatching { seen += awaitItem() }
-            }
-            assertTrue(
-                seen.none { it is ConversationPresenter.UiState.Instructions },
-                "Instructions should not appear again after dismissal, saw $seen",
-            )
+    fun `UiEvent - QuestionPrompt BeginSelection - dispatches BeginSelection`() = runTest {
+        val fakeEngine = FakeGameEngine(
+            GameState(session = SessionState.InQuestion(1, 0, QuestionState.ShowingPrompt)),
+        )
+        presenter(fakeEngine = fakeEngine).test {
+            awaitItem().eventSink(ConversationPresenter.UiEvent.QuestionPrompt.BeginSelection)
             cancelAndIgnoreRemainingEvents()
         }
+        assertEquals(SessionEvent.BeginSelection, fakeEngine.dispatched.single())
     }
 
     @Test
-    fun `loadState rehydrates from repository on init`() = runTest {
-        val repo = FakeSessionRepository().apply {
-            seedState(sessionId, SessionState.InQuestion(3, 0, QuestionState.ShowingPrompt))
-        }
-        presenter(repo).test {
-            val state = awaitStableState {
-                it is ConversationPresenter.UiState.QuestionPrompt && it.questionNumber == 3
-            } as ConversationPresenter.UiState.QuestionPrompt
-            assertEquals(3, state.questionNumber)
+    fun `UiEvent - Instructions Dismiss - dispatches DismissInstructions`() = runTest {
+        val fakeEngine = FakeGameEngine(
+            GameState(session = SessionState.InQuestion(1, 0, QuestionState.ShowingInstructions)),
+        )
+        presenter(fakeEngine = fakeEngine).test {
+            awaitItem().eventSink(ConversationPresenter.UiEvent.Instructions.Dismiss)
             cancelAndIgnoreRemainingEvents()
         }
+        assertEquals(SessionEvent.DismissInstructions, fakeEngine.dispatched.single())
     }
 
     @Test
-    fun `resuming mid-question snaps the activity back to the prompt`() = runTest {
-        val repo = FakeSessionRepository().apply {
-            // Bookmarked mid-selection: volatile draft picks behind Finalizing
-            // were never persisted, so resuming there would strand the user on
-            // an empty selection screen.
-            seedState(sessionId, SessionState.InQuestion(3, 0, QuestionState.Finalizing))
-        }
-        presenter(repo).test {
-            val state = awaitStableState {
-                it is ConversationPresenter.UiState.QuestionPrompt && it.questionNumber == 3
-            } as ConversationPresenter.UiState.QuestionPrompt
-            assertEquals(3, state.questionNumber)
+    fun `UiEvent - Selection ToggleCard - dispatches ToggleCard with the tapped card id`() = runTest {
+        val fakeEngine = FakeGameEngine(
+            GameState(session = SessionState.InQuestion(1, 0, QuestionState.Selecting)),
+        )
+        presenter(fakeEngine = fakeEngine).test {
+            awaitItem().eventSink(ConversationPresenter.UiEvent.Selection.ToggleCard(7))
             cancelAndIgnoreRemainingEvents()
         }
+        assertEquals(SessionEvent.ToggleCard(7), fakeEngine.dispatched.single())
     }
 
     @Test
-    fun `existing session with unreadable state snapshot restarts cleanly instead of stalling`() = runTest {
-        // Simulates a mid-upgrade resume where the persisted state_snapshot_json
-        // no longer decodes in this build (e.g. a removed QuestionState variant).
-        // The repository surfaces an unreadable snapshot as a null state, and the
-        // presenter restarts the existing session in place.
-        val repo = FakeSessionRepository().apply {
-            seedSession(Session(id = sessionId, kind = Session.Kind.SOLO))
-        }
-        presenter(repo).test {
-            awaitStableState { it is ConversationPresenter.UiState.AddingParticipants }
+    fun `UiEvent - Selection Confirm - dispatches ConfirmSelection`() = runTest {
+        val fakeEngine = FakeGameEngine(
+            GameState(session = SessionState.InQuestion(1, 0, QuestionState.Selecting), draftPicks = listOf(1, 2, 3)),
+        )
+        presenter(fakeEngine = fakeEngine).test {
+            awaitItem().eventSink(ConversationPresenter.UiEvent.Selection.Confirm)
             cancelAndIgnoreRemainingEvents()
         }
-        assertTrue(repo.deletedSessions.isEmpty(), "restart reuses the session row instead of deleting it")
+        assertEquals(SessionEvent.ConfirmSelection, fakeEngine.dispatched.single())
     }
 
     @Test
-    fun `findSessionState failure falls back to recreating the session instead of stalling`() = runTest {
-        val repo = FakeSessionRepository().apply {
-            seedSession(Session(id = sessionId, kind = Session.Kind.SOLO))
-            findSessionStateError = RuntimeException("db read failed")
-        }
-        presenter(repo).test {
-            awaitStableState { it is ConversationPresenter.UiState.AddingParticipants }
+    fun `UiEvent - Finalizing Confirm - dispatches ConfirmFinal`() = runTest {
+        val fakeEngine = FakeGameEngine(
+            GameState(
+                session = SessionState.InQuestion(1, 0, QuestionState.Finalizing),
+                draftPicks = listOf(1, 2, 3),
+            ),
+        )
+        presenter(fakeEngine = fakeEngine).test {
+            awaitItem().eventSink(ConversationPresenter.UiEvent.Finalizing.Confirm)
             cancelAndIgnoreRemainingEvents()
         }
-    }
-}
-
-private class RecordingAnalytics : AnalyticsTracker {
-    val events = mutableListOf<Pair<String, Map<String, Any>>>()
-
-    override fun screenView(screenName: String) {
-        events += "screen_view" to mapOf("screen_name" to screenName)
+        assertEquals(SessionEvent.ConfirmFinal, fakeEngine.dispatched.single())
     }
 
-    override fun event(name: String, params: Map<String, Any>) {
-        events += name to params
+    @Test
+    fun `UiEvent - Discussing Done - dispatches EndDiscussion`() = runTest {
+        val fakeEngine = FakeGameEngine(
+            GameState(session = SessionState.InQuestion(1, 0, QuestionState.Discussing)),
+        )
+        presenter(fakeEngine = fakeEngine).test {
+            awaitItem().eventSink(ConversationPresenter.UiEvent.Discussing.Done)
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertEquals(SessionEvent.EndDiscussion, fakeEngine.dispatched.single())
     }
-}
 
-private object NoOpAnalytics : AnalyticsTracker {
-    override fun screenView(screenName: String) = Unit
-    override fun event(name: String, params: Map<String, Any>) = Unit
+    @Test
+    fun `UiEvent - Summary Done - dispatches Conclude`() = runTest {
+        val fakeEngine = FakeGameEngine(GameState(session = SessionState.Summary))
+        presenter(fakeEngine = fakeEngine).test {
+            awaitItem().eventSink(ConversationPresenter.UiEvent.Summary.Done)
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertEquals(SessionEvent.Conclude, fakeEngine.dispatched.single())
+    }
+
+    // ── Bookmark / discard ────────────────────────────────────────────────
+
+    @Test
+    fun `UiEvent - BookmarkAndExit - bookmarks the engine and pops the navigator`() = runTest {
+        val fakeEngine = FakeGameEngine(GameState(session = SessionState.AddingParticipants))
+        presenter(fakeEngine = fakeEngine).test {
+            awaitItem().eventSink(ConversationPresenter.UiEvent.BookmarkAndExit)
+            advanceUntilIdle()
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertEquals(1, fakeEngine.bookmarkCount)
+        navigator.awaitPop()
+    }
+
+    @Test
+    fun `UiEvent - DiscardAndExit - discards the engine and pops the navigator`() = runTest {
+        val fakeEngine = FakeGameEngine(GameState(session = SessionState.AddingParticipants))
+        presenter(fakeEngine = fakeEngine).test {
+            awaitItem().eventSink(ConversationPresenter.UiEvent.DiscardAndExit)
+            advanceUntilIdle()
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertEquals(1, fakeEngine.discardCount)
+        navigator.awaitPop()
+    }
+
+    // Note: closeCount is intentionally not asserted anywhere in this file — Circuit's test
+    // harness may not run the composition's onDispose, so the assertion would be flaky rather
+    // than meaningful (per the task brief).
 }
 
 private object NoOpCrash : CrashReporter {

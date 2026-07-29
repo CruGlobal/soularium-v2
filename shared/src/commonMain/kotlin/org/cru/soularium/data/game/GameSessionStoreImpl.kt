@@ -4,9 +4,9 @@ import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
+import org.cru.soularium.analytics.AnalyticsTracker
+import org.cru.soularium.analytics.CrashReporter
 import org.cru.soularium.db.repository.SessionRepository
-import org.cru.soularium.domain.ports.AnalyticsTracker
-import org.cru.soularium.domain.ports.CrashReporter
 import org.cru.soularium.game.Effect
 import org.cru.soularium.game.GameSessionStore
 import org.cru.soularium.model.Session

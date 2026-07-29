@@ -25,7 +25,7 @@ class GameEngineTest {
     ): GameEngine = if (initial == null) {
         GameEngine(sessionId, kind, store, StandardTestDispatcher(testScheduler))
     } else {
-        GameEngine(sessionId, kind, store, StandardTestDispatcher(testScheduler), initial)
+        GameEngineImpl(sessionId, kind, store, StandardTestDispatcher(testScheduler), initial)
     }
 
     private fun inQuestion(

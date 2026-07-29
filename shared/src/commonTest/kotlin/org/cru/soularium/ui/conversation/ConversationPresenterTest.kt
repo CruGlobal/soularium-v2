@@ -19,7 +19,6 @@ import org.cru.soularium.data.game.GameSessionStoreImpl
 import org.cru.soularium.db.repository.FakeSessionRepository
 import org.cru.soularium.db.repository.SessionRepository
 import org.cru.soularium.game.GameEngine
-import org.cru.soularium.game.GameEngineFactory
 import org.cru.soularium.model.ContactInfo
 import org.cru.soularium.model.Conversation
 import org.cru.soularium.model.Session
@@ -40,11 +39,11 @@ class ConversationPresenterTest {
             navigator = navigator,
             screen = screen,
             sessionRepository = repo,
-            gameEngineFactory = GameEngineFactory { sid, kind ->
+            gameEngineFactory = GameEngine.Factory { sid, kind ->
                 GameEngine(
                     sid,
                     kind,
-                    GameSessionStoreImpl(sid, repo, analytics, NoOpCrash),
+                    GameSessionStoreImpl(repo, analytics, NoOpCrash),
                     StandardTestDispatcher(testScheduler),
                 )
             },

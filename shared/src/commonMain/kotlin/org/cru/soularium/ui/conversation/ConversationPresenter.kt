@@ -21,7 +21,7 @@ import dev.zacsweers.metro.AssistedInject
 import kotlinx.coroutines.launch
 import org.cru.soularium.analytics.CrashReporter
 import org.cru.soularium.db.repository.SessionRepository
-import org.cru.soularium.game.GameEngineFactory
+import org.cru.soularium.game.GameEngine
 import org.cru.soularium.game.GameState
 import org.cru.soularium.game.SessionEvent
 import org.cru.soularium.game.content.Question
@@ -35,7 +35,7 @@ class ConversationPresenter(
     @Assisted private val navigator: Navigator,
     @Assisted private val screen: ConversationScreen,
     private val sessionRepository: SessionRepository,
-    private val gameEngineFactory: GameEngineFactory,
+    private val gameEngineFactory: GameEngine.Factory,
     private val crashReporter: CrashReporter,
 ) : Presenter<ConversationPresenter.UiState> {
 

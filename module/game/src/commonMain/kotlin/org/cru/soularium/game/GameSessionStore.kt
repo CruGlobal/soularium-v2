@@ -17,7 +17,7 @@ interface GameSessionStore {
 
     suspend fun deleteSession(id: Session.Id)
 
-    suspend fun execute(effect: Effect)
+    suspend fun execute(id: Session.Id, effect: Effect)
 
     fun reportNonFatal(throwable: Throwable, context: String)
 }

@@ -1,5 +1,6 @@
 plugins {
     id("soularium-kmp.module-conventions")
+    id("metro-conventions")
 }
 
 kotlin {

@@ -42,7 +42,7 @@ internal class FakeGameSessionStore : GameSessionStore {
         deleted++
     }
 
-    override suspend fun execute(effect: Effect) {
+    override suspend fun execute(id: Session.Id, effect: Effect) {
         executeError?.let { throw it }
         executed += effect
         if (effect is Effect.PersistState) persistedState = effect.state

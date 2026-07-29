@@ -1,5 +1,9 @@
 package org.cru.soularium.data.game
 
+import dev.zacsweers.metro.AppScope
+import dev.zacsweers.metro.ContributesBinding
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
 import org.cru.soularium.db.repository.SessionRepository
 import org.cru.soularium.domain.ports.AnalyticsTracker
 import org.cru.soularium.domain.ports.CrashReporter
@@ -8,15 +12,11 @@ import org.cru.soularium.game.GameSessionStore
 import org.cru.soularium.model.Session
 import org.cru.soularium.model.game.SessionState
 
-/**
- * [GameSessionStore] backed by the real [SessionRepository]/analytics/crash-reporting ports.
- *
- * [Effect] carries no session id of its own, so this adapter is bound to one [sessionId] for the
- * whole lifetime of the [org.cru.soularium.game.GameEngine] it backs — a fresh instance is built
- * per engine rather than shared across sessions.
- */
+/** [GameSessionStore] backed by the real [SessionRepository]/analytics/crash-reporting ports. */
+@Inject
+@SingleIn(AppScope::class)
+@ContributesBinding(AppScope::class)
 class GameSessionStoreImpl(
-    private val sessionId: Session.Id,
     private val sessionRepository: SessionRepository,
     private val analytics: AnalyticsTracker,
     private val crashReporter: CrashReporter,
@@ -37,17 +37,17 @@ class GameSessionStoreImpl(
 
     override suspend fun deleteSession(id: Session.Id) = sessionRepository.deleteSession(id)
 
-    override suspend fun execute(effect: Effect) {
+    override suspend fun execute(id: Session.Id, effect: Effect) {
         when (effect) {
             is Effect.PersistState ->
-                sessionRepository.persistState(sessionId, effect.state)
+                sessionRepository.persistState(id, effect.state)
 
             is Effect.PersistParticipants ->
-                sessionRepository.upsertParticipants(sessionId, effect.names)
+                sessionRepository.upsertParticipants(id, effect.names)
 
             is Effect.PersistPicks -> {
                 val convId =
-                    sessionRepository.loadConversations(sessionId)
+                    sessionRepository.loadConversations(id)
                         .firstOrNull { it.displayOrder == effect.participantIndex }
                         ?.id
                 if (convId != null) {
@@ -62,7 +62,7 @@ class GameSessionStoreImpl(
 
             is Effect.PersistContact -> {
                 val convId =
-                    sessionRepository.loadConversations(sessionId)
+                    sessionRepository.loadConversations(id)
                         .firstOrNull { it.displayOrder == effect.participantIndex }
                         ?.id
                 if (convId != null) {

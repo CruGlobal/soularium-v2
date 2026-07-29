@@ -3,6 +3,7 @@ package org.cru.soularium.ui.conversation
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
 import kotlin.test.Test
@@ -54,6 +55,19 @@ class CardZoomOverlayTest {
         waitForIdle()
 
         onNode(hasContentDescription(getString(Res.string.cd_card_zoom_close))).performClick()
+        waitForIdle()
+
+        assertEquals(CardZoomOverlay.Result.Dismissed, navigator.awaitResult())
+    }
+
+    @Test
+    fun `Scrim - Tap - finishes with Dismissed`() = runComposeUiTest {
+        val navigator = TestOverlayNavigator<CardZoomOverlay.Result>()
+        setContent { CardZoomOverlay(CardAsset.CARD_01, isSelected = false).Content(navigator) }
+        waitForIdle()
+
+        // The screen center is the image area — a child of the scrim's clickable.
+        onRoot().performClick()
         waitForIdle()
 
         assertEquals(CardZoomOverlay.Result.Dismissed, navigator.awaitResult())

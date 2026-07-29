@@ -31,10 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,7 +43,9 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.slack.circuit.overlay.OverlayEffect
+import com.slack.circuit.overlay.LocalOverlayHost
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.launch
 import org.cru.soularium.generated.resources.Res
 import org.cru.soularium.generated.resources.action_confirm
 import org.cru.soularium.generated.resources.cd_card_zoom
@@ -86,7 +85,8 @@ fun SelectionLayout(state: ConversationPresenter.UiState.Selection, modifier: Mo
     )
     val selectedCountLabel = stringResource(Res.string.selection_x_selected, selectedCardIds.size)
 
-    var zoomedCard by remember { mutableStateOf<CardAsset?>(null) }
+    val overlayHost = LocalOverlayHost.current
+    val scope = rememberCoroutineScope()
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -127,7 +127,20 @@ fun SelectionLayout(state: ConversationPresenter.UiState.Selection, modifier: Mo
                         onToggle = {
                             state.eventSink(ConversationPresenter.UiEvent.Selection.ToggleCard(card.id))
                         },
-                        onZoom = { zoomedCard = card },
+                        onZoom = {
+                            // UNDISPATCHED so the overlay is registered this frame
+                            // instead of waiting for the dispatcher.
+                            scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                                val result =
+                                    overlayHost.show(CardZoomOverlay(card, isSelected = card.id in selectedCardIds))
+                                when (result) {
+                                    CardZoomOverlay.Result.ToggleSelection -> state.eventSink(
+                                        ConversationPresenter.UiEvent.Selection.ToggleCard(card.id),
+                                    )
+                                    CardZoomOverlay.Result.Dismissed -> Unit
+                                }
+                            }
+                        },
                     )
                 }
             }
@@ -164,17 +177,6 @@ fun SelectionLayout(state: ConversationPresenter.UiState.Selection, modifier: Mo
             }
 
             Spacer(modifier = Modifier.height(24.dp))
-        }
-    }
-
-    zoomedCard?.let { card ->
-        OverlayEffect(card) {
-            when (show(CardZoomOverlay(card, isSelected = card.id in selectedCardIds))) {
-                CardZoomOverlay.Result.ToggleSelection ->
-                    state.eventSink(ConversationPresenter.UiEvent.Selection.ToggleCard(card.id))
-                CardZoomOverlay.Result.Dismissed -> Unit
-            }
-            zoomedCard = null
         }
     }
 }
@@ -228,19 +230,15 @@ private fun SelectableCardItem(
     val zoomLabel = cardLabel?.let { stringResource(Res.string.cd_card_zoom_named, it) }
         ?: stringResource(Res.string.cd_card_zoom)
 
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val onPrimaryColor = MaterialTheme.colorScheme.onPrimary
-    val cardShape = MaterialTheme.shapes.extraSmall
-
     Box(
         modifier = modifier
             .aspectRatio(1f)
-            .clip(cardShape)
+            .clip(MaterialTheme.shapes.extraSmall)
             .then(
                 if (isSelected) {
                     Modifier.border(
-                        border = BorderStroke(3.dp, primaryColor),
-                        shape = cardShape,
+                        border = BorderStroke(3.dp, MaterialTheme.colorScheme.primary),
+                        shape = MaterialTheme.shapes.extraSmall,
                     )
                 } else {
                     Modifier
@@ -267,13 +265,13 @@ private fun SelectableCardItem(
                     .padding(4.dp)
                     .size(20.dp)
                     .clip(CircleShape)
-                    .background(color = primaryColor, shape = CircleShape),
+                    .background(color = MaterialTheme.colorScheme.primary, shape = CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     imageVector = Icons.Filled.Check,
                     contentDescription = null,
-                    tint = onPrimaryColor,
+                    tint = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier.size(14.dp),
                 )
             }

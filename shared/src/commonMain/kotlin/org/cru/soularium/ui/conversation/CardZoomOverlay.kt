@@ -1,6 +1,8 @@
 package org.cru.soularium.ui.conversation
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,12 +16,13 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
@@ -33,6 +36,10 @@ import org.cru.soularium.platform.PlatformBackHandler
 import org.cru.soularium.ui.content.CardAsset
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+
+// Heavy enough that the full-size artwork dominates; the selection grid stays
+// faintly visible behind it to keep the sense of floating over the screen.
+private const val SCRIM_ALPHA = 0.9f
 
 /**
  * An [Overlay] that shows [card]'s full-size artwork over the selection grid and
@@ -50,8 +57,16 @@ internal class CardZoomOverlay(private val card: CardAsset, private val isSelect
         PlatformBackHandler(enabled = true) { navigator.finish(Result.Dismissed) }
 
         Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background,
+            modifier = Modifier
+                .fillMaxSize()
+                // Consume taps so they can't reach the selection grid behind the
+                // translucent scrim; tapping outside the actions dismisses.
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClickLabel = stringResource(Res.string.cd_card_zoom_close),
+                ) { navigator.finish(Result.Dismissed) },
+            color = MaterialTheme.colorScheme.scrim.copy(alpha = SCRIM_ALPHA),
         ) {
             Column(
                 modifier = Modifier
@@ -63,11 +78,10 @@ internal class CardZoomOverlay(private val card: CardAsset, private val isSelect
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End,
                 ) {
-                    IconButton(onClick = { navigator.finish(Result.Dismissed) }) {
+                    FilledTonalIconButton(onClick = { navigator.finish(Result.Dismissed) }) {
                         Icon(
                             imageVector = Icons.Filled.Close,
                             contentDescription = stringResource(Res.string.cd_card_zoom_close),
-                            tint = MaterialTheme.colorScheme.onBackground,
                         )
                     }
                 }

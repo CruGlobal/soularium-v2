@@ -28,11 +28,8 @@ class GameEngineTest {
         GameEngineImpl(sessionId, kind, store, StandardTestDispatcher(testScheduler), initial)
     }
 
-    private fun inQuestion(
-        q: Int = 1,
-        participant: Int = 0,
-        phase: SessionState.InQuestion.QuestionState = SessionState.InQuestion.QuestionState.ShowingPrompt,
-    ) = SessionState.InQuestion(questionNumber = q, activeParticipantIndex = participant, activity = phase)
+    private fun inQuestion(q: Int = 1, participant: Int = 0, phase: QuestionState = QuestionState.ShowingPrompt) =
+        SessionState.InQuestion(questionNumber = q, activeParticipantIndex = participant, activity = phase)
 
     // --- NotStarted ---
 
@@ -393,9 +390,22 @@ class GameEngineTest {
     // --- Loop behavior: draft picks, effect ordering, start/bookmark/discard ---
 
     @Test
+    fun `ToggleCard outside Selecting is invalid`() = runTest {
+        val store = FakeGameSessionStore()
+        val session = inQuestion(phase = QuestionState.ShowingPrompt)
+        val e = engine(store, initial = GameState(session = session, draftPicks = listOf(1)))
+        e.dispatch(SessionEvent.ToggleCard(2))
+        assertEquals(session, e.state.value.session)
+        assertEquals(listOf(1), e.state.value.draftPicks)
+        advanceUntilIdle()
+        val analytics = store.executed.filterIsInstance<Effect.LogAnalytics>().single()
+        assertEquals("transition_error", analytics.event)
+    }
+
+    @Test
     fun `ToggleCard adds then removes a draft pick`() = runTest {
         val e =
-            engine(initial = GameState(session = inQuestion(phase = SessionState.InQuestion.QuestionState.Selecting)))
+            engine(initial = GameState(session = inQuestion(phase = QuestionState.Selecting)))
         e.dispatch(SessionEvent.ToggleCard(7))
         assertEquals(listOf(7), e.state.value.draftPicks)
         e.dispatch(SessionEvent.ToggleCard(7))
@@ -408,7 +418,7 @@ class GameEngineTest {
             engine(
                 initial =
                 GameState(
-                    session = inQuestion(phase = SessionState.InQuestion.QuestionState.Selecting),
+                    session = inQuestion(phase = QuestionState.Selecting),
                     participantNames = listOf("Alice"),
                     draftPicks = listOf(1, 2, 3),
                 ),
@@ -425,14 +435,14 @@ class GameEngineTest {
             engine(
                 initial =
                 GameState(
-                    session = inQuestion(phase = SessionState.InQuestion.QuestionState.Discussing),
+                    session = inQuestion(phase = QuestionState.Discussing),
                     participantNames = listOf("Alice"),
                     draftPicks = listOf(1, 2, 3),
                 ),
             )
         e.dispatch(SessionEvent.EndDiscussion)
         val next = assertIs<SessionState.InQuestion>(e.state.value.session)
-        assertEquals(SessionState.InQuestion.QuestionState.ShowingPrompt, next.activity)
+        assertEquals(QuestionState.ShowingPrompt, next.activity)
         assertEquals(emptyList(), e.state.value.draftPicks)
     }
 
@@ -442,14 +452,14 @@ class GameEngineTest {
             engine(
                 initial =
                 GameState(
-                    session = inQuestion(phase = SessionState.InQuestion.QuestionState.Finalizing),
+                    session = inQuestion(phase = QuestionState.Finalizing),
                     participantNames = listOf("Alice"),
                     draftPicks = listOf(1, 2, 3),
                 ),
             )
         e.dispatch(SessionEvent.BeginSelection)
         val next = assertIs<SessionState.InQuestion>(e.state.value.session)
-        assertEquals(SessionState.InQuestion.QuestionState.Selecting, next.activity)
+        assertEquals(QuestionState.Selecting, next.activity)
         assertEquals(listOf(1, 2, 3), e.state.value.draftPicks)
     }
 
@@ -459,7 +469,7 @@ class GameEngineTest {
             engine(
                 initial =
                 GameState(
-                    session = inQuestion(phase = SessionState.InQuestion.QuestionState.ShowingInstructions),
+                    session = inQuestion(phase = QuestionState.ShowingInstructions),
                     participantNames = listOf("Alice"),
                 ),
             )
@@ -499,9 +509,10 @@ class GameEngineTest {
     fun `store failure during execute reports nonfatal and keeps processing`() = runTest {
         val store = FakeGameSessionStore().apply { executeError = IllegalStateException("db down") }
         val e = engine(store, initial = GameState(session = SessionState.AddingParticipants))
-        e.dispatch(SessionEvent.AddParticipant("Alice"))
+        val event = SessionEvent.AddParticipant("Alice")
+        e.dispatch(event)
         advanceUntilIdle()
-        assertTrue(store.nonFatals.isNotEmpty())
+        assertEquals(listOf("applyEffects after $event"), store.nonFatals)
         store.executeError = null
         e.dispatch(SessionEvent.AddParticipant("Ben"))
         advanceUntilIdle()
@@ -538,7 +549,7 @@ class GameEngineTest {
     fun `start snaps a mid-question state back to the prompt`() = runTest {
         val store =
             FakeGameSessionStore().apply {
-                persistedState = inQuestion(q = 2, phase = SessionState.InQuestion.QuestionState.Selecting)
+                persistedState = inQuestion(q = 2, phase = QuestionState.Selecting)
                 sessionExists = true
             }
         val e = engine(store)
@@ -594,7 +605,13 @@ class GameEngineTest {
         val store = FakeGameSessionStore().apply { setBookmarkedError = IllegalStateException("db down") }
         val e = engine(store, initial = GameState(session = SessionState.AddingParticipants))
         e.bookmark() // completing without hanging is the assertion
-        assertTrue(store.nonFatals.isNotEmpty())
+        assertEquals(listOf("bookmarkAndExit"), store.nonFatals)
+        // parity with the old presenter: conversation_bookmarked is logged unconditionally
+        assertTrue(
+            store.executed.any {
+                it is Effect.LogAnalytics && it.event == "conversation_bookmarked"
+            },
+        )
     }
 
     @Test
@@ -602,6 +619,6 @@ class GameEngineTest {
         val store = FakeGameSessionStore().apply { deleteSessionError = IllegalStateException("db down") }
         val e = engine(store, initial = GameState(session = SessionState.AddingParticipants))
         e.discard() // completing without hanging is the assertion
-        assertTrue(store.nonFatals.isNotEmpty())
+        assertEquals(listOf("discardAndExit"), store.nonFatals)
     }
 }

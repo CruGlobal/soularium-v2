@@ -40,17 +40,17 @@ internal class GameEngineImpl(
     ) : this(sessionId, kind, store, Dispatchers.Default, GameState())
 
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
-    private val queue = Channel<suspend () -> Unit>(Channel.UNLIMITED)
+    private val queue = Channel<QueuedOp>(Channel.UNLIMITED)
 
     private val _state = MutableStateFlow(initialState)
     override val state: StateFlow<GameState> = _state.asStateFlow()
 
     init {
         scope.launch {
-            for (op in queue) {
+            for (queued in queue) {
                 withContext(NonCancellable) {
-                    runCatching { op() }
-                        .onFailure { store.reportNonFatal(it, "game effect execution") }
+                    runCatching { queued.op() }
+                        .onFailure { store.reportNonFatal(it, queued.context) }
                 }
             }
         }.invokeOnCompletion { scope.cancel() }
@@ -59,8 +59,9 @@ internal class GameEngineImpl(
     override fun dispatch(event: SessionEvent) {
         val current = _state.value
         val result = step(current.session, event, current)
+        val context = "applyEffects after $event"
         if (result.error != null) {
-            enqueue {
+            enqueue(context) {
                 store.execute(
                     sessionId,
                     Effect.LogAnalytics(
@@ -74,7 +75,7 @@ internal class GameEngineImpl(
             return
         }
         _state.value = evolve(current, event, result)
-        result.effects.forEach { effect -> enqueue { store.execute(sessionId, effect) } }
+        result.effects.forEach { effect -> enqueue(context) { store.execute(sessionId, effect) } }
     }
 
     override suspend fun start() {
@@ -109,15 +110,16 @@ internal class GameEngineImpl(
 
     override suspend fun awaitIdle() {
         val done = CompletableDeferred<Unit>()
-        enqueue { done.complete(Unit) }
+        enqueue("awaitIdle") { done.complete(Unit) }
         done.await()
     }
 
     override suspend fun bookmark() {
         val done = CompletableDeferred<Unit>()
-        enqueue {
+        enqueue("bookmarkAndExit") {
             try {
-                store.setBookmarked(sessionId, true)
+                runCatching { store.setBookmarked(sessionId, true) }
+                    .onFailure { store.reportNonFatal(it, "bookmarkAndExit") }
                 store.execute(sessionId, Effect.LogAnalytics("conversation_bookmarked", emptyMap()))
             } finally {
                 done.complete(Unit)
@@ -128,7 +130,7 @@ internal class GameEngineImpl(
 
     override suspend fun discard() {
         val done = CompletableDeferred<Unit>()
-        enqueue {
+        enqueue("discardAndExit") {
             try {
                 store.deleteSession(sessionId)
             } finally {
@@ -142,9 +144,11 @@ internal class GameEngineImpl(
         queue.close() // worker drains what is already queued, then the scope dies
     }
 
-    private fun enqueue(op: suspend () -> Unit) {
-        queue.trySend(op)
+    private fun enqueue(context: String, op: suspend () -> Unit) {
+        queue.trySend(QueuedOp(context, op))
     }
+
+    private class QueuedOp(val context: String, val op: suspend () -> Unit)
 
     private fun evolve(current: GameState, event: SessionEvent, result: StepResult): GameState {
         var next = current.copy(session = result.next)
@@ -340,7 +344,7 @@ internal class GameEngineImpl(
                                 activeParticipantIndex = session.activeParticipantIndex + 1,
                                 activity = QuestionState.ShowingPrompt,
                             )
-                        session.questionNumber < 5 ->
+                        session.questionNumber < Question.entries.size ->
                             SessionState.InQuestion(
                                 questionNumber = session.questionNumber + 1,
                                 activeParticipantIndex = 0,
@@ -479,6 +483,6 @@ internal class GameEngineImpl(
 
 @Inject
 @ContributesBinding(AppScope::class)
-internal class GameEngineFactoryImpl(private val factory: GameEngineImpl.Factory,) : GameEngine.Factory {
+internal class GameEngineFactoryImpl(private val factory: GameEngineImpl.Factory) : GameEngine.Factory {
     override fun create(sessionId: Session.Id, kind: Session.Kind): GameEngine = factory.create(sessionId, kind)
 }

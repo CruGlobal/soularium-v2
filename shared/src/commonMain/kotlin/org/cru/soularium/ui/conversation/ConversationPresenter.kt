@@ -240,16 +240,14 @@ class ConversationPresenter(
                 UiEvent.BookmarkAndExit -> {
                     showExitDialog = false
                     scope.launch {
-                        runCatching { engine.bookmark() }
-                            .onFailure { crashReporter.recordNonFatal(it, "bookmarkAndExit") }
+                        engine.bookmark()
                         navigator.pop()
                     }
                 }
                 UiEvent.DiscardAndExit -> {
                     showExitDialog = false
                     scope.launch {
-                        runCatching { engine.discard() }
-                            .onFailure { crashReporter.recordNonFatal(it, "discardAndExit") }
+                        engine.discard()
                         navigator.pop()
                     }
                 }

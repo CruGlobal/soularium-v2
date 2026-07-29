@@ -6,13 +6,20 @@ import com.slack.circuit.test.test
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.ccci.gto.support.androidx.test.junit.runners.AndroidJUnit4
 import org.ccci.gto.support.androidx.test.junit.runners.RunOnAndroidWith
 import org.cru.soularium.analytics.AnalyticsTracker
 import org.cru.soularium.analytics.CrashReporter
+import org.cru.soularium.data.game.GameSessionStoreImpl
 import org.cru.soularium.db.repository.FakeSessionRepository
 import org.cru.soularium.db.repository.SessionRepository
+import org.cru.soularium.game.GameEngine
+import org.cru.soularium.game.GameEngineFactory
 import org.cru.soularium.model.ContactInfo
 import org.cru.soularium.model.Conversation
 import org.cru.soularium.model.Session
@@ -20,6 +27,7 @@ import org.cru.soularium.model.game.SessionState
 import org.cru.soularium.model.game.SessionState.InQuestion.QuestionState
 import org.cru.soularium.ui.nav.ConversationScreen
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @RunOnAndroidWith(AndroidJUnit4::class)
 class ConversationPresenterTest {
 
@@ -27,12 +35,19 @@ class ConversationPresenterTest {
     private val screen = ConversationScreen(sessionId, Session.Kind.SOLO)
     private val navigator = FakeNavigator(screen)
 
-    private fun presenter(repo: SessionRepository, analytics: AnalyticsTracker = NoOpAnalytics,) =
+    private fun TestScope.presenter(repo: SessionRepository, analytics: AnalyticsTracker = NoOpAnalytics) =
         ConversationPresenter(
             navigator = navigator,
             screen = screen,
             sessionRepository = repo,
-            analytics = analytics,
+            gameEngineFactory = GameEngineFactory { sid, kind ->
+                GameEngine(
+                    sid,
+                    kind,
+                    GameSessionStoreImpl(sid, repo, analytics, NoOpCrash),
+                    StandardTestDispatcher(testScheduler),
+                )
+            },
             crashReporter = NoOpCrash,
         )
 
@@ -52,6 +67,8 @@ class ConversationPresenterTest {
             awaitStableState { it is ConversationPresenter.UiState.AddingParticipants }
             cancelAndIgnoreRemainingEvents()
         }
+        // The engine logs analytics asynchronously off its own effect queue.
+        advanceUntilIdle()
         assertTrue(
             analytics.events.any { it.first == "session_started" && it.second["kind"] == "solo" },
             "expected a session_started analytics event, got ${analytics.events}",
@@ -74,6 +91,8 @@ class ConversationPresenterTest {
             assertEquals(listOf("Alice", "Bob"), withBoth.participantNames)
             cancelAndIgnoreRemainingEvents()
         }
+        // The engine persists asynchronously off its own effect queue.
+        advanceUntilIdle()
         assertEquals(listOf("Alice", "Bob"), repo.lastUpsertedParticipants)
     }
 

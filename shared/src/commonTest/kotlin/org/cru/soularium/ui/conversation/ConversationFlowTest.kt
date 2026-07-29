@@ -7,14 +7,19 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.ccci.gto.support.androidx.test.junit.runners.AndroidJUnit4
 import org.ccci.gto.support.androidx.test.junit.runners.RunOnAndroidWith
 import org.cru.soularium.analytics.AnalyticsTracker
 import org.cru.soularium.analytics.CrashReporter
+import org.cru.soularium.data.game.GameSessionStoreImpl
 import org.cru.soularium.db.repository.FakeSessionRepository
 import org.cru.soularium.db.repository.SessionRepository
+import org.cru.soularium.game.GameEngine
+import org.cru.soularium.game.GameEngineFactory
 import org.cru.soularium.game.content.Question
 import org.cru.soularium.model.Session
 import org.cru.soularium.ui.nav.ConversationScreen
@@ -222,7 +227,7 @@ class ConversationFlowTest {
 
     // ── Helpers ────────────────────────────────────────────────────────────
 
-    private fun presenter(
+    private fun TestScope.presenter(
         navigator: FakeNavigator,
         screen: ConversationScreen,
         repo: SessionRepository,
@@ -230,7 +235,14 @@ class ConversationFlowTest {
         navigator = navigator,
         screen = screen,
         sessionRepository = repo,
-        analytics = SilentAnalytics,
+        gameEngineFactory = GameEngineFactory { sessionId, kind ->
+            GameEngine(
+                sessionId,
+                kind,
+                GameSessionStoreImpl(sessionId, repo, SilentAnalytics, SilentCrash),
+                StandardTestDispatcher(testScheduler),
+            )
+        },
         crashReporter = SilentCrash,
     )
 }

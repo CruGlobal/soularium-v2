@@ -23,8 +23,9 @@ The app modules are `:shared`, `:module:model`, `:module:game`, `:module:db`, an
 `:module:analytics` (KMP libraries via `com.android.kotlin.multiplatform.library`) plus
 `:androidApp` (an Android-only shell); `iosApp/` is the native SwiftUI shell hosting the
 Compose framework.
-`:module:db:test-fixtures` is a sibling KMP library exposing `:module:db`'s shared test
-doubles (`FakeSessionRepository`) to other modules' `commonTest` source sets. Shared build
+`:module:db:test-fixtures` and `:module:game:test-fixtures` are sibling KMP libraries
+exposing `:module:db`'s and `:module:game`'s shared test doubles (`FakeSessionRepository`,
+`FakeGameEngine`) to other modules' `commonTest` source sets. Shared build
 logic lives in the `build-logic/` composite build's convention plugins. A module lists
 `soularium-kmp.module-conventions` explicitly even when it also applies the
 metro/serialization conventions, so its KMP-library nature is obvious; a `test-fixtures`
@@ -50,15 +51,22 @@ convention.
 - **Ports**: `domain/ports/` retains `DeviceStateRepository`. `AnalyticsTracker` and
   `CrashReporter` live in `:module:analytics` (`CrashReporter` is a temporary
   resident — pending a Kermit logging refactor; don't invest in that interface).
-- **Session state machine** (`:module:game`, `org.cru.soularium.game`): the **pure**
-  `fun transition(state, event, ctx): TransitionResult` performs no I/O — side effects
-  are *returned as data* (`Effect`) for the Presenter to execute. Keep it pure and
-  exhaustively tested. The state itself (`SessionState`) lives in `:module:model`
-  (`org.cru.soularium.model.game`), so `transition()` operates over it. The content
-  catalog the machine consumes (the `Question` enum) lives at
-  `org.cru.soularium.game.content`.
+- **Game engine** (`:module:game`, `org.cru.soularium.game`): `GameEngine` is an
+  interface — instances come from the graph via the nested `GameEngine.Factory` (a
+  `fun interface`, assisted-injected internally); direct construction via the top-level
+  `GameEngine(...)` factory function remains available (e.g. tests). It owns the game
+  loop — it exposes `StateFlow<GameState>` (persisted `SessionState` + volatile
+  context), `dispatch(event)`, rehydration via `start()`, and serialized effect
+  execution through the `GameSessionStore` port (implemented in `:shared` over
+  `SessionRepository`). The per-state transition logic is **pure** private methods on
+  the engine — no I/O; side effects are returned as `Effect` data and executed by the
+  engine's FIFO queue, which drains on `close()` so navigation can't drop writes. The
+  persisted state (`SessionState`) lives in `:module:model`
+  (`org.cru.soularium.model.game`). The content catalog the engine consumes (the
+  `Question` enum) lives at `org.cru.soularium.game.content`.
 - **Errors**: `GameError` sealed interface (`:module:game`). There is no `Result<T>`
-  wrapper — transition errors surface via `TransitionResult.error`.
+  wrapper — an invalid transition logs a `transition_error` analytics event and leaves
+  state unchanged.
 - Domain code stays independent of the `data` and `ui` layers, but it **may** use platform
   APIs — a domain port can have Android/iOS `actual` implementations that use them (e.g.
   `domain.settings.AndroidLanguageRepository` uses `Context`). Domain avoids Compose UI, with
@@ -189,8 +197,9 @@ must contain no Android- or iOS-specific imports.
 - Test doubles: reusable fakes live in a sibling `test-fixtures` module (modeled after
   mpdx-kmp) — `:module:db:test-fixtures` provides `FakeSessionRepository`, a full
   in-memory `SessionRepository` with seeding, interaction recording, and fault
-  injection. Single-use doubles (e.g. `RecordingAnalytics` in
-  `ConversationPresenterTest`) stay as plain private classes in the test sources.
+  injection, and `:module:game:test-fixtures` provides `FakeGameEngine`, a scripted
+  `GameEngine` for isolated presenter tests. Single-use doubles (e.g. `RecordingAnalytics`
+  in `ConversationPresenterTest`) stay as plain private classes in the test sources.
 - Coroutine tests use `runTest { }` with an injected `TestDispatcher` — never
   `runBlocking`. Flow tests use Turbine (`flow.test { awaitItem() }`).
 - Test functions use backtick-quoted names. **Presenter tests** name each case by the
@@ -199,8 +208,8 @@ must contain no Android- or iOS-specific imports.
   `` `UiEvent - Back - pops the navigator` `` and
   `` `UiState - selectedLanguage - reflects stored language` ``. Other tests use a
   descriptive sentence, e.g. `` `solo session completes from start through summary` ``.
-- The pure session state machine (`transition()`) and pure utilities (e.g. share-URL
-  generation) should have exhaustive tests; Presenters should have behavior tests.
+- The `GameEngine`'s game rules should have exhaustive coverage (driven through
+  `dispatch` in `GameEngineTest`); Presenters should have behavior tests.
 - **Paparazzi screenshot tests** (in `androidHostTest`) cover each `<Feature>Layout` by
   rendering its stateless composable with a hand-built `UiState`. They extend
   `BasePaparazziTest` and run a device × light/dark (`nightMode`) matrix. Because

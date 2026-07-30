@@ -1,4 +1,4 @@
-package org.cru.soularium.data.game
+package org.cru.soularium.game
 
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
@@ -7,8 +7,6 @@ import dev.zacsweers.metro.SingleIn
 import org.cru.soularium.analytics.AnalyticsTracker
 import org.cru.soularium.analytics.CrashReporter
 import org.cru.soularium.db.repository.SessionRepository
-import org.cru.soularium.game.Effect
-import org.cru.soularium.game.GameSessionStore
 import org.cru.soularium.model.Session
 import org.cru.soularium.model.game.SessionState
 
@@ -16,7 +14,7 @@ import org.cru.soularium.model.game.SessionState
 @Inject
 @SingleIn(AppScope::class)
 @ContributesBinding(AppScope::class)
-class GameSessionStoreImpl(
+internal class GameSessionStoreImpl(
     private val sessionRepository: SessionRepository,
     private val analytics: AnalyticsTracker,
     private val crashReporter: CrashReporter,

@@ -1,4 +1,4 @@
-package org.cru.soularium.data.game
+package org.cru.soularium.game
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -12,8 +12,6 @@ import org.cru.soularium.analytics.AnalyticsTracker
 import org.cru.soularium.analytics.CrashReporter
 import org.cru.soularium.db.repository.FakeSessionRepository
 import org.cru.soularium.db.repository.SessionRepository
-import org.cru.soularium.game.GameEngine
-import org.cru.soularium.game.SessionEvent
 import org.cru.soularium.game.content.Question
 import org.cru.soularium.model.Session
 import org.cru.soularium.model.game.SessionState

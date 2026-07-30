@@ -1,9 +1,13 @@
 package org.cru.soularium.game
 
+import org.cru.soularium.db.repository.SessionRepository
 import org.cru.soularium.model.Session
 import org.cru.soularium.model.game.SessionState
 
-/** The persistence/analytics port a [GameEngine] drives; implemented against Room and analytics in `:shared`. */
+/**
+ * The persistence/analytics port a [GameEngine] drives; implemented in `:module:game` over
+ * [SessionRepository] and the analytics ports.
+ */
 interface GameSessionStore {
     suspend fun findSessionState(id: Session.Id): SessionState?
 

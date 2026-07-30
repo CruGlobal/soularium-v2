@@ -54,21 +54,18 @@ import org.jetbrains.compose.resources.stringResource
 
 private const val CARD_GRID_COLUMNS = 3
 
-// Questions 1 and 2 ask for three cards; questions 3–5 ask for one.
-private const val THREE_CARD_QUESTION_MAX = 2
-
 /**
  * Core image-selection screen. Selection state and confirm-validity are driven
  * entirely by the presenter via [ConversationPresenter.UiState.Selection].
  */
 @Composable
 fun SelectionLayout(state: ConversationPresenter.UiState.Selection, modifier: Modifier = Modifier) {
-    val questionNumber = state.questionNumber
+    val question = Question.forNumber(state.questionNumber)
     val selectedCardIds = state.selectedCardIds
     val isConfirmEnabled = state.isConfirmEnabled
-    val selectionPrompt = stringResource(Question.forNumber(questionNumber).selectionRes)
+    val selectionPrompt = stringResource(question.selectionRes)
     val chooseLabel = stringResource(
-        if (questionNumber <= THREE_CARD_QUESTION_MAX) Res.string.selection_choose_3 else Res.string.selection_choose_1,
+        if (question.requiredImageCount == 3) Res.string.selection_choose_3 else Res.string.selection_choose_1,
     )
     val selectedCountLabel = stringResource(Res.string.selection_x_selected, selectedCardIds.size)
 

@@ -42,6 +42,7 @@ kotlin {
     sourceSets {
         commonMain {
             dependencies {
+                implementation(projects.module.analytics)
                 implementation(projects.module.db)
                 implementation(projects.module.game)
                 implementation(projects.module.model)

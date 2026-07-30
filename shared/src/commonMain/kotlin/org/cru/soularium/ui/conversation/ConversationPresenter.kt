@@ -20,9 +20,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import org.cru.soularium.analytics.AnalyticsTracker
+import org.cru.soularium.analytics.CrashReporter
 import org.cru.soularium.db.repository.SessionRepository
-import org.cru.soularium.domain.ports.AnalyticsTracker
-import org.cru.soularium.domain.ports.CrashReporter
 import org.cru.soularium.game.Effect
 import org.cru.soularium.game.SessionContext
 import org.cru.soularium.game.SessionEvent

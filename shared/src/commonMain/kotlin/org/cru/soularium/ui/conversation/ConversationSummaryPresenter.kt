@@ -20,8 +20,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import org.cru.soularium.analytics.CrashReporter
 import org.cru.soularium.db.repository.SessionRepository
-import org.cru.soularium.domain.ports.CrashReporter
 import org.cru.soularium.model.Session
 import org.cru.soularium.ui.nav.ConversationSummaryScreen
 

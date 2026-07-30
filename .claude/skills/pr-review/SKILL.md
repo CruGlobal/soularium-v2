@@ -157,7 +157,7 @@ never on `:shared`. Layering is enforced by package/module convention:
 
 ### Domain Layer (`:shared` / `org.cru.soularium.domain`)
 
-- [ ] Ports (`DeviceStateRepository`, `AnalyticsTracker`, `CrashReporter`) are interfaces in `domain/ports/`. The `SessionRepository` contract lives in `:module:db` (`org.cru.soularium.db.repository`). Cross-platform impls live in `data` / `:module:db`; platform-specific ones live in `androidMain`/`iosMain` (e.g. `AndroidLanguageRepository`, `IosLanguageRepository`) and are bound via `@ContributesBinding(AppScope::class)`
+- [ ] `DeviceStateRepository` is the interface in `domain/ports/`; `AnalyticsTracker`/`CrashReporter` live in `:module:analytics` instead (`CrashReporter` is a temporary resident, pending a Kermit logging refactor). The `SessionRepository` contract lives in `:module:db` (`org.cru.soularium.db.repository`). Cross-platform impls live in `data` / `:module:db`; platform-specific ones live in `androidMain`/`iosMain` (e.g. `AndroidLanguageRepository`, `IosLanguageRepository`) and are bound via `@ContributesBinding(AppScope::class)`
 - [ ] `transition(state, event, ctx)` in `:module:game` (`org.cru.soularium.game`) is **pure** — no I/O, no suspending calls, no `Dispatchers.*`. Side effects are returned as `Effect` data for the Presenter to execute. It operates over `model.game.SessionState`
 - [ ] New `SessionEvent` variants are added to the sealed hierarchy and handled exhaustively in `transition()` (no `else ->` swallowing)
 - [ ] Errors surface via `TransitionResult.error` (`GameError` sealed interface in `:module:game`) — no `Result<T>` wrapper, no thrown exceptions for control flow

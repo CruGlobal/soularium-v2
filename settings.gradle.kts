@@ -31,6 +31,7 @@ includeBuild("build-logic")
 include(":androidApp")
 include(":shared")
 
+include(":module:analytics")
 include(":module:db", ":module:db:test-fixtures")
 include(":module:game")
 include(":module:model")

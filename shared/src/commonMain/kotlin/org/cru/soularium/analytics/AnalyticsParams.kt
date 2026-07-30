@@ -11,7 +11,7 @@ private val SENSITIVE_KEY_TOKENS = listOf("name", "email", "phone", "notes", "ca
  * Strips entries whose key looks like it carries PII or card-selection detail,
  * so participant data never leaves the device through an analytics event.
  *
- * Applied by the Firebase [org.cru.soularium.domain.ports.AnalyticsTracker]
+ * Applied by the Firebase [org.cru.soularium.analytics.AnalyticsTracker]
  * implementation before forwarding params to `FirebaseAnalytics.logEvent`
  * (wired once Firebase config files land — see Tasks 41–42).
  */

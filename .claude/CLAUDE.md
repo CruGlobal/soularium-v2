@@ -19,9 +19,10 @@ bundled and persistence is local.
 the repo's Gradle wrapper (`./gradlew`), never a system Gradle. The JDK is pinned via
 `.tool-versions`; source/target bytecode is JVM 17.
 
-The app modules are `:shared`, `:module:model`, `:module:game`, and `:module:db` (KMP
-libraries via `com.android.kotlin.multiplatform.library`) plus `:androidApp` (an
-Android-only shell); `iosApp/` is the native SwiftUI shell hosting the Compose framework.
+The app modules are `:shared`, `:module:model`, `:module:game`, `:module:db`, and
+`:module:analytics` (KMP libraries via `com.android.kotlin.multiplatform.library`) plus
+`:androidApp` (an Android-only shell); `iosApp/` is the native SwiftUI shell hosting the
+Compose framework.
 `:module:db:test-fixtures` is a sibling KMP library exposing `:module:db`'s shared test
 doubles (`FakeSessionRepository`) to other modules' `commonTest` source sets. Shared build
 logic lives in the `build-logic/` composite build's convention plugins. A module lists
@@ -34,8 +35,9 @@ single source of truth.
 ## Architecture: Hexagonal
 
 `:androidApp` → `:shared` → `:module:db` → `:module:model` (and `:shared` also depends on
-`:module:model` and `:module:game` directly; `:module:game` depends only on
-`:module:model`; `:module:model` depends on nothing else in-repo).
+`:module:model`, `:module:game`, and `:module:analytics` directly; `:module:game` depends
+only on `:module:model`; `:module:analytics` and `:module:model` depend on nothing else
+in-repo).
 
 Layering is enforced by package convention: code in `org.cru.soularium.domain`
 must not import from `data`, `ui`, or platform packages, and `org.cru.soularium.data`
@@ -45,6 +47,9 @@ convention.
 
 ### Domain & game logic (`org.cru.soularium.domain`, `:module:game`)
 
+- **Ports**: `domain/ports/` retains `DeviceStateRepository`. `AnalyticsTracker` and
+  `CrashReporter` live in `:module:analytics` (`CrashReporter` is a temporary
+  resident — pending a Kermit logging refactor; don't invest in that interface).
 - **Session state machine** (`:module:game`, `org.cru.soularium.game`): the **pure**
   `fun transition(state, event, ctx): TransitionResult` performs no I/O — side effects
   are *returned as data* (`Effect`) for the Presenter to execute. Keep it pure and

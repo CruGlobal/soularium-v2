@@ -9,10 +9,10 @@ import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
 import org.ccci.gto.support.androidx.test.junit.runners.AndroidJUnit4
 import org.ccci.gto.support.androidx.test.junit.runners.RunOnAndroidWith
+import org.cru.soularium.analytics.AnalyticsTracker
+import org.cru.soularium.analytics.CrashReporter
 import org.cru.soularium.db.repository.FakeSessionRepository
 import org.cru.soularium.db.repository.SessionRepository
-import org.cru.soularium.domain.ports.AnalyticsTracker
-import org.cru.soularium.domain.ports.CrashReporter
 import org.cru.soularium.model.ContactInfo
 import org.cru.soularium.model.Conversation
 import org.cru.soularium.model.Session

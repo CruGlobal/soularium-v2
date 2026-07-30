@@ -143,8 +143,7 @@ convention.
 
 ### Platform abstraction — expect/actual
 
-KMP platform seams use `expect`/`actual`: `PlatformBindings`, `Sharer`
-(`AndroidSharer` → `Intent.ACTION_SEND`; `IosSharer` → `UIActivityViewController`),
+KMP platform seams use `expect`/`actual`: `PlatformBindings`,
 `PlatformBackHandler` (Android → `BackHandler`; iOS → no-op), and — in `:module:db` —
 `SoulariumDatabaseConstructor` (its `actual`s are KSP-generated per platform). The Room
 database **builder** is *not* `expect`/`actual`: it's a platform Metro `@Provides` in
@@ -185,8 +184,8 @@ must contain no Android- or iOS-specific imports.
 - Test doubles: reusable fakes live in a sibling `test-fixtures` module (modeled after
   mpdx-kmp) — `:module:db:test-fixtures` provides `FakeSessionRepository`, a full
   in-memory `SessionRepository` with seeding, interaction recording, and fault
-  injection. Single-use doubles (e.g. `RecordingSharer`) stay as plain private classes
-  in the test sources.
+  injection. Single-use doubles (e.g. `RecordingAnalytics` in
+  `ConversationPresenterTest`) stay as plain private classes in the test sources.
 - Coroutine tests use `runTest { }` with an injected `TestDispatcher` — never
   `runBlocking`. Flow tests use Turbine (`flow.test { awaitItem() }`).
 - Test functions use backtick-quoted names. **Presenter tests** name each case by the

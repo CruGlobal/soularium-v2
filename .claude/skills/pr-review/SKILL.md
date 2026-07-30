@@ -137,10 +137,10 @@ To dismiss a finding so it won't appear in future reviews, say:
 ### Architecture & Hexagonal Layering
 
 The app is `:androidApp` (the Android shell), `:shared` (domain ports, UI, DI), and focused
-KMP library modules under `module/` (models, game rules, persistence — CLAUDE.md carries the
-current module map). Dependencies flow one way: `:androidApp` → `:shared` → the library
-modules, which depend only on other library modules (bottoming out at `:module:model`) and
-never on `:shared`. Layering is enforced by package/module convention:
+KMP library modules under `module/` — `settings.gradle.kts` is the authoritative module
+list. Dependencies flow one way: `:androidApp` → `:shared` → the library modules, which
+depend only on other library modules and never on `:shared`. Layering is enforced by
+package/module convention:
 
 - [ ] Code in `org.cru.soularium.domain` does NOT depend on our `ui` layer. It may use models (`:module:model`) and platform APIs (a domain port's Android/iOS `actual` may use e.g. `Context`), but not our UI logic
 - [ ] Code in `org.cru.soularium.data` does NOT import from `ui`
@@ -158,7 +158,7 @@ never on `:shared`. Layering is enforced by package/module convention:
 ### Domain Layer (`:shared` / `org.cru.soularium.domain`)
 
 - [ ] `DeviceStateRepository` is the interface in `domain/ports/`; `AnalyticsTracker`/`CrashReporter` live in `:module:analytics` instead (`CrashReporter` is a temporary resident, pending a Kermit logging refactor). The `SessionRepository` contract lives in `:module:db` (`org.cru.soularium.db.repository`). Cross-platform impls live in `data` / `:module:db`; platform-specific ones live in `androidMain`/`iosMain` (e.g. `AndroidLanguageRepository`, `IosLanguageRepository`) and are bound via `@ContributesBinding(AppScope::class)`
-- [ ] The game loop runs through `GameEngine` (`:module:game`, `org.cru.soularium.game`): instances come from the graph via the nested `GameEngine.Factory` (assisted-injected internally). Per-state transition logic is **pure** private engine methods — no I/O, no suspending calls, no `Dispatchers.*`; side effects are returned as `Effect` data and executed only by the engine's serialized effect queue via the `GameSessionStore` port. It operates over `model.game.SessionState`
+- [ ] The game loop runs through `GameEngine` (`:module:game`, `org.cru.soularium.game`): instances come from the graph via the nested `GameEngine.Factory` (assisted-injected internally). Per-state transition logic is **pure** private engine methods — no I/O, no suspending calls, no `Dispatchers.*`; side effects are returned as `Effect` data and executed only by the engine's serialized effect queue via the `GameSessionStore` port (implemented in `:module:game` over `SessionRepository`). It operates over `model.game.SessionState`
 - [ ] New `SessionEvent` variants are added to the sealed hierarchy and handled exhaustively (no `else ->` swallowing)
 - [ ] Errors: `GameError` sealed interface (`:module:game`) — an invalid transition logs `transition_error` and leaves state unchanged; no `Result<T>` wrapper, no thrown exceptions for control flow
 
@@ -281,7 +281,7 @@ DI is compile-time via [Metro](https://github.com/ZacSweers/metro). The graph is
 - [ ] Presenter tests are written with Circuit's `circuit-test` (`FakeNavigator`, `presenter.test { awaitItem().eventSink(...) }`)
 - [ ] Presenter tests are annotated `@RunOnAndroidWith(AndroidJUnit4::class)` so the Android-host variant runs them under Robolectric — required because the Compose Runtime's Android artifact touches `android.util.Log` on its error path. Pure domain tests are unannotated
 - [ ] `:module:db` repository integration tests follow the abstract-contract pattern — a persistence-agnostic `…RepositoryTest` (in `db.repository`, `commonTest`) plus a Room subclass (in `db.room.repository`) that supplies `repository` from the database, annotated `@RunOnAndroidWith(AndroidJUnit4::class)`. The in-memory DB comes from an `expect fun buildInMemorySoulariumDatabase()` (android/ios actuals) so the test runs on both Android host (Robolectric) and iOS
-- [ ] Test doubles: reusable fakes live in a sibling `test-fixtures` module — `:module:db:test-fixtures` provides `FakeSessionRepository` (a full in-memory `SessionRepository` with seeding, interaction recording, and fault injection); `:module:game:test-fixtures` provides `FakeGameEngine` (a scripted `GameEngine` for isolated presenter tests); single-use doubles (e.g. `RecordingAnalytics` in `ConversationPresenterTest`) stay plain private classes in the test sources — no `mockk`
+- [ ] Test doubles: reusable fakes live in a sibling `test-fixtures` module — `:module:db:test-fixtures` provides `FakeSessionRepository` (a full in-memory `SessionRepository` with seeding, interaction recording, and fault injection); `:module:game:test-fixtures` provides `FakeGameEngine` (a scripted `GameEngine` for isolated presenter tests); single-use doubles (e.g. `RecordingAnalytics` in `GameEngineFlowTest`) stay plain private classes in the test sources — no `mockk`
 - [ ] Test function names are backtick-quoted. Presenter tests use the structured form `UiEvent - <Event> - <behavior>` (event handling) or `UiState - <field> - <behavior>` (state derivation) — e.g. `` `UiEvent - Back - pops the navigator` ``. Other tests use a descriptive sentence, e.g. `` `solo session completes from start through summary` ``
 - [ ] `GameEngine`'s exhaustive rule coverage runs through `dispatch` in `GameEngineTest`; other pure utilities have explicit edge-case tests
 

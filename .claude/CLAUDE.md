@@ -19,14 +19,13 @@ bundled and persistence is local.
 the repo's Gradle wrapper (`./gradlew`), never a system Gradle. The JDK is pinned via
 `.tool-versions`; source/target bytecode is JVM 17.
 
-The app modules are `:shared`, `:module:model`, `:module:game`, `:module:db`, and
-`:module:analytics` (KMP libraries via `com.android.kotlin.multiplatform.library`) plus
-`:androidApp` (an Android-only shell); `iosApp/` is the native SwiftUI shell hosting the
-Compose framework.
-`:module:db:test-fixtures` and `:module:game:test-fixtures` are sibling KMP libraries
-exposing `:module:db`'s and `:module:game`'s shared test doubles (`FakeSessionRepository`,
-`FakeGameEngine`) to other modules' `commonTest` source sets. Shared build
-logic lives in the `build-logic/` composite build's convention plugins. A module lists
+The app is `:androidApp` (an Android-only shell), `:shared` (domain ports, UI, DI), and
+focused KMP library modules under `module/` (`com.android.kotlin.multiplatform.library`)
+— `settings.gradle.kts` is the authoritative module list; `iosApp/` is the native SwiftUI
+shell hosting the Compose framework. A module may have a sibling `test-fixtures` module
+exposing its shared test doubles (e.g. `FakeSessionRepository`, `FakeGameEngine`) to other
+modules' `commonTest` source sets. Shared build logic lives in the `build-logic/`
+composite build's convention plugins. A module lists
 `soularium-kmp.module-conventions` explicitly even when it also applies the
 metro/serialization conventions, so its KMP-library nature is obvious; a `test-fixtures`
 module instead applies `soularium-kmp.test-fixtures-conventions` (module-conventions with
@@ -35,16 +34,14 @@ single source of truth.
 
 ## Architecture: Hexagonal
 
-`:androidApp` → `:shared` → `:module:db` → `:module:model` (and `:shared` also depends on
-`:module:model`, `:module:game`, and `:module:analytics` directly; `:module:game` depends
-only on `:module:model`; `:module:analytics` and `:module:model` depend on nothing else
-in-repo).
+`:androidApp` → `:shared` → library modules; library modules depend only on other
+library modules, never on `:shared`.
 
 Layering is enforced by package convention: code in `org.cru.soularium.domain`
 must not import from `data`, `ui`, or platform packages, and `org.cru.soularium.data`
-must not import from `ui`. `org.cru.soularium.game` lives in `:module:game`, so its
-isolation from `data`/`ui` is enforced by the module dependency graph rather than
-convention.
+must not import from `ui`. Domain and game logic that live in their own library module
+(rather than under `:shared`) have their isolation from `data`/`ui` enforced by the
+module dependency graph rather than by convention.
 
 ### Domain & game logic (`org.cru.soularium.domain`, `:module:game`)
 
@@ -57,7 +54,7 @@ convention.
   `GameEngine(...)` factory function remains available (e.g. tests). It owns the game
   loop — it exposes `StateFlow<GameState>` (persisted `SessionState` + volatile
   context), `dispatch(event)`, rehydration via `start()`, and serialized effect
-  execution through the `GameSessionStore` port (implemented in `:shared` over
+  execution through the `GameSessionStore` port (implemented in `:module:game` over
   `SessionRepository`). The per-state transition logic is **pure** private methods on
   the engine — no I/O; side effects are returned as `Effect` data and executed by the
   engine's FIFO queue, which drains on `close()` so navigation can't drop writes. The
@@ -176,10 +173,9 @@ must contain no Android- or iOS-specific imports.
   them under Robolectric — required because the Compose Runtime's Android artifact
   touches `android.util.Log` from its error path. The iOS-simulator variant runs the
   same tests unannotated. Pure domain code (no Compose) has no such requirement.
-- **Tests live in each module's `commonTest`** — `:module:model`, `:module:game`,
-  `:module:db`, and `:shared`. `soularium-kmp.module-conventions` wires `kotlin.test`
-  (+ the multiplatform `@RunOnAndroidWith` runner) into every `commonTest` via the
-  `test-framework` catalog bundle, and Robolectric + androidx-test into every
+- **Tests live in each module's `commonTest`**. `soularium-kmp.module-conventions` wires
+  `kotlin.test` (+ the multiplatform `@RunOnAndroidWith` runner) into every `commonTest`
+  via the `test-framework` catalog bundle, and Robolectric + androidx-test into every
   `androidHostTest` via the `android-test-framework` bundle.
 - **Repository / Room tests** use an abstract-contract pattern: a persistence-agnostic
   contract test (e.g. `db.repository.SessionRepositoryTest`, asserting against an
@@ -199,7 +195,7 @@ must contain no Android- or iOS-specific imports.
   in-memory `SessionRepository` with seeding, interaction recording, and fault
   injection, and `:module:game:test-fixtures` provides `FakeGameEngine`, a scripted
   `GameEngine` for isolated presenter tests. Single-use doubles (e.g. `RecordingAnalytics`
-  in `ConversationPresenterTest`) stay as plain private classes in the test sources.
+  in `GameEngineFlowTest`) stay as plain private classes in the test sources.
 - Coroutine tests use `runTest { }` with an injected `TestDispatcher` — never
   `runBlocking`. Flow tests use Turbine (`flow.test { awaitItem() }`).
 - Test functions use backtick-quoted names. **Presenter tests** name each case by the

@@ -16,7 +16,6 @@ import org.cru.soularium.analytics.CrashReporter
 import org.cru.soularium.db.repository.FakeSessionRepository
 import org.cru.soularium.db.repository.SessionRepository
 import org.cru.soularium.game.FakeGameEngine
-import org.cru.soularium.game.GameEngine
 import org.cru.soularium.game.GameState
 import org.cru.soularium.game.SessionEvent
 import org.cru.soularium.model.CardPick
@@ -47,7 +46,7 @@ class ConversationPresenterTest {
         navigator = navigator,
         screen = screen,
         sessionRepository = repo,
-        gameEngineFactory = GameEngine.Factory { _, _ -> fakeEngine },
+        gameEngineFactory = FakeGameEngine.Factory(fakeEngine),
         crashReporter = NoOpCrash,
     )
 

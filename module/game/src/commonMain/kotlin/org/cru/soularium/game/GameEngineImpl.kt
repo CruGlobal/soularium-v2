@@ -5,7 +5,6 @@ import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
 import dev.zacsweers.metro.ContributesBinding
-import dev.zacsweers.metro.Inject
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -25,20 +24,14 @@ import org.cru.soularium.model.Session
 import org.cru.soularium.model.game.SessionState
 import org.cru.soularium.model.game.SessionState.InQuestion.QuestionState
 
+@AssistedInject
 internal class GameEngineImpl(
-    private val sessionId: Session.Id,
-    private val kind: Session.Kind,
-    private val store: GameSessionStore,
-    dispatcher: CoroutineDispatcher,
-    initialState: GameState,
+    private val host: GameEngine.Host,
+    dispatcher: CoroutineDispatcher = Dispatchers.Default,
+    @Assisted private val sessionId: Session.Id,
+    @Assisted private val kind: Session.Kind,
+    @Assisted initialState: GameState,
 ) : GameEngine {
-    @AssistedInject
-    constructor(
-        @Assisted sessionId: Session.Id,
-        @Assisted kind: Session.Kind,
-        store: GameSessionStore,
-    ) : this(sessionId, kind, store, Dispatchers.Default, GameState())
-
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private val queue = Channel<QueuedOp>(Channel.UNLIMITED)
 
@@ -50,7 +43,7 @@ internal class GameEngineImpl(
             for (queued in queue) {
                 withContext(NonCancellable) {
                     runCatching { queued.op() }
-                        .onFailure { store.reportNonFatal(it, queued.context) }
+                        .onFailure { host.reportNonFatal(it, queued.context) }
                 }
             }
         }.invokeOnCompletion { scope.cancel() }
@@ -62,7 +55,7 @@ internal class GameEngineImpl(
         val context = "applyEffects after $event"
         if (result.error != null) {
             enqueue(context) {
-                store.execute(
+                host.execute(
                     sessionId,
                     Effect.LogAnalytics(
                         "transition_error",
@@ -75,34 +68,34 @@ internal class GameEngineImpl(
             return
         }
         _state.value = evolve(current, event, result)
-        result.effects.forEach { effect -> enqueue(context) { store.execute(sessionId, effect) } }
+        result.effects.forEach { effect -> enqueue(context) { host.execute(sessionId, effect) } }
     }
 
     override suspend fun start() {
         var loadFailed = false
         val loaded =
-            runCatching { store.findSessionState(sessionId) }
+            runCatching { host.findSessionState(sessionId) }
                 .onFailure {
                     loadFailed = true
-                    store.reportNonFatal(it, "findSessionState on start")
+                    host.reportNonFatal(it, "findSessionState on start")
                 }
                 .getOrNull()
         if (loaded != null) {
             _state.update { it.copy(session = snapBackToPromptIfMidQuestion(loaded)) }
-            runCatching { store.loadParticipantNames(sessionId) }
+            runCatching { host.loadParticipantNames(sessionId) }
                 .onSuccess { names -> if (names.isNotEmpty()) _state.update { it.copy(participantNames = names) } }
-                .onFailure { store.reportNonFatal(it, "loadParticipantNames on start") }
+                .onFailure { host.reportNonFatal(it, "loadParticipantNames on start") }
         }
         if (_state.value.session == SessionState.NotStarted) {
             val exists =
-                runCatching { store.sessionExists(sessionId) }
+                runCatching { host.sessionExists(sessionId) }
                     .getOrElse {
-                        store.reportNonFatal(it, "sessionExists on start")
+                        host.reportNonFatal(it, "sessionExists on start")
                         false
                     }
             if (!exists || loadFailed) {
-                runCatching { store.createSession(Session(id = sessionId, kind = kind), SessionState.NotStarted) }
-                    .onFailure { store.reportNonFatal(it, "createSession on start") }
+                runCatching { host.createSession(Session(id = sessionId, kind = kind), SessionState.NotStarted) }
+                    .onFailure { host.reportNonFatal(it, "createSession on start") }
             }
             dispatch(SessionEvent.StartSession(kind))
         }
@@ -118,9 +111,9 @@ internal class GameEngineImpl(
         val done = CompletableDeferred<Unit>()
         enqueue("bookmarkAndExit") {
             try {
-                runCatching { store.setBookmarked(sessionId, true) }
-                    .onFailure { store.reportNonFatal(it, "bookmarkAndExit") }
-                store.execute(sessionId, Effect.LogAnalytics("conversation_bookmarked", emptyMap()))
+                runCatching { host.setBookmarked(sessionId, true) }
+                    .onFailure { host.reportNonFatal(it, "bookmarkAndExit") }
+                host.execute(sessionId, Effect.LogAnalytics("conversation_bookmarked", emptyMap()))
             } finally {
                 done.complete(Unit)
             }
@@ -132,7 +125,7 @@ internal class GameEngineImpl(
         val done = CompletableDeferred<Unit>()
         enqueue("discardAndExit") {
             try {
-                store.deleteSession(sessionId)
+                host.deleteSession(sessionId)
             } finally {
                 done.complete(Unit)
             }
@@ -476,13 +469,8 @@ internal class GameEngineImpl(
     )
 
     @AssistedFactory
-    fun interface Factory {
-        fun create(sessionId: Session.Id, kind: Session.Kind): GameEngineImpl
+    @ContributesBinding(AppScope::class)
+    interface Factory : GameEngine.Factory {
+        override fun create(sessionId: Session.Id, kind: Session.Kind, initialState: GameState): GameEngineImpl
     }
-}
-
-@Inject
-@ContributesBinding(AppScope::class)
-internal class GameEngineFactoryImpl(private val factory: GameEngineImpl.Factory) : GameEngine.Factory {
-    override fun create(sessionId: Session.Id, kind: Session.Kind): GameEngine = factory.create(sessionId, kind)
 }

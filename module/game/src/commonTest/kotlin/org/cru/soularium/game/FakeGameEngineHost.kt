@@ -3,7 +3,7 @@ package org.cru.soularium.game
 import org.cru.soularium.model.Session
 import org.cru.soularium.model.game.SessionState
 
-internal class FakeGameSessionStore : GameSessionStore {
+internal class FakeGameEngineHost : GameEngine.Host {
     var persistedState: SessionState? = null
     var participantNames: List<String> = emptyList()
     var sessionExists = false

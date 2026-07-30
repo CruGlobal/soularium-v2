@@ -1,13 +1,12 @@
 package org.cru.soularium.game
 
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
 import org.cru.soularium.model.Session
+import org.cru.soularium.model.game.SessionState
 
 /**
  * Drives a single conversation session's state machine: [dispatch] applies an event and queues
- * its resulting [Effect]s for asynchronous execution against the [GameSessionStore], while
+ * its resulting [Effect]s for asynchronous execution against the [Host], while
  * [state] exposes the current [GameState] for the UI to render.
  */
 interface GameEngine {
@@ -18,28 +17,44 @@ interface GameEngine {
     /** Applies [event] to the current state synchronously; its resulting effects are enqueued for FIFO execution. */
     fun dispatch(event: SessionEvent)
 
-    /** Suspends until every effect enqueued so far has finished executing against the [GameSessionStore]. */
+    /** Suspends until every effect enqueued so far has finished executing against the [Host]. */
     suspend fun awaitIdle()
 
-    /** Runs after already-queued effects; completes even if the underlying store write fails. */
+    /** Runs after already-queued effects; completes even if the underlying host write fails. */
     suspend fun bookmark()
 
-    /** Runs after already-queued effects; completes even if the underlying store write fails. */
+    /** Runs after already-queued effects; completes even if the underlying host write fails. */
     suspend fun discard()
 
     /** Stops accepting new work; already-queued effects still drain before the engine's scope is cancelled. */
     fun close()
 
     /** Graph-injected creation of a [GameEngine] for a given session. */
-    fun interface Factory {
-        fun create(sessionId: Session.Id, kind: Session.Kind): GameEngine
+    interface Factory {
+        fun create(sessionId: Session.Id, kind: Session.Kind, initialState: GameState = GameState()): GameEngine
+    }
+
+    /**
+     * Everything a running [GameEngine] may do to the outside world — rehydration reads,
+     * effect and session-lifecycle writes, and telemetry; implemented over
+     * [SessionRepository][org.cru.soularium.db.repository.SessionRepository] and the
+     * analytics ports.
+     */
+    interface Host {
+        suspend fun findSessionState(id: Session.Id): SessionState?
+
+        suspend fun loadParticipantNames(id: Session.Id): List<String>
+
+        suspend fun sessionExists(id: Session.Id): Boolean
+
+        suspend fun createSession(session: Session, initialState: SessionState)
+
+        suspend fun setBookmarked(id: Session.Id, bookmarked: Boolean)
+
+        suspend fun deleteSession(id: Session.Id)
+
+        suspend fun execute(id: Session.Id, effect: Effect)
+
+        fun reportNonFatal(throwable: Throwable, context: String)
     }
 }
-
-/** Direct construction of a [GameEngine], e.g. for tests; production code goes through [GameEngine.Factory]. */
-fun GameEngine(
-    sessionId: Session.Id,
-    kind: Session.Kind,
-    store: GameSessionStore,
-    dispatcher: CoroutineDispatcher = Dispatchers.Default,
-): GameEngine = GameEngineImpl(sessionId, kind, store, dispatcher, GameState())

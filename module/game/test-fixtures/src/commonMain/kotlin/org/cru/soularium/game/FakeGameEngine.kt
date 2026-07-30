@@ -3,6 +3,7 @@ package org.cru.soularium.game
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import org.cru.soularium.model.Session
 
 /**
  * Scripted [GameEngine] for isolated presenter tests: set [stateFlow] to drive
@@ -36,5 +37,20 @@ class FakeGameEngine(initialState: GameState = GameState()) : GameEngine {
     }
     override fun close() {
         closeCount++
+    }
+
+    /**
+     * [GameEngine.Factory] that always returns [engine], recording each [create] call
+     * so tests can assert on the requested session id, kind, and initial state.
+     */
+    class Factory(val engine: FakeGameEngine = FakeGameEngine()) : GameEngine.Factory {
+        val createCalls = mutableListOf<CreateCall>()
+
+        override fun create(sessionId: Session.Id, kind: Session.Kind, initialState: GameState): GameEngine {
+            createCalls += CreateCall(sessionId, kind, initialState)
+            return engine
+        }
+
+        data class CreateCall(val sessionId: Session.Id, val kind: Session.Kind, val initialState: GameState)
     }
 }

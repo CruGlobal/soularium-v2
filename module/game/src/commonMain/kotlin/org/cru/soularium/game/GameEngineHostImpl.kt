@@ -10,15 +10,15 @@ import org.cru.soularium.db.repository.SessionRepository
 import org.cru.soularium.model.Session
 import org.cru.soularium.model.game.SessionState
 
-/** [GameSessionStore] backed by the real [SessionRepository]/analytics/crash-reporting ports. */
+/** [GameEngine.Host] backed by the real [SessionRepository]/analytics/crash-reporting ports. */
 @Inject
 @SingleIn(AppScope::class)
 @ContributesBinding(AppScope::class)
-internal class GameSessionStoreImpl(
+internal class GameEngineHostImpl(
     private val sessionRepository: SessionRepository,
     private val analytics: AnalyticsTracker,
     private val crashReporter: CrashReporter,
-) : GameSessionStore {
+) : GameEngine.Host {
     override suspend fun findSessionState(id: Session.Id): SessionState? = sessionRepository.findSessionState(id)
 
     override suspend fun loadParticipantNames(id: Session.Id): List<String> =

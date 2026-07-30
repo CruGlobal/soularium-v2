@@ -19,9 +19,9 @@ import org.cru.soularium.model.game.SessionState.InQuestion.QuestionState
 
 /**
  * End-to-end smoke tests for a conversation session, driven directly against the real
- * [GameEngine] + [GameSessionStoreImpl] adapter and an in-memory [FakeSessionRepository] —
+ * [GameEngine] + [GameEngineHostImpl] adapter and an in-memory [FakeSessionRepository] —
  * no Circuit, no presenter, no Robolectric. Covers a solo run start-to-conclude, a
- * three-person group run, bookmark-and-resume for both, and the store-level corner cases
+ * three-person group run, bookmark-and-resume for both, and the host-level corner cases
  * that used to live in the presenter test (bootstrap analytics, resuming a session with no
  * persisted state).
  */
@@ -33,11 +33,12 @@ class GameEngineFlowTest {
         sessionId: Session.Id,
         kind: Session.Kind,
         analytics: AnalyticsTracker = SilentAnalytics,
-    ): GameEngine = GameEngine(
-        sessionId,
-        kind,
-        GameSessionStoreImpl(repo, analytics, SilentCrash),
-        StandardTestDispatcher(testScheduler)
+    ): GameEngine = GameEngineImpl(
+        host = GameEngineHostImpl(repo, analytics, SilentCrash),
+        dispatcher = StandardTestDispatcher(testScheduler),
+        sessionId = sessionId,
+        kind = kind,
+        initialState = GameState(),
     )
 
     /**

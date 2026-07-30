@@ -1,10 +1,9 @@
-package org.cru.soularium.domain.session
+package org.cru.soularium.game
 
-import org.cru.soularium.domain.DomainError
 import org.cru.soularium.model.game.SessionState
 
 data class TransitionResult(
     val next: SessionState,
     val effects: List<Effect> = emptyList(),
-    val error: DomainError? = null,
+    val error: GameError? = null,
 )

@@ -1,4 +1,4 @@
-package org.cru.soularium.domain.session
+package org.cru.soularium.game
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

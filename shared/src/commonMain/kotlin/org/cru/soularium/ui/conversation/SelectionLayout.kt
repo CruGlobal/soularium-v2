@@ -40,27 +40,19 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import org.cru.soularium.game.content.Question
 import org.cru.soularium.generated.resources.Res
 import org.cru.soularium.generated.resources.action_confirm
-import org.cru.soularium.generated.resources.q1_selection
-import org.cru.soularium.generated.resources.q2_selection
-import org.cru.soularium.generated.resources.q3_selection
-import org.cru.soularium.generated.resources.q4_selection
-import org.cru.soularium.generated.resources.q5_selection
 import org.cru.soularium.generated.resources.selection_choose_1
 import org.cru.soularium.generated.resources.selection_choose_3
 import org.cru.soularium.generated.resources.selection_finish_picks
 import org.cru.soularium.generated.resources.selection_navigation_instructions
 import org.cru.soularium.generated.resources.selection_x_selected
 import org.cru.soularium.ui.content.CardAsset
-import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 private const val CARD_GRID_COLUMNS = 3
-
-// Questions 1 and 2 ask for three cards; questions 3–5 ask for one.
-private const val THREE_CARD_QUESTION_MAX = 2
 
 /**
  * Core image-selection screen. Selection state and confirm-validity are driven
@@ -68,12 +60,12 @@ private const val THREE_CARD_QUESTION_MAX = 2
  */
 @Composable
 fun SelectionLayout(state: ConversationPresenter.UiState.Selection, modifier: Modifier = Modifier) {
-    val questionNumber = state.questionNumber
+    val question = Question.forNumber(state.questionNumber)
     val selectedCardIds = state.selectedCardIds
     val isConfirmEnabled = state.isConfirmEnabled
-    val selectionPrompt = stringResource(questionSelectionRes(questionNumber))
+    val selectionPrompt = stringResource(question.selectionRes)
     val chooseLabel = stringResource(
-        if (questionNumber <= THREE_CARD_QUESTION_MAX) Res.string.selection_choose_3 else Res.string.selection_choose_1,
+        if (question.requiredImageCount == 3) Res.string.selection_choose_3 else Res.string.selection_choose_1,
     )
     val selectedCountLabel = stringResource(Res.string.selection_x_selected, selectedCardIds.size)
 
@@ -253,12 +245,4 @@ private fun SelectableCardItem(
             }
         }
     }
-}
-
-private fun questionSelectionRes(questionNumber: Int): StringResource = when (questionNumber) {
-    1 -> Res.string.q1_selection
-    2 -> Res.string.q2_selection
-    3 -> Res.string.q3_selection
-    4 -> Res.string.q4_selection
-    else -> Res.string.q5_selection
 }

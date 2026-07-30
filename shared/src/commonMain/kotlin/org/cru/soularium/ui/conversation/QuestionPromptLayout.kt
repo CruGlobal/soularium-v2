@@ -19,17 +19,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import org.cru.soularium.game.content.Question
 import org.cru.soularium.generated.resources.Res
 import org.cru.soularium.generated.resources.action_ready
-import org.cru.soularium.generated.resources.q1_prompt
-import org.cru.soularium.generated.resources.q2_prompt
-import org.cru.soularium.generated.resources.q3_prompt
-import org.cru.soularium.generated.resources.q4_prompt
-import org.cru.soularium.generated.resources.q5_prompt
 import org.cru.soularium.generated.resources.question_index
 import org.cru.soularium.generated.resources.your_turn
 import org.cru.soularium.ui.theme.QuestionProgressColors
-import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -44,7 +39,7 @@ fun QuestionPromptLayout(state: ConversationPresenter.UiState.QuestionPrompt, mo
         QuestionProgressColors.first()
     }
 
-    val promptText = stringResource(questionPromptResource(questionNumber))
+    val promptText = stringResource(Question.forNumber(questionNumber).promptRes)
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -116,13 +111,4 @@ fun QuestionPromptLayout(state: ConversationPresenter.UiState.QuestionPrompt, mo
             Spacer(modifier = Modifier.height(24.dp))
         }
     }
-}
-
-/** Returns the [StringResource] for the prompt of the given 1-based [questionNumber]. */
-private fun questionPromptResource(questionNumber: Int): StringResource = when (questionNumber) {
-    1 -> Res.string.q1_prompt
-    2 -> Res.string.q2_prompt
-    3 -> Res.string.q3_prompt
-    4 -> Res.string.q4_prompt
-    else -> Res.string.q5_prompt
 }

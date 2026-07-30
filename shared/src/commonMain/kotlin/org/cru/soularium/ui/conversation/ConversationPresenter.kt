@@ -21,13 +21,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.cru.soularium.db.repository.SessionRepository
-import org.cru.soularium.domain.content.Questions
 import org.cru.soularium.domain.ports.AnalyticsTracker
 import org.cru.soularium.domain.ports.CrashReporter
-import org.cru.soularium.domain.session.Effect
-import org.cru.soularium.domain.session.SessionContext
-import org.cru.soularium.domain.session.SessionEvent
-import org.cru.soularium.domain.session.transition
+import org.cru.soularium.game.Effect
+import org.cru.soularium.game.SessionContext
+import org.cru.soularium.game.SessionEvent
+import org.cru.soularium.game.content.Question
+import org.cru.soularium.game.transition
 import org.cru.soularium.model.ContactInfo
 import org.cru.soularium.model.Session
 import org.cru.soularium.model.game.SessionState
@@ -377,7 +377,7 @@ class ConversationPresenter(
             UiState.AddingParticipants(ui.participantNames, showExitDialog, eventSink)
 
         is SessionState.InQuestion -> {
-            val question = Questions.byNumber(sessionState.questionNumber)
+            val question = Question.forNumber(sessionState.questionNumber)
             val participantName =
                 ui.participantNames.getOrElse(sessionState.activeParticipantIndex) { "" }
             when (sessionState.activity) {

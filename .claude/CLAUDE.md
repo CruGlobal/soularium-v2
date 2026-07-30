@@ -19,9 +19,9 @@ bundled and persistence is local.
 the repo's Gradle wrapper (`./gradlew`), never a system Gradle. The JDK is pinned via
 `.tool-versions`; source/target bytecode is JVM 17.
 
-The app modules are `:shared`, `:module:model`, and `:module:db` (KMP libraries via
-`com.android.kotlin.multiplatform.library`) plus `:androidApp` (an Android-only shell);
-`iosApp/` is the native SwiftUI shell hosting the Compose framework.
+The app modules are `:shared`, `:module:model`, `:module:game`, and `:module:db` (KMP
+libraries via `com.android.kotlin.multiplatform.library`) plus `:androidApp` (an
+Android-only shell); `iosApp/` is the native SwiftUI shell hosting the Compose framework.
 `:module:db:test-fixtures` is a sibling KMP library exposing `:module:db`'s shared test
 doubles (`FakeSessionRepository`) to other modules' `commonTest` source sets. Shared build
 logic lives in the `build-logic/` composite build's convention plugins. A module lists
@@ -34,21 +34,26 @@ single source of truth.
 ## Architecture: Hexagonal
 
 `:androidApp` → `:shared` → `:module:db` → `:module:model` (and `:shared` also depends on
-`:module:model` directly; `:module:model` depends on nothing else in-repo).
+`:module:model` and `:module:game` directly; `:module:game` depends only on
+`:module:model`; `:module:model` depends on nothing else in-repo).
 
 Layering is enforced by package convention: code in `org.cru.soularium.domain`
 must not import from `data`, `ui`, or platform packages, and `org.cru.soularium.data`
-must not import from `ui`.
+must not import from `ui`. `org.cru.soularium.game` lives in `:module:game`, so its
+isolation from `data`/`ui` is enforced by the module dependency graph rather than
+convention.
 
-### Domain layer (`org.cru.soularium.domain`)
+### Domain & game logic (`org.cru.soularium.domain`, `:module:game`)
 
-- **Session state machine** (`domain/session/`): the **pure**
+- **Session state machine** (`:module:game`, `org.cru.soularium.game`): the **pure**
   `fun transition(state, event, ctx): TransitionResult` performs no I/O — side effects
   are *returned as data* (`Effect`) for the Presenter to execute. Keep it pure and
   exhaustively tested. The state itself (`SessionState`) lives in `:module:model`
-  (`org.cru.soularium.model.game`), so `transition()` operates over it.
-- **Errors**: `DomainError` sealed interface. There is no `Result<T>` wrapper —
-  transition errors surface via `TransitionResult.error`.
+  (`org.cru.soularium.model.game`), so `transition()` operates over it. The content
+  catalog the machine consumes (the `Question` enum) lives at
+  `org.cru.soularium.game.content`.
+- **Errors**: `GameError` sealed interface (`:module:game`). There is no `Result<T>`
+  wrapper — transition errors surface via `TransitionResult.error`.
 - Domain code stays independent of the `data` and `ui` layers, but it **may** use platform
   APIs — a domain port can have Android/iOS `actual` implementations that use them (e.g.
   `domain.settings.AndroidLanguageRepository` uses `Context`). Domain avoids Compose UI, with
@@ -159,11 +164,11 @@ must contain no Android- or iOS-specific imports.
   them under Robolectric — required because the Compose Runtime's Android artifact
   touches `android.util.Log` from its error path. The iOS-simulator variant runs the
   same tests unannotated. Pure domain code (no Compose) has no such requirement.
-- **Tests live in each module's `commonTest`** — `:module:model`, `:module:db`, and
-  `:shared`. `soularium-kmp.module-conventions` wires `kotlin.test` (+ the multiplatform
-  `@RunOnAndroidWith` runner) into every `commonTest` via the `test-framework` catalog
-  bundle, and Robolectric + androidx-test into every `androidHostTest` via the
-  `android-test-framework` bundle.
+- **Tests live in each module's `commonTest`** — `:module:model`, `:module:game`,
+  `:module:db`, and `:shared`. `soularium-kmp.module-conventions` wires `kotlin.test`
+  (+ the multiplatform `@RunOnAndroidWith` runner) into every `commonTest` via the
+  `test-framework` catalog bundle, and Robolectric + androidx-test into every
+  `androidHostTest` via the `android-test-framework` bundle.
 - **Repository / Room tests** use an abstract-contract pattern: a persistence-agnostic
   contract test (e.g. `db.repository.SessionRepositoryTest`, asserting against an
   `abstract val repository`) plus a thin Room subclass (`SessionRoomRepositoryTest`,

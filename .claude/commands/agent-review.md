@@ -95,7 +95,7 @@ Store the changed file list and diff content for use by all agents.
 
 ### Read Project Standards
 
-Read `.claude/CLAUDE.md` to understand the project's coding standards and conventions. This context will be shared with all agents. Additionally, if any UI files change in this PR (anything under `shared/src/commonMain/kotlin/**/ui/**` or files containing `@Composable`), read `.claude/rules/design_system_rules.md` for Figma → Compose translation conventions, Material3 token mapping, and accessibility requirements — this is mandatory context for the UX agent and informational for the others.
+Read `.claude/CLAUDE.md` to understand the project's coding standards and conventions — it is the single authoritative description of the architecture (module map, layering, Circuit UI, Metro DI, persistence, testing); wherever this command's stage descriptions and CLAUDE.md disagree, CLAUDE.md wins. `.claude/skills/pr-review/SKILL.md` carries the detailed per-category review checklist and is kept current — prefer citing those two files over restating architecture from memory. This context will be shared with all agents. Additionally, if any UI files change in this PR (anything under `shared/src/commonMain/kotlin/**/ui/**` or files containing `@Composable`), read `.claude/rules/design_system_rules.md` for Figma → Compose translation conventions, Material3 token mapping, and accessibility requirements — this is mandatory context for the UX agent and informational for the others.
 
 ### Calculate Risk Score
 
@@ -104,15 +104,15 @@ Start with a base score of 0, then add points.
 **Dedup rule:** For each changed file, match against the highest-risk pattern first (Critical, then High, then Medium). Each file contributes points from at most one risk tier — do not double-count.
 
 **Critical File Patterns (+3 points each):**
-- `shared/src/commonMain/kotlin/org/cru/soularium/di/**` — Koin DI wiring (`appModule`, `KoinInit`); a misconfigured graph crashes the whole app
-- `shared/src/commonMain/kotlin/**/db/**` — Room database, entities, DAOs, the `SoulariumDatabase` definition
-- `shared/schemas/**` — Room exported schema JSON (production data shape)
-- `shared/src/androidMain/AndroidManifest.xml` — Android manifest (exported components, permissions)
-- `iosApp/iosApp.xcodeproj/**`, `iosApp/iosApp/**.swift` — iOS app shell wiring (Compose framework host)
+- `shared/src/commonMain/kotlin/org/cru/soularium/di/**` — Metro DI graph (`SoulariumAppGraph`, binding containers); a misconfigured graph fails the whole app
+- `module/db/src/**` — Room database, entities, DAOs, repository implementations (`SoulariumDatabase`)
+- `module/db/schemas/**` — Room exported schema JSON (production data shape)
+- `androidApp/src/main/AndroidManifest.xml` — Android manifest (exported components, permissions)
+- `iosApp/**` — iOS app shell wiring (native SwiftUI host for the Compose framework)
 - `gradle/libs.versions.toml` — Version catalog (lib/plugin upgrades)
 - `settings.gradle.kts` — Module graph (adding/removing modules)
-- `build.gradle.kts` (root) — Top-level build configuration
-- Each module's `build.gradle.kts` (`shared/`, `shared/`, `shared/`) — module build configuration
+- `build.gradle.kts` (root) and `build-logic/**` — top-level build configuration and the shared convention plugins
+- Each module's `build.gradle.kts` (`shared/`, `androidApp/`, `module/*/`) — module build configuration
 - `local.properties`, `**/*.keystore`, signing configs — secrets/credentials
 - `google-services.json`, `GoogleService-Info.plist` — Firebase config (should be gitignored)
 - `.env*` — Environment files (automatic senior review)
@@ -121,27 +121,28 @@ Start with a base score of 0, then add points.
 - `.claude/rules/*.md` — Repo-specific rule references loaded by review commands
 
 **High-Risk File Patterns (+2 points each):**
-- `shared/src/commonMain/**` — pure domain layer: the `session/` state machine (`SessionState`, `SessionEvent`, `transition`, `Effect`) and hexagonal `ports/` interfaces
-- `shared/src/commonMain/**/repository/**` — repository implementations (consumed by UI ViewModels)
-- `shared/src/commonMain/**/devicestate/**` — DataStore-backed device flag persistence
+- `module/game/src/**` — the pure session state machine (`transition`, `Effect`, `GameError`) and the `Question` content catalog
+- `module/model/src/**` — domain models, including the persisted `@Serializable` `SessionState` hierarchy (snapshot compatibility)
+- `shared/src/commonMain/**/domain/**` — hexagonal ports (`domain/ports/`) and domain services
+- `shared/src/commonMain/**/data/**` — DataStore-backed device flags and repository glue
 - Files containing `expect class`/`expect fun`/`expect val`/`expect object` (or their `actual` counterparts) — KMP platform contracts
-- `shared/src/iosMain/**`, `shared/src/androidMain/**` — platform-specific app wiring (`platformModule`, `AndroidSharer`/`IosSharer`, `getDatabaseBuilder`)
-- `shared/src/commonMain/kotlin/**/ui/nav/**` — `Routes` constants and `NavGraph` wiring (a broken route crashes navigation)
+- `shared/src/iosMain/**`, `shared/src/androidMain/**`, `module/*/src/iosMain/**`, `module/*/src/androidMain/**` — platform-specific wiring (`PlatformBindings`, the platform `RoomBindings`)
+- `shared/src/commonMain/kotlin/**/ui/nav/**` — Circuit `Screen` declarations (navigation destinations)
 - `.github/workflows/*` (not already counted) — CI/CD workflows
 - `.github/workflows/crowdin-upload.yml`, `.github/workflows/crowdin-download.yml` — i18n sync workflows (handle `CROWDIN_*` secrets)
 
 **Medium-Risk File Patterns (+1 point each):**
-- `shared/src/commonMain/kotlin/**/ui/**` — screen composables, ViewModels, theme (excluding `ui/nav/**` which is High)
-- `shared/src/commonMain/kotlin/**/platform/**` — platform abstraction expects/wrappers (`PlatformBackHandler`, etc.)
-- `shared/src/commonMain/kotlin/**/analytics/**` — analytics tracker glue and `scrubAnalyticsParams`
+- `shared/src/commonMain/kotlin/**/ui/**` — Circuit Presenters/Layouts, theme (excluding `ui/nav/**` which is High)
+- `module/analytics/src/**`, `shared/src/commonMain/kotlin/**/analytics/**` — the `AnalyticsTracker`/`CrashReporter` ports and `scrubAnalyticsParams`
 
 **Low-Risk Files (0 points):**
-- `**/commonTest/**` — test sources (all tests live in `commonTest`)
+- `**/commonTest/**`, `**/androidHostTest/**`, `**/test-fixtures/**` — test sources and shared test fakes
 - `*.md` (not `.claude/commands/*.md` and not `.claude/rules/*.md`) — Documentation
 - `**/composeResources/**` — strings, drawables, fonts
+- `shared/src/androidHostTest/snapshots/**` — Paparazzi snapshot PNGs (validated by CI's `verifyPaparazzi`)
 - `**/generated/**`, `**/build/**`, `**/.kotlin/**` — generated/build output (should not be committed)
 
-**Change Volume Modifier** (exclude `**/commonTest/**` from line count and ignore whitespace-only changes with `--ignore-all-space`):
+**Change Volume Modifier** (exclude test sources — `**/commonTest/**`, `**/androidHostTest/**` — and snapshot PNGs from the line count and ignore whitespace-only changes with `--ignore-all-space`):
 - <50 lines: +0
 - 50-199 lines: +1
 - 200-299 lines: +2
@@ -154,12 +155,12 @@ Start with a base score of 0, then add points.
 
 **Special Pattern Detection (additional points):**
 - New library or plugin entry in `gradle/libs.versions.toml`: +2
-- Version bump for a critical lib in `gradle/libs.versions.toml` (`kotlin`, `agp`, `compose-multiplatform`, `room`, `koin`, `coroutines`, `ksp`, `androidx-navigation`, `androidx-lifecycle`): +3
-- New Room migration / `@Database` version bump without a regenerated exported schema JSON under `shared/schemas/`: +3 (production data shape change without the schema artifact — red flag)
-- Room `shared/schemas/*.json` edited without a matching `@Database` version bump in this PR: +3 (likely a manual edit — red flag)
+- Version bump for a critical lib in `gradle/libs.versions.toml` (`kotlin`, `agp`, `compose-multiplatform`, `room`, `metro`, `circuit`, `coroutines`, `ksp`): +3
+- New Room migration / `@Database` version bump without a regenerated exported schema JSON under `module/db/schemas/`: +3 (production data shape change without the schema artifact — red flag)
+- Room `module/db/schemas/**/*.json` edited without a matching `@Database` version bump in this PR: +3 (likely a manual edit — red flag)
 - New `expect`/`actual` pair: +1 (sets a KMP contract — verify every active target has an `actual`)
-- New ViewModel without a corresponding test under `commonTest`: +1
-- `@Serializable` field rename or removal in `shared/`: +2 (`SessionState` is persisted as a JSON snapshot string in the database — renaming or removing a serialized field breaks already-persisted sessions)
+- New Circuit Presenter without a corresponding test under `commonTest`: +1
+- `@Serializable` field rename or removal in `module/model/src/**`: +2 (`SessionState` is persisted as a JSON snapshot string in the database — renaming or removing a serialized field breaks already-persisted sessions)
 
 Cap the final score at 10.
 
@@ -206,11 +207,11 @@ Reasoning: [1-2 sentence explanation]
 This review system uses 6 specialized agents (no Financial agent — this codebase has no financial domain):
 
 1. **Security** — DI wiring integrity, the exported `MainActivity`, `INTERNET`-only permission surface, PII in analytics/share URLs/logs, Room SQL-injection (`@RawQuery`), CI/CD workflow integrity, Firebase/signing config
-2. **Architecture** — package-layer dependency direction (`org.cru.soularium.ui` → `domain`/`data`; `data` → `domain`; nothing flows back into `domain`), hexagonal ports, the pure session state machine, Koin scoping, expect/actual correctness, source-set discipline, Compose recomposition, structured concurrency
-3. **Data Integrity** — Room migrations and schema (`SoulariumDatabase`), repository implementations, the persisted `SessionState` JSON snapshot, kotlinx.serialization compatibility, threading
-4. **Testing** — kotlin.test, Kotest assertions, Turbine, `kotlinx-coroutines-test` (`runTest`), ViewModel/state tests, pure-function tests, in-memory fakes
-5. **UX** — Compose Multiplatform composition, stateless screen composables, `StateFlow` collection, Material3 token usage from the theme, accessibility (`Modifier.semantics`), state hoisting, dark mode
-6. **Standards** — `.claude/CLAUDE.md` compliance, ktlint (`intellij_idea` style), module-build conventions, package naming
+2. **Architecture** — module dependency graph + package-layer direction (`ui` → `domain`/`data`; `data` → `domain`; nothing flows back into `domain`), hexagonal ports, the pure session state machine (`:module:game`), Metro DI scoping, Circuit Presenter/Layout discipline, expect/actual correctness, source-set discipline, Compose recomposition, structured concurrency
+3. **Data Integrity** — Room migrations and schema (`:module:db`, `SoulariumDatabase`), repository implementations, the persisted `SessionState` JSON snapshot, kotlinx.serialization compatibility, threading
+4. **Testing** — kotlin.test, Kotest assertions, Turbine, `kotlinx-coroutines-test` (`runTest`), Circuit `circuit-test` Presenter tests, pure-function tests, test fakes (`test-fixtures` modules + local doubles), Paparazzi screenshot coverage
+5. **UX** — Compose Multiplatform composition, stateless Circuit Layouts, Material3 token usage from the theme, accessibility (`Modifier.semantics`), state hoisting, dark mode
+6. **Standards** — `.claude/CLAUDE.md` compliance, ktlint (`android_studio` style), module-build conventions, package naming
 
 ### Selection Logic
 
@@ -225,24 +226,25 @@ Always include: Architecture, Testing, Standards
 Conditionally include:
 
 - **Security Agent** — if any of these patterns appear in changed files:
-  - `shared/src/commonMain/kotlin/org/cru/soularium/di/**` (Koin DI wiring)
-  - `shared/src/androidMain/AndroidManifest.xml` (exported components, permissions)
+  - `shared/src/commonMain/kotlin/org/cru/soularium/di/**` (Metro DI wiring)
+  - `androidApp/src/main/AndroidManifest.xml` (exported components, permissions)
   - `.github/workflows/**` (CI/CD security controls, especially auto-approve and the Crowdin secrets)
   - `.claude/commands/`, `.claude/rules/` (review process definitions that control AI review behavior)
-  - `shared/src/commonMain/kotlin/**/analytics/**` (analytics — PII scrubbing)
-  - Any `Sharer` implementation or share-URL/share-text code
+  - `module/analytics/src/**`, `shared/src/commonMain/kotlin/**/analytics/**` (analytics — PII scrubbing)
+  - Any share-URL/share-text generation code
   - `local.properties`, `**/*.keystore`, signing configs, `google-services.json`, `GoogleService-Info.plist`
   - `.env*` files
 
 - **Data Integrity Agent** — if any of these patterns appear:
-  - `shared/**` (Room entities, DAOs, repository implementations, DataStore)
-  - `shared/schemas/**` (Room exported schema JSON)
-  - `shared/**` `@Serializable` models (the persisted `SessionState` contract surface)
+  - `module/db/src/**` (Room entities, DAOs, repository implementations)
+  - `module/db/schemas/**` (Room exported schema JSON)
+  - `module/model/src/**` `@Serializable` models (the persisted `SessionState` contract surface)
+  - `shared/src/commonMain/**/data/**` (DataStore device flags)
   - Files with `expect class`/`expect fun`/`expect val`/`expect object` declarations or their `actual` counterparts
   - Room migrations or any `@Database` version change
 
 - **UX Agent** — if any of these patterns appear:
-  - `shared/src/commonMain/kotlin/**/ui/**` (screen composables, ViewModels, theme, navigation)
+  - `shared/src/commonMain/kotlin/**/ui/**` (Circuit Presenters/Layouts, theme, `Screen` declarations)
   - Files containing `@Composable` declarations
   - Compose resource files under `**/composeResources/**`
 
@@ -312,8 +314,8 @@ For each valid dismissal, store:
 
 [If dismissals found]:
 Found [N] previously dismissed finding(s):
-• shared/.../FooViewModel.kt:42 — "Consider hoisting..." (dismissed: "Intentional design choice")
-• shared/.../FooRepository.kt:15 — "Add test for edge case" (dismissed: "Covered by state-machine test")
+• shared/.../FooPresenter.kt:42 — "Consider hoisting..." (dismissed: "Intentional design choice")
+• module/db/.../FooRepository.kt:15 — "Add test for edge case" (dismissed: "Covered by state-machine test")
 
 [If severity ≥ 7 dismissals attempted]:
 ⚠️  Ignored [N] invalid dismissal(s) (severity ≥ 7 findings cannot be dismissed):
@@ -350,7 +352,7 @@ Every agent prompt MUST include:
 10. The "prove don't speculate" rule below — every finding must be verified against actual source code
 
 **SEARCH BOUNDARY RULE — Excluded directories:**
-Do NOT search in any of these directories: `**/build/**`, `**/.gradle/**`, `**/.kotlin/**`, `**/generated/**` (Room KSP and Compose Resources codegen output), `**/.idea/**`, `**/.vscode/**`, `**/docs/**`, `node_modules/`, vendor/dependency caches under `~/.gradle/caches/`, `~/.konan/`, `~/.m2/`. Search everything else in the project. If you need to understand how a library (Koin, Navigation Compose, Room, Compose) behaves, rely on the project's own usage patterns and `.claude/CLAUDE.md` — do not read library source from the dependency cache.
+Do NOT search in any of these directories: `**/build/**`, `**/.gradle/**`, `**/.kotlin/**`, `**/generated/**` (Room KSP and Compose Resources codegen output), `**/.idea/**`, `**/.vscode/**`, `**/docs/**`, `node_modules/`, vendor/dependency caches under `~/.gradle/caches/`, `~/.konan/`, `~/.m2/`. Search everything else in the project. If you need to understand how a library (Metro, Circuit, Room, Compose) behaves, rely on the project's own usage patterns and `.claude/CLAUDE.md` — do not read library source from the dependency cache.
 
 **NOISE FILTER RULE — Ignore system artifacts:**
 Strings matching `toolu_[a-zA-Z0-9]+` are internal system tool-call identifiers. They are NOT part of the codebase or the PR. Do NOT attempt to Read, Glob, Grep, or open any path containing `toolu_`. Do not reference, analyze, or comment on them in your review output. If you see a `toolu_` string anywhere in your context, skip it entirely — it is never a file, never a code reference, and never relevant to the review.
@@ -368,19 +370,19 @@ Apply these five verification categories to every finding:
 
 1. **Symbol & dependency integrity** — for every class, function, top-level val, or import added or modified in the PR:
    - Verify the target symbol actually exists by reading its source file. Don't trust the import path; open the file.
-   - For `expect class`/`expect fun`/`expect val`/`expect object`: verify there is an `actual` for every active KMP target in `:shared` (`androidMain` AND `iosMain`). Open each `actual` source file and confirm signatures match (parameter names, types, nullability, generic constraints, default values, `@OptIn` annotations).
-   - For Koin definitions: verify a `single`/`viewModel`/`factory` registered in `appModule` or `platformModule` actually has all its constructor dependencies registered somewhere in the graph — an unsatisfied dependency throws at first resolution, not at compile time.
-   - For a `viewModel { }` definition: verify the ViewModel is obtained in composables via `koinViewModel<T>()` (or `koinViewModel { parametersOf(...) }` when it takes runtime params) and that the parameter wiring matches.
-   - For hexagonal ports: verify a port interface declared under `org.cru.soularium.domain.ports` has a registered implementation (in `org.cru.soularium.data` or a platform Koin module) — a port with no binding fails at resolution.
-   - **Example catch:** PR adds `repository.loadConversation(id)` but the `ContentRepository` port still only declares `loadContent()`; the call won't compile, or the new method has no implementation under `org.cru.soularium.data`.
+   - For `expect class`/`expect fun`/`expect val`/`expect object`: verify there is an `actual` for every active KMP target of that module (`androidMain` AND `iosMain`). Open each `actual` source file and confirm signatures match (parameter names, types, nullability, generic constraints, default values, `@OptIn` annotations).
+   - For Metro bindings: verify a new injectable type is actually reachable from the graph — `@Inject` + `@ContributesBinding(AppScope::class)` on the implementation, or a `@Provides` in a `@BindingContainer @ContributesTo(AppScope::class)` container. Metro validates the graph at compile time, but a *missing contribution* (a port with no bound implementation) surfaces as a confusing compile error in `:shared` — flag it explicitly.
+   - For Circuit wiring: verify a new Presenter and Layout each carry `@CircuitInject(<Feature>Screen::class, AppScope::class)` (the Presenter via its nested `@AssistedFactory`), so Metro generates the matching factories. A `Screen` with no injected Presenter/Layout renders nothing at runtime.
+   - For hexagonal ports: verify a port interface (e.g. in `domain/ports/`, `db.repository`, or `:module:analytics`) has a bound implementation — a port with no binding fails the graph compile in `:shared`.
+   - **Example catch:** PR adds a method to `SessionRepository` but only implements it in `SessionRoomRepository` — `FakeSessionRepository` in `:module:db:test-fixtures` no longer compiles, breaking every consuming test.
 
 2. **Room & migration correctness** — for every `@Entity`, `@Dao`, `@Database`, or migration in the PR:
-   - **Migration ↔ schema match:** if the `SoulariumDatabase` `@Database(version = N)` was bumped, a `Migration(from, to)` must be registered on the database builder, and the exported schema JSON under `shared/schemas/` (the `@Database` declares `exportSchema = true`) must be regenerated and committed. Open both files to verify.
-   - **Migration idempotence:** running the migration twice on the same DB must be safe — custom `Migration` blocks with `db.execSQL` should use `IF NOT EXISTS`/`IF EXISTS` guards on schema changes.
+   - **Migration ↔ schema match:** if the `SoulariumDatabase` `@Database(version = N)` was bumped, the exported schema JSON under `module/db/schemas/` must be regenerated and committed, with a migration path (while the app is unreleased, `fallbackToDestructiveMigration(dropAllTables = true)` on the builder is the accepted path; after release, a real `Migration(from, to)` registered on the builder). Open both files to verify.
+   - **Migration idempotence:** running a migration twice on the same DB must be safe — custom `Migration` blocks with `db.execSQL` should use `IF NOT EXISTS`/`IF EXISTS` guards on schema changes.
    - **Source-schema column references:** every column referenced in a `Migration` block must exist in the source-version schema (open the previous version's exported schema JSON to verify).
    - **Backfill completeness:** if a migration backfills data, verify it handles ALL existing-row states (nulls, empty strings, unexpected values).
-   - **Foreign key indexes:** the three entities (`SessionEntity`, `ConversationEntity`, `CardPickEntity`) use FK cascades — new `foreignKeys = [...]` declarations must have matching `indices = [...]` entries on the FK columns, or cascading writes do full-table scans.
-   - **`expect object SoulariumDatabaseConstructor`:** the database uses `@ConstructedBy(SoulariumDatabaseConstructor::class)` — verify the `expect object ... : RoomDatabaseConstructor<...>` and `getDatabaseBuilder()` have actuals for Android and iOS, and that KSP (`kspAndroid` + `kspIosX64/Arm64/SimulatorArm64`) is configured for every target whose entities changed.
+   - **Foreign key indexes:** the entities use FK cascades — new `foreignKeys = [...]` declarations must have matching `@ColumnInfo(index = true)` (or `indices = [...]`) on the FK columns, or cascading writes do full-table scans. Room 2.8's drivers enforce foreign keys by default — no manual `PRAGMA foreign_keys` callback.
+   - **`expect object SoulariumDatabaseConstructor`:** the database uses `@ConstructedBy(SoulariumDatabaseConstructor::class)` — its `actual`s are KSP-generated per platform. The database *builder* is NOT expect/actual: it's a platform Metro `@Provides` in `Android`/`Ios RoomBindings`. Verify KSP is configured for every target whose entities changed.
 
 3. **Trust-boundary validation** — for every function that accepts external input (a persisted `SessionState` JSON snapshot read back from the database, DataStore preference values, image URLs loaded via Coil, share-link URLs, file content):
    - Identify all callers and verify they validate the input before use. Type-system nullability is not enough — a non-null `String` deserialized from a stored JSON snapshot can still be malformed or from an older app version.
@@ -390,24 +392,24 @@ Apply these five verification categories to every finding:
    - **Example catch:** a `@Serializable` field added to `SessionState` with no default value crashes deserialization of every session persisted before this PR.
 
 4. **Data flow tracing** — for key data paths introduced or modified in the PR, trace the full lifecycle:
-   - **Write path:** where does data enter the system? (a `SessionEvent` dispatched into `transition`, a screen `on*` callback, a DAO `@Upsert`, a DataStore write) Follow it through validation, mapping, and persistence. Verify each step handles the data type correctly.
-   - **Read path:** where is the data displayed? (a screen composable collecting a ViewModel `StateFlow` via `collectAsState()`) Verify the composable handles all possible stored values (nullable, empty list, zero, very long strings, error/loading states).
-   - **State machine path:** the `transition(state, event, ctx)` function is pure and returns a `TransitionResult` carrying the next `SessionState` plus a list of `Effect`s. Verify side effects are returned as `Effect` data and NOT executed inside the domain layer. Verify the caller (a ViewModel or use case) actually performs every returned `Effect`.
-   - **Sync / persistence path:** `SessionState` is persisted as a JSON snapshot string in a DB column. Verify every state transition that should survive process death is followed by a persistence write, and that the in-memory `StateFlow` and the persisted snapshot do not drift.
+   - **Write path:** where does data enter the system? (a `SessionEvent` dispatched into `transition`, a `UiEvent` through a Presenter's `eventSink`, a DAO `@Upsert`, a DataStore write) Follow it through validation, mapping, and persistence. Verify each step handles the data type correctly.
+   - **Read path:** where is the data displayed? (a Circuit Layout reading fields off the `UiState` its Presenter derives from repository Flows via `collectAsState()`/`produceState`) Verify the UI handles all possible stored values (nullable, empty list, zero, very long strings, error/loading states).
+   - **State machine path:** the `transition(state, event, ctx)` function is pure and returns a `TransitionResult` carrying the next `SessionState` plus `Effect`s. Verify side effects are returned as `Effect` data and NOT executed inside `:module:game`. Verify the caller (the Presenter) actually performs every returned `Effect`.
+   - **Sync / persistence path:** `SessionState` is persisted as a JSON snapshot string in a DB column. Verify every state transition that should survive process death is followed by a persistence write, and that the in-memory state and the persisted snapshot do not drift.
    - **Threading path:** Room DAOs declared `suspend` (or returning `Flow`) must be called from a coroutine context; verify Flows produced by repositories are collected on appropriate dispatchers (no `Dispatchers.Main` work in `commonMain`).
 
-5. **Removed/changed code ripple effects** — for every public symbol, route constant, Room entity, DAO, port interface method, `@Serializable` class, or `expect` declaration removed or renamed in the PR:
-   - Search the entire repo (`shared/`, `shared/`, `shared/`, `iosApp/`, test sources) for references to the old name. The new code may compile because the renamed symbol resolves at the call site, but indirect consumers (in-memory test fakes, Swift code in `iosApp`, `Routes` constants referenced in `NavGraph`) may still use the old name.
+5. **Removed/changed code ripple effects** — for every public symbol, `Screen` type, Room entity, DAO, port interface method, `@Serializable` class, or `expect` declaration removed or renamed in the PR:
+   - Search the entire repo (`shared/`, `module/*/`, `androidApp/`, `iosApp/`, test sources) for references to the old name. The new code may compile because the renamed symbol resolves at the call site, but indirect consumers (test fakes in `test-fixtures` modules, Swift code in `iosApp`) may still use the old name.
    - For `expect` removals: search for `actual` declarations on every target — orphaned actuals will not compile.
-   - For route changes: search `Routes` and `NavGraph.kt` for the old route string — every `navigate(...)` and `composable(...)` call site that uses it will break navigation at runtime (route strings are not type-checked).
-   - For port interface method removals/renames: open every implementation (under `org.cru.soularium.data` and platform Koin modules) AND every in-memory fake in `commonTest` and verify they were updated. A missing fake update breaks every consuming test.
-   - For `@Serializable` field removals/renames in `org.cru.soularium.domain`: a renamed field without `@SerialName("oldName")` breaks deserialization of every session persisted before this PR.
-   - **Example catch:** PR renames a `Routes` constant, but `NavGraph.kt`'s `NavHost` still registers the old route — the screen becomes unreachable and `navigate()` throws at runtime.
+   - For `Screen` changes: navigation is type-safe (`navigator.goTo(SomeScreen(...))`), but a Screen whose Presenter/Layout `@CircuitInject` wiring was removed renders nothing at runtime — verify both factories still exist for every reachable Screen.
+   - For port interface method removals/renames: open every implementation AND every fake (`FakeSessionRepository` in `:module:db:test-fixtures`, single-use doubles in test sources) and verify they were updated. A missing fake update breaks every consuming test.
+   - For `@Serializable` field removals/renames in `:module:model`: a renamed field without `@SerialName("oldName")` breaks deserialization of every session persisted before this PR.
+   - **Example catch:** PR renames a `UiEvent` subtype the Layout still references — the Layout file fails to compile only in a module-wide build, not in the Presenter-focused build the author ran.
 
 If you can't prove a finding with concrete file/line evidence after applying these checks, downgrade its severity or omit it.
 
 **LARGE PR CHUNKING RULE — For PRs with 500+ lines of diff:**
-Instead of passing the entire diff to each agent, pass only the diff hunks relevant to that agent's specialization plus the full changed file list for context. For example, the Security agent receives diffs for `di/**`, `AndroidManifest.xml`, `analytics/**`, signing/Firebase config, and workflow files; the Data Integrity agent receives diffs for Room entities/DAOs/migrations, `shared/schemas/**`, `@Serializable` domain models, and `expect`/`actual` declarations. Each agent still sees the complete list of changed files and can request to read any file, but the diff in their prompt is focused on their domain. This prevents agents from skimming later files in a large diff.
+Instead of passing the entire diff to each agent, pass only the diff hunks relevant to that agent's specialization plus the full changed file list for context. For example, the Security agent receives diffs for `di/**`, `AndroidManifest.xml`, `analytics/**`, signing/Firebase config, and workflow files; the Data Integrity agent receives diffs for Room entities/DAOs/migrations, `module/db/schemas/**`, `@Serializable` domain models, and `expect`/`actual` declarations. Each agent still sees the complete list of changed files and can request to read any file, but the diff in their prompt is focused on their domain. This prevents agents from skimming later files in a large diff.
 
 ### Agent 1: Security Review 🔒
 
@@ -424,9 +426,9 @@ Soularium is an **offline app with a minimal security surface**: no auth, no log
 - **Review process integrity**: changes to `.claude/commands/` or `.claude/rules/` review definitions — verify risk scoring is not weakened, severity thresholds are not lowered (especially the severity ≥ 7 dismissal floor), and review checklists are not stripped of critical checks.
 - **Room SQL injection**: any use of `@RawQuery` or hand-built SQL — must use bound arguments, never string interpolation. Plain `@Query` statements with `:param` placeholders are safe; flag any concatenated SQL.
 - **PII handling**: `scrubAnalyticsParams()` strips PII keys (name/email/phone/notes/card_id) before analytics. Verify any new analytics event passes through scrubbing, that PII does not leak into share-link URLs, and that no PII is written to logs or crash breadcrumbs.
-- **Exported Android components**: `shared/src/androidMain/AndroidManifest.xml` — `MainActivity` is exported (it is the launcher). Verify no other component is exported without justification, and that no new permission is added beyond `INTERNET` without a clear reason.
+- **Exported Android components**: `androidApp/src/main/AndroidManifest.xml` — `MainActivity` is exported (it is the launcher). Verify no other component is exported without justification, and that no new permission is added beyond `INTERNET` without a clear reason.
 - **Secret / Firebase config exposure**: scan the diff for hardcoded keys or signing passwords. `local.properties`, `*.keystore`, signing configs, `google-services.json`, and `GoogleService-Info.plist` must not be committed — verify `.gitignore` covers them.
-- **Share-link safety**: the `Sharer` port (`AndroidSharer` via `Intent.ACTION_SEND`, `IosSharer` via `UIActivityViewController`) shares plain text — it is NOT an arbitrary URL loader. Flag any change that turns it into one, or that builds a share URL from unsanitized user-influenced input.
+- **Share-link safety**: the shareable summary link is generated from session data as plain text — it is NOT an arbitrary URL loader. Flag any change that turns sharing into one, or that builds a share URL from unsanitized user-influenced input.
 - **Coil image loading**: image URLs loaded via Coil should come from bundled/trusted content. Flag URLs constructed by unsanitized concatenation.
 - **Logging hygiene**: no PII in any log or crash breadcrumb. Analytics/crash reporters are no-op until Firebase config lands — verify replacements still scrub.
 
@@ -435,9 +437,9 @@ Soularium is an **offline app with a minimal security surface**: no auth, no log
 - **`.github/workflows/*.yml`** — `permissions:` block minimal (default to `contents: read`, escalate per-job only); secrets (`CROWDIN_*`, etc.) not echoed in `run:` blocks; `pull_request_target` events handled with care; the `ai-review-auto-approve` gate not weakened
 - **`.claude/commands/*.md`, `.claude/rules/*.md`** — risk-score thresholds preserved; severity ≥ 7 dismissal floor preserved; required reviewer levels preserved; no critical checks stripped from agent prompts
 - **Room `@Dao` / `@RawQuery`** — no string interpolation in SQL; `@Query` uses `:param` placeholders; raw queries use bound args
-- **`shared/src/commonMain/kotlin/**/analytics/**`** — every event flows through `scrubAnalyticsParams()`; no PII keys (name/email/phone/notes/card_id) reach the tracker; no PII in event names or values
-- **`shared/src/androidMain/AndroidManifest.xml`** — only `MainActivity` exported (it is the launcher); no other `android:exported="true"` without justification; permissions limited to `INTERNET`; no `android:debuggable="true"` in the release variant
-- **`Sharer` implementations / share code** — share is plain-text `Intent.ACTION_SEND` / `UIActivityViewController`; not converted into an arbitrary URL loader; share URLs not built from unsanitized input
+- **`module/analytics/src/**`, `shared/src/commonMain/kotlin/**/analytics/**`** — every event flows through `scrubAnalyticsParams()`; no PII keys (name/email/phone/notes/card_id) reach the tracker; no PII in event names or values
+- **`androidApp/src/main/AndroidManifest.xml`** — only `MainActivity` exported (it is the launcher); no other `android:exported="true"` without justification; permissions limited to `INTERNET`; no `android:debuggable="true"` in the release variant
+- **Share code** — sharing is plain text; not converted into an arbitrary URL loader; share URLs not built from unsanitized input
 - **`local.properties`, `**/*.keystore`, signing configs, `google-services.json`, `GoogleService-Info.plist`** — must not be committed; verify `.gitignore` covers them; no hardcoded passwords in `signingConfigs { }` blocks
 
 **Output format:**
@@ -465,7 +467,7 @@ Soularium is an **offline app with a minimal security surface**: no auth, no log
 - Areas needing deeper analysis: [list]
 ```
 
-**CODEBASE CONTEXT SEARCH:** Before flagging a pattern as an issue, use Grep to search for at least 3 other instances of the same pattern across the Kotlin source roots: `shared/`, `shared/`, and `shared/`. If the pattern is used consistently in 3+ other locations, it is an established project convention — do NOT flag it. If it appears only in the current PR or in fewer than 3 places, flag it.
+**CODEBASE CONTEXT SEARCH:** Before flagging a pattern as an issue, use Grep to search for at least 3 other instances of the same pattern across the Kotlin source roots: `shared/` and `module/*/`. If the pattern is used consistently in 3+ other locations, it is an established project convention — do NOT flag it. If it appears only in the current PR or in fewer than 3 places, flag it.
 
 **AUTOMATED FIX GENERATION:** For every issue with a clear fix, generate a ready-to-apply code patch. Show the exact file path and line range. Provide a before/after code block (Kotlin / Gradle Kotlin DSL / YAML / TOML / SQL as appropriate). Only generate fixes where the correct solution is unambiguous. Label each fix with its severity and the issue it addresses.
 
@@ -479,30 +481,34 @@ Soularium is an **offline app with a minimal security surface**: no auth, no log
 - model: "opus" (or "sonnet" in quick mode)
 
 **Prompt focus areas:**
-- **Package-layer dependency direction**: there is a single `:shared` KMP module (Android + iOS targets) that `:androidApp` depends on. Inside `:shared`, layering is enforced by package: `org.cru.soularium.domain` (pure — NO Android/Compose/data imports), `org.cru.soularium.data` (Room/DataStore/repository impls — depends on `domain`), and `org.cru.soularium.ui` (Compose UI, ViewModels, navigation, Koin wiring). The only legal direction is `ui` → `domain` + `data`, and `data` → `domain`. Flag any `domain` → `data`/`ui` import, any Android/Compose import under `domain`, or any `data` → `ui` import.
-- **Hexagonal ports**: `org.cru.soularium.domain` declares ports (interfaces) under `domain/ports/` — `ContentRepository`, `SessionRepository`, `DeviceStateRepository`, `AnalyticsTracker`, `CrashReporter`, `Sharer`. Implementations live under `org.cru.soularium.data` or in a platform Koin module. Flag a port declared under `domain` that has no implementation, an implementation that leaks framework types back into the port signature, or `ui` code that bypasses a port to talk to Room/DataStore directly.
-- **Pure session state machine**: under `domain/session/`, `transition(state, event, ctx): TransitionResult` must be a **pure function** — no IO, no clock reads, no logging. Side effects are returned as `Effect` data and executed by the caller, NOT inside the domain layer. `SessionState` is a sealed `@Serializable` type; `SessionEvent` is sealed. Flag impurity in `transition`, a `when` over `SessionState`/`SessionEvent` that is non-exhaustive, or an `Effect` being executed inside the domain layer.
-- **Koin DI**: `initKoin()` in `shared/.../di/KoinInit.kt` starts Koin with `appModule` (common) + `platformModule` (expect/actual). Stateful objects (database, DAOs, repositories) are registered as `single`; ViewModels via `viewModel { }`. Flag a stateful object registered as `factory`, a missing dependency in the graph, or a ViewModel constructed directly instead of via `koinViewModel`.
-- **`expect`/`actual` platform seam**: `platformModule`, `getDatabaseBuilder()`, `createDeviceStateDataStore()`, `Sharer`, and `PlatformBackHandler` use `expect`/`actual`. The Android `actual` of `Sharer` is `AndroidSharer` (`Intent.ACTION_SEND`); iOS is `IosSharer` (`UIActivityViewController`). `PlatformBackHandler` is `BackHandler` on Android and a no-op on iOS. New `expect` declarations must have an `actual` for every active target.
-- **Source-set discipline**: Android-only types (`android.*`, `androidx.*`, `Context`) and iOS-specific symbols must NOT appear in any `commonMain`. Code under `org.cru.soularium.domain` must additionally contain no Compose imports. Use `expect`/`actual` to bridge platform differences. `AndroidAppContext` holds the application `Context` (set in `SoulariumApplication.onCreate`) — `Context` should not be threaded through `commonMain`.
-- **Compose recomposition stability**: large data classes held in state should be stable; flag `MutableState<List<...>>`/`MutableState<Map<...>>` (prefer immutable collections). State should be hoisted out of recomposing lambdas.
-- **ViewModel discipline**: ViewModels extend `androidx.lifecycle.ViewModel`, expose state via a private `MutableStateFlow` + public `.asStateFlow()`, and accept UI input via public methods (e.g. `dispatch(event)`). Long-lived collection runs in `viewModelScope`. Flag `GlobalScope.launch` and `runBlocking` in production code.
-- **Coroutine/Flow scope discipline**: no `GlobalScope.launch`; verify `viewModelScope` is used for ViewModel-scoped work. Flag `runBlocking` outside tests. Long-lived Flows tied to a scope that completes.
-- **Error handling**: the domain layer surfaces errors via the `DomainError` sealed interface — there is NO `Result<T>` wrapper convention. Flag a new domain error path that bypasses `DomainError`, or silent error swallowing (`try { ... } catch (e: Throwable) {}`).
-- **Module build configuration**: there is NO `build-logic/` and there are NO Gradle convention plugins — each module's `build.gradle.kts` configures itself directly using `gradle/libs.versions.toml` aliases. Flag duplicated config that should be a version-catalog alias, or a dependency added without a catalog alias.
+
+`.claude/CLAUDE.md` is the authoritative architecture reference — read its Architecture, DI, and platform-abstraction sections first and review against them rather than this summary. The durable rules to enforce:
+
+- **Module dependency direction**: `:androidApp` → `:shared` → `:module:db` → `:module:model`, with `:shared` also depending on `:module:model`, `:module:game`, and `:module:analytics` directly. Library modules never depend on `:shared` or on each other except as CLAUDE.md's module map allows. Flag any new inter-module edge not in that map, and any dependency not using the type-safe project accessors (`projects.module.model`).
+- **Package-layer direction inside `:shared`**: `org.cru.soularium.domain` must not import from `data`, `ui`, or platform packages; `data` must not import from `ui`. Domain code may use platform APIs in platform `actual`s and lightweight multiplatform value types (e.g. Compose's `Locale`), but no Compose UI.
+- **Hexagonal ports**: port interfaces live where CLAUDE.md places them (`domain/ports/` in `:shared`, the repository contracts in `:module:db`, `AnalyticsTracker`/`CrashReporter` in `:module:analytics`). Flag a port with no bound implementation, an implementation leaking framework types into the port signature, or `ui` code bypassing a port to talk to Room/DataStore directly.
+- **Pure session state machine** (`:module:game`): `transition(state, event, ctx): TransitionResult` must be a **pure function** — no IO, no clock reads, no logging. Side effects are returned as `Effect` data and executed by the caller (the Presenter), never inside the module. Flag impurity in `transition`, a non-exhaustive `when` over the sealed state/event types, or an `Effect` executed inside `:module:game`.
+- **Metro DI**: the graph is `SoulariumAppGraph` (`@DependencyGraph(AppScope::class)`), built once per platform. New bindings come from `@Inject` + `@ContributesBinding(AppScope::class)` on the implementation, or `@Provides` in a `@BindingContainer @ContributesTo(AppScope::class)` container; app-lifetime singletons carry `@SingleIn(AppScope::class)`. Flag hand-written factories, graph accessor additions on `SoulariumAppGraph` itself, or any Koin/Hilt/Dagger/Anvil annotation — DI is Metro-only.
+- **Circuit UI discipline**: each screen is a `@Parcelize` `Screen` + `@AssistedInject` Presenter + stateless Layout wired by `@CircuitInject(<Feature>Screen::class, AppScope::class)`. Navigation is `navigator.goTo(...)`/`navigator.pop()` from inside Presenters. There are no ViewModels — flag any `androidx.lifecycle.ViewModel` usage.
+- **`expect`/`actual` platform seams**: the current seams are `PlatformBindings`, `PlatformBackHandler`, and `SoulariumDatabaseConstructor` (in `:module:db`). The Room builder and the device-state DataStore path are NOT expect/actual — they are platform Metro `@Provides`. Every `expect` needs an `actual` for both `androidMain` and `iosMain` with matching signatures.
+- **Source-set discipline**: no Android (`android.*`, platform `androidx.*`) or iOS (`platform.*`, `kotlinx.cinterop`) imports in any `commonMain`. Use `expect`/`actual` to bridge platform differences.
+- **Compose recomposition stability**: large data classes held in state should be stable; flag `MutableState<List<...>>`/`MutableState<Map<...>>` (prefer immutable collections). Heavy derivation belongs in the Presenter, wrapped in `remember`/`produceState` as appropriate.
+- **Coroutine/Flow scope discipline**: no `GlobalScope.launch`; no `runBlocking` outside tests; coroutine launches inside `present()` must be Compose-aware (`LaunchedEffect`, or inside an `eventSink` callback) — a bare `scope.launch { }` at the top level of `present()` re-runs on every recomposition.
+- **Error handling**: game-logic errors surface via `TransitionResult.error` (`GameError` sealed interface in `:module:game`) — there is NO `Result<T>` wrapper convention. Flag thrown exceptions used for control flow or silent error swallowing (`try { ... } catch (e: Throwable) {}`).
+- **Module build configuration**: cross-module Gradle conventions live in the `build-logic/` composite build's convention plugins (`soularium-kmp.module-conventions`, `metro-conventions`, etc.); module build scripts stay thin and use `gradle/libs.versions.toml` aliases. Flag config duplicated across modules that belongs in a convention plugin, or a dependency added without a catalog alias.
 - **Technical debt**: created vs reduced by this PR.
 - **Pattern consistency with `.claude/CLAUDE.md` conventions**.
 
 **File-Type Checklists (when these paths appear in the diff, run the matching list):**
 
-- **`shared/src/commonMain/**` (ports + state machine)** — no Android/iOS/Compose imports; `transition` is pure (no IO, no clock, no logging); side effects modeled as `Effect` data and returned, never executed; `when` over `SessionState`/`SessionEvent` is exhaustive; IDs are `@Serializable @JvmInline value class` over UUID strings; domain models are `@Serializable`; errors flow through `DomainError`
-- **`shared/src/commonMain/**/repository/**`** — repository implementations satisfy a domain port interface; no Compose imports; framework types not leaked back into the port signature; stateful repos registered `single` in `appModule`
-- **`shared/src/commonMain/kotlin/org/cru/soularium/di/**` (Koin)** — `single` for stateful objects (database, DAOs, repositories); `viewModel { }` for ViewModels; every constructor dependency satisfied somewhere in `appModule`/`platformModule`; no platform-specific binding in `appModule` that belongs in `platformModule`
-- **ViewModels (`shared/src/commonMain/kotlin/**/ui/**`)** — extends `androidx.lifecycle.ViewModel`; private `MutableStateFlow` + public `.asStateFlow()`; UI input via public methods; collection in `viewModelScope`; obtained in composables via `koinViewModel`
-- **`expect`/`actual` declaration files** — every `expect class`/`expect fun`/`expect val`/`expect object` has a corresponding `actual` for every active KMP target in `:shared` (`androidMain` + `iosMain`); signatures, generic constraints, default values, and `@OptIn` annotations match exactly across the pair
-- **Per-module `build.gradle.kts` (`:shared`, `:androidApp`)** — uses `gradle/libs.versions.toml` aliases (no hardcoded versions); namespace follows `org.cru.soularium`
-- **`settings.gradle.kts`** — only `:shared` and `:androidApp` are expected; a new module addition is a significant architectural change — flag for senior review
-- **Compose `@Composable` screens** — public, stateless: data params + `on*` callback lambdas + `modifier: Modifier = Modifier` as the LAST parameter; collect ViewModel state via `collectAsState()`; no business logic in the composable
+- **`module/game/src/**` / `module/model/src/**`** — no Android/iOS/Compose imports; `transition` is pure (no IO, no clock, no logging); side effects modeled as `Effect` data and returned, never executed; `when` over `SessionState`/`SessionEvent` is exhaustive; IDs are `@Serializable @JvmInline value class` types nested in their owner (`Session.Id`, not `SessionId`); domain models are `@Serializable`; errors flow through `GameError`/`TransitionResult.error`
+- **Repository implementations (`module/db/src/**`, `shared/src/commonMain/**/data/**`)** — implementation satisfies its port contract; no Compose imports; framework types not leaked back into the port signature; row ↔ model mapping is total (no `!!` on optional columns)
+- **`shared/src/commonMain/kotlin/org/cru/soularium/di/**` (Metro)** — bindings contributed via `@ContributesBinding`/`@Provides` in binding containers; `@SingleIn(AppScope::class)` on app-lifetime singletons; no new accessor properties on `SoulariumAppGraph` (use a contributed accessor interface instead); platform-specific bindings live in the platform `PlatformBindings`/`RoomBindings` actuals
+- **Circuit Presenters/Layouts (`shared/src/commonMain/kotlin/**/ui/**`)** — Presenter is `@AssistedInject` with a nested `@CircuitInject @AssistedFactory` factory; `UiState` exposes `eventSink`; Layout is public, stateless, `(state, modifier)`-shaped with `@CircuitInject` on the declaration; no business logic in the Layout
+- **`expect`/`actual` declaration files** — every `expect class`/`expect fun`/`expect val`/`expect object` has a corresponding `actual` for both `androidMain` and `iosMain` of its module; signatures, generic constraints, default values, and `@OptIn` annotations match exactly across the pair
+- **Per-module `build.gradle.kts` and `build-logic/**`** — KMP modules apply `soularium-kmp.module-conventions` explicitly (test-fixtures modules apply `soularium-kmp.test-fixtures-conventions`); uses `gradle/libs.versions.toml` aliases (no hardcoded versions); namespace follows `org.cru.soularium`; `:androidApp` stays a pure `com.android.application` shell
+- **`settings.gradle.kts`** — expected modules are `:shared`, `:androidApp`, and the `module/*` libraries per CLAUDE.md; a new module addition is a significant architectural change — flag for senior review
+- **Compose `@Composable` screens** — Layouts read fields off `state` and emit intent via `state.eventSink(...)`; `modifier: Modifier = Modifier` is the LAST parameter and the first thing applied to the root composable; no business logic in the composable
 
 **Output format:**
 ```
@@ -534,7 +540,7 @@ Soularium is an **offline app with a minimal security surface**: no auth, no log
 ### Confidence
 ```
 
-**CODEBASE CONTEXT SEARCH:** Before flagging a pattern as an issue, use Grep to search for at least 3 other instances of the same pattern across the Kotlin source roots: `shared/`, `shared/`, and `shared/`. If the pattern is used consistently in 3+ other locations, it is an established project convention — do NOT flag it. If it appears only in the current PR or in fewer than 3 places, flag it.
+**CODEBASE CONTEXT SEARCH:** Before flagging a pattern as an issue, use Grep to search for at least 3 other instances of the same pattern across the Kotlin source roots: `shared/` and `module/*/`. If the pattern is used consistently in 3+ other locations, it is an established project convention — do NOT flag it. If it appears only in the current PR or in fewer than 3 places, flag it.
 
 **AUTOMATED FIX GENERATION:** For every issue with a clear fix, generate a ready-to-apply code patch. Show the exact file path and line range. Provide a before/after code block (Kotlin / Gradle Kotlin DSL / YAML / TOML / SQL as appropriate). Only generate fixes where the correct solution is unambiguous.
 
@@ -548,28 +554,31 @@ Soularium is an **offline app with a minimal security surface**: no auth, no log
 - model: "opus"
 
 **Prompt focus areas:**
-- **Room migration correctness**: every schema change must ship a matching `Migration(from, to)` registered on the database builder. Verify the migration is idempotent (running it twice on the same DB is safe), that all referenced columns/tables exist in the source schema, and that the destination schema matches what the entity classes declare. `SoulariumDatabase` declares `exportSchema = true`, so the exported schema JSON under `shared/schemas/` must be regenerated and committed. Flag any entity change that bumps the `@Database(version = N)` without a corresponding migration and schema export.
-- **Room entity ↔ DAO consistency**: the three entities are `SessionEntity`, `ConversationEntity`, `CardPickEntity`, with FK cascades and indices. `@Entity` columns must match `@Upsert`/`@Query` projections. Nullable columns must be modeled as nullable Kotlin types. Foreign keys need indexes on the referenced columns to avoid full-table scans on cascading writes. The three DAOs use `@Upsert` + `@Query` + `Flow` return types.
-- **Multiplatform Room wiring**: `SoulariumDatabase` uses `@ConstructedBy(SoulariumDatabaseConstructor::class)` with an `expect object SoulariumDatabaseConstructor : RoomDatabaseConstructor<...>`, and `getDatabaseBuilder()` has Android/iOS actuals. Room codegen runs via KSP (`kspAndroid` + `kspIosArm64` + `kspIosSimulatorArm64`). Flag a target whose entity set changed but whose KSP config was not updated.
-- **Persisted `SessionState` snapshot**: `SessionState` (a sealed `@Serializable` type under `org.cru.soularium.domain`) is persisted as a **JSON snapshot string** in a database column. Renaming or removing a serialized field, or adding a non-nullable field without a default, breaks deserialization of every session persisted before the change. Flag any `@Serializable` change under `org.cru.soularium.domain` that is not backward-compatible with already-stored snapshots.
-- **kotlinx.serialization compatibility**: renaming a property on a `@Serializable` class without `@SerialName("oldName")` breaks the wire/snapshot format. Adding a non-nullable property without a default value crashes deserialization of older JSON. Removing a property silently drops data. Flag any of these — especially under `org.cru.soularium.domain` where snapshots are persisted.
-- **DataStore device flags**: device flags persist via DataStore Preferences (`createDeviceStateDataStore()`, `DeviceStateRepository`). Verify preference keys are stable, reads handle a missing key with a sensible default, and writes are not racing.
+
+`.claude/CLAUDE.md`'s Persistence and Model sections are the authoritative reference — read them first. The durable rules to enforce:
+
+- **Room schema correctness**: the Room stack lives in `:module:db` (`org.cru.soularium.db`). A `@Database(version = N)` bump must ship a matching exported schema JSON under `module/db/schemas/` and a migration path — while the app is unreleased, `fallbackToDestructiveMigration(dropAllTables = true)` on the builder is the accepted path; once builds ship outside the team, a real `Migration(from, to)` is required (idempotent, referencing only columns/tables that exist in the source schema). **Never edit an exported schema JSON in place** — any schema change goes through a version bump.
+- **Room entity ↔ DAO consistency**: `@Entity` columns must match `@Upsert`/`@Query` projections. Nullable columns must be modeled as nullable Kotlin types, and repository row ↔ model mapping must be total (no `!!` on optional columns). FK columns need `@ColumnInfo(index = true)` to avoid full-table scans on cascading writes; Room 2.8's drivers enforce foreign keys by default. Single-item lookups are named `find*` returning `T?` (`find*Flow` for `Flow<T?>`).
+- **Multiplatform Room wiring**: `SoulariumDatabase` uses `@ConstructedBy(SoulariumDatabaseConstructor::class)` — the constructor's `actual`s are KSP-generated per platform. The database *builder* is a platform Metro `@Provides` in `Android`/`Ios RoomBindings` (with `AndroidSQLiteDriver`/`BundledSQLiteDriver`). Repository impls that are Room `@Dao`s (e.g. `SessionRoomRepository`) are provided by `RoomBindings`, not `@ContributesBinding`. Flag a target whose entity set changed but whose KSP config was not updated.
+- **Persisted `SessionState` snapshot**: `SessionState` (a sealed `@Serializable` hierarchy in `:module:model`, `org.cru.soularium.model.game`) is persisted as a **JSON snapshot string** (`state_snapshot_json`). Renaming or removing a serialized field, or adding a non-nullable field without a default, breaks deserialization of every session persisted before the change — treat such changes as schema changes. Flag any non-backward-compatible `@Serializable` change reachable from `SessionState`.
+- **kotlinx.serialization compatibility**: renaming a property on a `@Serializable` class without `@SerialName("oldName")` breaks the wire/snapshot format; existing `@SerialName` values (e.g. on `ContactInfo` and the `SessionState` variants) pin the JSON wire format and must not change. Adding a non-nullable property without a default value crashes deserialization of older JSON. Removing a property silently drops data.
+- **DataStore device flags**: device flags (intro seen, ToS agreed) persist via DataStore Preferences in `:shared`'s data layer — the common `preferenceDataStoreAt(producePath)` helper builds the store and each platform's `@Provides providesDeviceStateDataStore` supplies the path. Verify preference keys are stable, reads handle a missing key with a sensible default, and writes are not racing. The app language is NOT stored here — it is the platform per-app language setting read through `LanguageRepository`.
 - **Threading and structured concurrency**: Room DAOs declared `suspend` must be called from a coroutine context; DAO `Flow` results must be collected on appropriate dispatchers. Flag `runBlocking` in `commonMain` production code. Verify `Dispatchers.Main` is not used in `commonMain` (use `Dispatchers.Default`/`Dispatchers.IO`).
-- **Expect/actual contract drift**: an `expect` declaration must have an `actual` for every active KMP target. Adding/removing parameters, nullability, return types, or visibility on the `expect` must mirror on every `actual`. Flag any missing actual. Verify generic constraints, default values, and `@OptIn` annotations are consistent.
-- **Singleton scoping of stateful objects**: the Room database, DAOs, and DataStore must be registered as `single` in Koin — flag any provider returning a new instance per call for objects that hold connection/file handles.
-- **ID value classes**: `SessionId`, `ConversationId`, `CardPickId` are `@Serializable @JvmInline value class` backed by UUID strings. Flag a raw `String` used where one of these typed IDs is expected, or a value class whose backing type changed.
-- **Kotlinx-datetime correctness**: prefer `Instant` for timestamps, `LocalDate` for date-only fields. Avoid `Clock.System.now()` in production code that needs to be testable — pass time in via `SessionContext` / a `Clock` rather than reading it inside `transition`.
+- **Expect/actual contract drift**: an `expect` declaration must have an `actual` for both `androidMain` and `iosMain` of its module. Adding/removing parameters, nullability, return types, or visibility on the `expect` must mirror on every `actual`. Verify generic constraints, default values, and `@OptIn` annotations are consistent.
+- **Singleton scoping of stateful objects**: the Room database and DataStore are `@SingleIn(AppScope::class)`-scoped in the Metro graph — flag any provider returning a new instance per call for objects that hold connection/file handles.
+- **ID value classes**: ids are `@Serializable @JvmInline value class` types over UUID strings, **nested in their owner** (`Session.Id`, `Conversation.Id`, `CardPick.Id`). Flag a raw `String` used where a typed ID is expected, a top-level `SessionId`-style class, or a value class whose backing type changed.
+- **Kotlinx-datetime correctness**: prefer `Instant` for timestamps, `LocalDate` for date-only fields. Avoid `Clock.System.now()` in production code that needs to be testable — pass time in via the transition context / an injected `Clock` rather than reading it inside `transition`.
 
 **File-Type Checklists (when these paths appear in the diff, run the matching list):**
 
-- **Room `@Entity` classes (`shared/src/commonMain/**/db/**`)** — every column declared in the entity exists in the DAO `@Upsert`/`@Query` projections; nullable columns map to nullable Kotlin types; primary key declared (`@PrimaryKey`); foreign keys (`foreignKeys = [...]`) accompanied by `indices = [...]` on the referenced columns
-- **Room `@Dao` interfaces** — `@Query` strings reference real columns and tables; bind parameters use `:name` (not concatenation); `@RawQuery` (if any) uses bound args; `Flow<T>` return types match observability needs; `suspend` for one-shot reads/writes; `@Upsert` used per project convention
-- **Room `@Database` (`SoulariumDatabase`)** — `version` bumped when entities change; new entities listed in `entities = [...]`; `exportSchema = true`; matching schema JSON committed under `shared/schemas/<dbVersion>.json`; `@ConstructedBy(SoulariumDatabaseConstructor::class)` and the `expect object` constructor present
-- **Room migrations** — idempotent (re-running on the same DB is safe); references columns/tables that exist in the source schema; produces a destination schema matching the new entity declarations; backfill SQL handles nulls and unexpected values; migration registered on the database builder
-- **Repository implementations (`shared/src/commonMain/**/repository/*Repository*.kt`)** — implements a domain port; every public method has a corresponding implementation in the in-memory test fake (e.g. `InMemorySessionRepository`/`FakeSessionRepository`); behavior is testable
-- **`@Serializable` classes in `shared/`** — renamed properties carry `@SerialName("oldName")` to preserve snapshot compat; new non-nullable fields have a default value (`= ""` / `= 0` / etc.) to avoid breaking older persisted `SessionState` JSON; no removed required fields without a migration plan; remember `SessionState` snapshots are persisted in the DB
-- **`expect`/`actual` declaration files** — every `expect` decl has an `actual` for every active KMP target in `:shared` (`androidMain` + `iosMain`); signatures, nullability, and generic constraints match exactly
-- **DataStore device-flag code (`shared/src/commonMain/**/devicestate/**`)** — preference keys stable; reads default sensibly on a missing key; `createDeviceStateDataStore()` has Android/iOS actuals
+- **Room `@Entity` classes (`module/db/src/commonMain/**/room/entity/**`)** — every column declared in the entity exists in the DAO `@Upsert`/`@Query` projections; nullable columns map to nullable Kotlin types; primary key declared (`@PrimaryKey`); FK declarations accompanied by `@ColumnInfo(index = true)` on the FK columns; entity owns the entity ↔ model mapping (`toModel()` / companion factory) — Room types never leak out of `:module:db`
+- **Room `@Dao` interfaces (`module/db/src/commonMain/**/room/dao/**`)** — `@Query` strings reference real columns and tables; bind parameters use `:name` (not concatenation); `@RawQuery` (if any) uses bound args; `Flow<T>` return types match observability needs; `suspend` for one-shot reads/writes; `@Upsert` for inserts that may collide
+- **Room `@Database` (`SoulariumDatabase`)** — `version` bumped when entities change; new entities listed in `entities = [...]`; matching schema JSON committed under `module/db/schemas/`; `@ConstructedBy(SoulariumDatabaseConstructor::class)` present
+- **Room migrations** — idempotent (re-running on the same DB is safe); references columns/tables that exist in the source schema; produces a destination schema matching the new entity declarations; backfill SQL handles nulls and unexpected values; migration registered on the database builder (or the documented destructive-migration fallback applies)
+- **Repository implementations (`module/db/src/**`, `shared/src/commonMain/**/data/**`)** — implements its port contract; every public method has a corresponding implementation in `FakeSessionRepository` (`:module:db:test-fixtures`) or the relevant test double; behavior is testable
+- **`@Serializable` classes in `module/model/src/**`** — renamed properties carry `@SerialName("oldName")` to preserve snapshot compat; existing `@SerialName` values unchanged; new non-nullable fields have a default value to avoid breaking older persisted `SessionState` JSON; no removed required fields without a migration plan
+- **`expect`/`actual` declaration files** — every `expect` decl has an `actual` for both `androidMain` and `iosMain` of its module; signatures, nullability, and generic constraints match exactly
+- **DataStore device-flag code (`shared/src/commonMain/**/data/**`)** — preference keys stable; reads default sensibly on a missing key; each platform's `@Provides providesDeviceStateDataStore` supplies the path
 
 **Output format:**
 ```
@@ -599,7 +608,7 @@ Soularium is an **offline app with a minimal security surface**: no auth, no log
 ### Confidence
 ```
 
-**CODEBASE CONTEXT SEARCH:** Before flagging a pattern as an issue, use Grep to search for at least 3 other instances of the same pattern across the Kotlin source roots: `shared/`, `shared/`, and `shared/`. If the pattern is used consistently in 3+ other locations, it is an established project convention — do NOT flag it. If it appears only in the current PR or in fewer than 3 places, flag it.
+**CODEBASE CONTEXT SEARCH:** Before flagging a pattern as an issue, use Grep to search for at least 3 other instances of the same pattern across the Kotlin source roots: `shared/` and `module/*/`. If the pattern is used consistently in 3+ other locations, it is an established project convention — do NOT flag it. If it appears only in the current PR or in fewer than 3 places, flag it.
 
 **AUTOMATED FIX GENERATION:** For every issue with a clear fix, generate a ready-to-apply code patch. Show the exact file path and line range. Provide a before/after code block (Kotlin / Gradle Kotlin DSL / YAML / TOML / SQL as appropriate). Only generate fixes where the correct solution is unambiguous.
 
@@ -613,28 +622,34 @@ Soularium is an **offline app with a minimal security surface**: no auth, no log
 - model: "opus" (or "sonnet" in quick mode)
 
 **Prompt focus areas:**
-- **Test coverage**: every new public class, function, ViewModel, repository, and the pure `transition` state-machine logic should have a test in `commonTest`. Private functions are tested indirectly through the public interface. Do not flag missing tests for simple data classes, delegations, or generated code (Room KSP, Compose Resources).
-- **Test framework**: tests use `kotlin.test` (`@Test`, `@BeforeTest`, `@AfterTest`), Kotest assertions (`kotest-assertions-core`, e.g. `shouldBe`/`shouldContain`), Turbine for `Flow` testing, and `kotlinx-coroutines-test` (`runTest`, `TestDispatcher`, `advanceUntilIdle`). ALL tests live in `commonTest`. There is NO Robolectric, NO `@RunOnAndroidWith`, NO Android instrumentation, and NO instrumented Compose-UI tests — flag a PR that introduces any of those.
-- **What "Compose testing" means here**: Compose logic is verified through ViewModel/state tests and pure-function tests, NOT through instrumented UI tests. A new screen's behavior is covered by testing its ViewModel's `StateFlow` output and the pure `transition` function — flag a screen whose ViewModel logic is untested, not the absence of a UI test.
-- **Pure state-machine testing**: `transition(state, event, ctx)` is a pure function — it should have direct input→output tests covering every `SessionState` × `SessionEvent` combination that matters, and assertions on the returned `Effect` list. Flag a new state/event/effect path with no test.
-- **ViewModel testing**: ViewModels expose `StateFlow`; tests use Turbine (`viewModel.state.test { awaitItem() }`) inside `runTest` with an injected `TestDispatcher`. Flag a ViewModel test that collects the flow manually with timeouts, or that uses `runBlocking`.
-- **Test fakes**: fakes are in-memory classes defined in the test sources (e.g. `InMemorySessionRepository`, `FakeSessionRepository`, `RecordingSharer`). There are NO `test-fixtures` modules. Flag a test that mocks a port when an existing in-memory fake (or a simple new one) would be clearer, and flag a new port method that has no matching fake update.
-- **Coroutine test correctness**: use `runTest { ... }` from `kotlinx-coroutines-test` (not `runBlocking`), inject a `TestDispatcher` for time control, and avoid `Thread.sleep`/`delay()` for synchronization (use `advanceTimeBy`/`advanceUntilIdle` or Turbine's `awaitItem`).
+
+`.claude/CLAUDE.md`'s Testing section and `.claude/skills/pr-review/SKILL.md`'s Testing checklist are the authoritative reference — read them first. The durable rules to enforce:
+
+- **Test coverage**: every new public class, function, Presenter, repository, and the pure `transition` state-machine logic should have a test in its module's `commonTest`. Private functions are tested indirectly through the public interface. Do not flag missing tests for simple data classes, delegations, or generated code (Room KSP, Compose Resources).
+- **Test framework**: tests use `kotlin.test` (`@Test`, `@BeforeTest`, `@AfterTest`), Kotest assertions, Turbine for `Flow` testing, and `kotlinx-coroutines-test` (`runTest`, `TestDispatcher`, `advanceUntilIdle`). Unit tests live in each module's `commonTest`; Paparazzi screenshot tests live in `androidHostTest`. There is no on-device instrumentation — everything runs host-side (Robolectric for the Android-host variant).
+- **`@RunOnAndroidWith` discipline**: Presenter tests and Compose-UI interaction tests (`runComposeUiTest`, imported from `androidx.compose.ui.test.v2`) are annotated `@RunOnAndroidWith(AndroidJUnit4::class)` so the Android-host variant runs under Robolectric; pure domain tests (no Compose) are unannotated. Flag the deprecated v1 `runComposeUiTest` import as a must-fix.
+- **Pure state-machine testing**: `transition(state, event, ctx)` is a pure function — it should have direct input→output tests covering every `SessionState` × `SessionEvent` combination that matters, and assertions on the returned `Effect`s. Flag a new state/event/effect path with no test.
+- **Presenter testing**: Presenters are exercised via Circuit's `circuit-test` library (`FakeNavigator`, `presenter.test { awaitItem().eventSink(...) }`) inside `runTest`. Test names follow the structured form `UiEvent - <Event> - <behavior>` / `UiState - <field> - <behavior>`. Flag a Presenter whose event handling or state derivation is untested.
+- **Test fakes**: reusable fakes live in a sibling `test-fixtures` module — `:module:db:test-fixtures` provides `FakeSessionRepository` (in-memory `SessionRepository` with seeding, interaction recording, fault injection). Single-use doubles stay as plain private classes in the test sources. No `mockk` — flag a test that mocks a port when a fake would be clearer, and a new port method with no matching fake update.
+- **Repository / Room tests**: follow the abstract-contract pattern — a persistence-agnostic contract test plus a thin Room subclass wiring in the real database via `expect fun buildInMemorySoulariumDatabase()`, running on both Android host (Robolectric) and iOS.
+- **Paparazzi screenshot tests**: new/changed `<Feature>Layout` composables need a matching `<Feature>LayoutPaparazziTest` in `shared/src/androidHostTest/`, extending `BasePaparazziTest` with the device × `nightMode` `@TestParameter` matrix, rendering the stateless Layout with a hand-built `UiState`. Snapshots are recorded via the record-snapshots workflow, not locally.
+- **Coroutine test correctness**: use `runTest { ... }` (not `runBlocking`), inject a `TestDispatcher` for time control, and avoid `Thread.sleep`/`delay()` for synchronization (use `advanceTimeBy`/`advanceUntilIdle` or Turbine's `awaitItem`).
 - **Turbine usage**: `Flow` tests use Turbine (`flow.test { awaitItem(); awaitComplete() }` or `cancelAndIgnoreRemainingEvents()`). Flag tests that collect Flows manually with timeouts.
 - **Edge cases**: nullability boundaries, empty lists, single-element lists, very long strings, leading/trailing whitespace, an older persisted `SessionState` snapshot, process-death/restore, and cancellation.
-- **Error path testing**: not just happy paths — test failure modes (`DomainError` paths, Room constraint failures, deserialization errors on old snapshots).
-- **Debug output left in production code**: `println`, `Log.*` (Android), debug-level Kermit calls on sensitive data. Allowed in tests, not in `commonMain`/`androidMain`/`iosMain` production sources.
+- **Error path testing**: not just happy paths — test failure modes (`TransitionResult.error`/`GameError` paths, Room constraint failures, deserialization errors on old snapshots, `FakeSessionRepository` fault injection).
+- **Debug output left in production code**: `println`, `Log.*` (Android), debug-level logging of sensitive data. Allowed in tests, not in production sources.
 - **Code smell patterns**: broad catches (`catch (e: Throwable)`/`catch (e: Exception)` without rethrow), hardcoded magic numbers/strings that should be `const val`, `Thread.sleep` in production code, empty `catch` blocks, `!!` non-null assertions on values not proven non-null at the call site.
-- **ktlint compliance**: code should pass `./gradlew ktlintCheck` (run from the repo root) with the project's `intellij_idea` code style. Max line length **120**. `@Composable` functions are exempt from function-naming rules; non-composable functions follow camelCase. Test functions use backtick-quoted descriptive names.
+- **ktlint compliance**: code should pass `./gradlew ktlintCheck` (run from the repo root) with the project's `android_studio` code style. Max line length **120**. `@Composable` functions are exempt from function-naming rules; non-composable functions follow camelCase. Test functions use backtick-quoted descriptive names.
 
 **File-Type Checklists (when these paths appear in the diff, run the matching list):**
 
-- **`**/commonTest/**/*Test.kt`** — uses `kotlin.test` (`@Test`, `@BeforeTest`, `@AfterTest`) and Kotest assertions; coroutine tests use `runTest { }`, NOT `runBlocking`; `Flow` assertions use Turbine's `flow.test { ... }`; no Robolectric/`@RunOnAndroidWith`/instrumentation; descriptive backtick-quoted test names
-- **Pure state-machine tests (`transition`, `SessionState`, `SessionEvent`, `Effect`)** — direct input→output assertions; covers the meaningful `state × event` matrix; asserts on the returned `Effect` list; no fakes needed (the function is pure)
-- **ViewModel test files** — uses Turbine to assert `StateFlow` emissions inside `runTest`; injects a `TestDispatcher`; uses in-memory port fakes; covers loading/error/populated states
-- **Repository test files** — exercises the port contract against the real repository implementation or an in-memory fake; covers persistence round-trips and edge cases
-- **In-memory fakes (e.g. `InMemory*Repository`, `Fake*`, `Recording*`)** — defined in the test sources (NOT a `test-fixtures` module); cover every port method (no missing fake for a new port method); behave like the real implementation for the tested contract
-- **Coverage scope** — every new public class/function/ViewModel/state-machine path has a test in `commonTest`; skip simple data classes, delegations, and generated code (Room KSP, Compose Resources)
+- **`**/commonTest/**/*Test.kt`** — uses `kotlin.test` (`@Test`, `@BeforeTest`, `@AfterTest`) and Kotest assertions; coroutine tests use `runTest { }`, NOT `runBlocking`; `Flow` assertions use Turbine's `flow.test { ... }`; Compose-touching tests carry `@RunOnAndroidWith(AndroidJUnit4::class)`; descriptive backtick-quoted test names
+- **Pure state-machine tests (`transition`, `SessionState`, `SessionEvent`, `Effect`)** — direct input→output assertions; covers the meaningful `state × event` matrix; asserts on the returned `Effect`s; no fakes needed (the function is pure)
+- **Presenter test files** — uses Circuit's `circuit-test` (`FakeNavigator`, `presenter.test { ... }`) inside `runTest`; annotated `@RunOnAndroidWith(AndroidJUnit4::class)`; test names follow `UiEvent - <Event> - <behavior>` / `UiState - <field> - <behavior>`; covers loading/error/populated states
+- **Repository test files** — follows the abstract-contract pattern (persistence-agnostic contract test + Room subclass); covers persistence round-trips and edge cases
+- **Test fakes** — reusable fakes live in a `test-fixtures` module (`:module:db:test-fixtures`); single-use doubles stay private in the test sources; cover every port method (no missing fake for a new port method); behave like the real implementation for the tested contract
+- **Paparazzi tests (`shared/src/androidHostTest/**`)** — extends `BasePaparazziTest`; device × `nightMode` matrix; renders the stateless Layout with a hand-built `UiState` (never constructs the Presenter); snapshots recorded via the record-snapshots workflow
+- **Coverage scope** — every new public class/function/Presenter/state-machine path has a test in `commonTest`; skip simple data classes, delegations, and generated code (Room KSP, Compose Resources)
 
 **Output format:**
 ```
@@ -669,7 +684,7 @@ Soularium is an **offline app with a minimal security surface**: no auth, no log
 ### Confidence
 ```
 
-**CODEBASE CONTEXT SEARCH:** Before flagging a pattern as an issue, use Grep to search for at least 3 other instances of the same pattern across the Kotlin source roots: `shared/`, `shared/`, and `shared/`. If the pattern is used consistently in 3+ other locations, it is an established project convention — do NOT flag it. If it appears only in the current PR or in fewer than 3 places, flag it.
+**CODEBASE CONTEXT SEARCH:** Before flagging a pattern as an issue, use Grep to search for at least 3 other instances of the same pattern across the Kotlin source roots: `shared/` and `module/*/`. If the pattern is used consistently in 3+ other locations, it is an established project convention — do NOT flag it. If it appears only in the current PR or in fewer than 3 places, flag it.
 
 **AUTOMATED FIX GENERATION:** For every issue with a clear fix, generate a ready-to-apply code patch. Show the exact file path and line range. Provide a before/after code block (Kotlin / Gradle Kotlin DSL / YAML / TOML / SQL as appropriate). Only generate fixes where the correct solution is unambiguous.
 
@@ -683,27 +698,30 @@ Soularium is an **offline app with a minimal security surface**: no auth, no log
 - model: "opus"
 
 **Prompt focus areas:**
-- **Compose Multiplatform composition discipline**: screen composables are **public, stateless** — they take data parameters + `on*` callback lambdas + `modifier: Modifier = Modifier` as the LAST parameter, and collect ViewModel state via `collectAsState()`. There is no Circuit/Presenter pattern. No business logic in the composable; user actions go through the `on*` callbacks.
+
+`.claude/rules/design_system_rules.md` and CLAUDE.md's UI-layer section are the authoritative reference — read them first. The durable rules to enforce:
+
+- **Circuit composition discipline**: each screen is a Presenter + Layout pair. The Layout is a **public, stateless** `@Composable fun <Feature>Layout(state: <Feature>Presenter.UiState, modifier: Modifier = Modifier)` — it reads fields off `state` and emits intent via `state.eventSink(...)`. No business logic in the Layout; no Presenter or repository passed to a Layout directly.
 - **Modifier ordering and forwarding**: `modifier` should be the first thing applied to the root composable (so callers can layer on size/padding/clickable). Public composables must accept and forward `modifier: Modifier = Modifier` — and it must be the LAST parameter.
-- **State hoisting**: stateful UI that needs to be testable or restored should live in the ViewModel `StateFlow`, not in a Layout-local `remember { mutableStateOf(...) }`. Layout-local `remember` is OK for transient view-only state (animation progress, a visibility toggle).
+- **State hoisting**: stateful UI that needs to be testable or restored should be derived in the Presenter's `present()` and exposed via `UiState`, not held in a Layout-local `remember { mutableStateOf(...) }`. Layout-local `remember` is OK for transient view-only state (animation progress, a text-field draft, a visibility toggle).
 - **Material3 token usage**: colors, typography, and shapes come from `MaterialTheme.colorScheme.*`, `MaterialTheme.typography.*`, `MaterialTheme.shapes.*` — see `.claude/rules/design_system_rules.md`. Flag hardcoded `Color(0xFF...)`, hex strings, or `sp`/`dp` literals where a theme token exists. Never use Material2 imports in `commonMain`.
 - **Theme consumption**: the app theme is applied once at the app root; feature screens should not call `MaterialTheme(...)` themselves. Flag duplicate theme application.
 - **Dark mode**: any custom color must work in both light and dark themes — use `MaterialTheme.colorScheme.*` rather than hard-coded `Color`. Do not branch on dark-mode state for color decisions.
 - **Accessibility (`Modifier.semantics`)**: every `Image`, `Icon`, and clickable surface needs a `contentDescription` (or `null` with a clear justification for purely decorative elements). Touch targets must be ≥ 48dp. Custom interactive composables should use `Modifier.semantics { role = Role.Button }` or equivalent.
-- **Navigation**: navigation uses Navigation Compose — `Routes` holds string route constants and `NavGraph.kt` wires a `NavHost`. Flag a `navigate(...)` to a route string not registered in `NavGraph`, or a route string built by concatenation that can mismatch the registered pattern.
+- **Navigation**: navigation uses Circuit — screens are `@Parcelize` `Screen` types (in `ui/nav/Screens.kt` or co-located with their feature package), and cross-screen navigation is `navigator.goTo(SomeScreen(...))` / `navigator.pop()` from inside a Presenter. Flag a Screen with no `@CircuitInject`-wired Presenter/Layout pair, or navigation calls made from a Layout.
 - **Back handling**: `PlatformBackHandler` is `BackHandler` on Android and a no-op on iOS — verify back behavior degrades gracefully on iOS.
 - **Keyboard navigation and focus**: forms should chain `Modifier.focusRequester` correctly; `KeyboardOptions`/`KeyboardActions` (`imeAction = ImeAction.Next` / `Done`) should match the form flow.
-- **Loading/error/empty states**: every screen that loads data needs three distinct states. Flag a screen that shows no loading indicator while loading, or no error UI on a `DomainError`.
-- **Recomposition cost**: heavy work (sorting, filtering large lists) must not run in a composable body — wrap in `remember(key)` or move to the ViewModel. Flag `LazyColumn` items without a stable `key` when the list can reorder.
+- **Loading/error/empty states**: every screen that loads data needs three distinct states. Flag a screen that shows no loading indicator while loading, or no rendered path for a persistence failure.
+- **Recomposition cost**: heavy work (sorting, filtering large lists) must not run in a composable body — wrap in `remember(key)` or move it into the Presenter. Flag `LazyColumn` items without a stable `key` when the list can reorder.
 - **Resource and string usage**: user-visible strings should come from Compose Multiplatform resources (`stringResource`) under `**/composeResources/values/strings.xml`, not be inlined as Kotlin literals. Image resources go through `painterResource`.
 - **No platform-specific imports in commonMain UI**: `androidx.compose.ui.viewinterop.AndroidView` is only available in `androidMain`. Use `expect/actual` when wrapping a platform widget.
 - **Material icons**: prefer `androidx.compose.material.icons.Icons.*` from `compose-material-icons-extended`. Avoid hand-rolling `ImageVector` paths.
 
 **File-Type Checklists (when these paths appear in the diff, run the matching list):**
 
-- **Screen composables (`shared/src/commonMain/kotlin/**/ui/**`)** — public, stateless, `(data params, on* callbacks, modifier: Modifier = Modifier)` with `modifier` LAST; collects ViewModel state via `collectAsState()`; `modifier` applied first to the root; uses `MaterialTheme.*` tokens (not hardcoded `Color(0xFF...)`); user-visible strings via `stringResource(...)`; loading/error/empty states distinguished; `LazyColumn`/`LazyRow` items have stable `key`s when the list can reorder
+- **Circuit Layouts (`shared/src/commonMain/kotlin/**/ui/**`)** — public, stateless, `(state: <Feature>Presenter.UiState, modifier: Modifier = Modifier)` with `modifier` LAST; `@CircuitInject` on the declaration; `modifier` applied first to the root; uses `MaterialTheme.*` tokens (not hardcoded `Color(0xFF...)`); user-visible strings via `stringResource(...)`; loading/error/empty states distinguished; `LazyColumn`/`LazyRow` items have stable `key`s when the list can reorder
 - **Theme files** — additions to the color/typography/shape scheme are exposed via `MaterialTheme.*` (no ad-hoc top-level vals); dark/light variants both defined for any new color
-- **Navigation (`shared/src/commonMain/kotlin/**/ui/nav/**`)** — every `Routes` constant referenced by `navigate(...)` is registered in `NavGraph`'s `NavHost`; route strings not built by fragile concatenation; arguments passed via the Navigation Compose argument API
+- **Navigation (`Screen` declarations)** — each `Screen` is a `@Parcelize` `data object`/`data class`; a Presenter and Layout are `@CircuitInject`-wired to it; screen arguments travel as `Screen` constructor properties (reaching the Presenter via `@Assisted`)
 - **Compose resource files (`**/composeResources/values/strings.xml`, `**/composeResources/drawable/*`)** — every user-visible string the diff introduces references a resource (not a Kotlin literal); image resources use `painterResource(Res.drawable.*)`; resource keys follow `feature_section_purpose` naming
 - **Material icon imports** — pulled from `androidx.compose.material.icons.Icons.*`; avoid hand-rolled `ImageVector` paths; `Icon` composables include `contentDescription` (or `null` with a clearly stated reason)
 - **Accessibility surface** — every interactive composable has a `Modifier.semantics { }` annotation OR uses a built-in role-providing primitive (`Button`, `IconButton`, `Switch`, `Checkbox`); image/icon composables include `contentDescription`; touch targets are ≥ 48dp (`Modifier.minimumInteractiveComponentSize()` or larger)
@@ -739,7 +757,7 @@ Soularium is an **offline app with a minimal security surface**: no auth, no log
 ### Confidence
 ```
 
-**CODEBASE CONTEXT SEARCH:** Before flagging a pattern as an issue, use Grep to search for at least 3 other instances of the same pattern across the Kotlin source roots: `shared/`, `shared/`, and `shared/`. If the pattern is used consistently in 3+ other locations, it is an established project convention — do NOT flag it. If it appears only in the current PR or in fewer than 3 places, flag it.
+**CODEBASE CONTEXT SEARCH:** Before flagging a pattern as an issue, use Grep to search for at least 3 other instances of the same pattern across the Kotlin source roots: `shared/` and `module/*/`. If the pattern is used consistently in 3+ other locations, it is an established project convention — do NOT flag it. If it appears only in the current PR or in fewer than 3 places, flag it.
 
 **AUTOMATED FIX GENERATION:** For every issue with a clear fix, generate a ready-to-apply code patch. Show the exact file path and line range. Provide a before/after code block (Kotlin / Gradle Kotlin DSL / YAML / TOML / SQL as appropriate). Only generate fixes where the correct solution is unambiguous.
 
@@ -754,62 +772,63 @@ Soularium is an **offline app with a minimal security surface**: no auth, no log
 
 **Prompt focus areas:**
 
-Read `.claude/CLAUDE.md` thoroughly, then check each standard:
+Read `.claude/CLAUDE.md` AND `.claude/skills/pr-review/SKILL.md` thoroughly — the pr-review skill carries the detailed, up-to-date per-category checklist (architecture & layering, domain models, persistence, Circuit UI, Metro DI, expect/actual, build files, resources, testing, code style). Apply that checklist rather than re-deriving standards from memory; this section only summarizes the headline standards:
 
-**Architecture Standards (package layering + hexagonal + state machine):**
-- [ ] Dependency direction respected: `org.cru.soularium.ui` → `domain` + `data`; `data` → `domain`; nothing flows back into `domain`
-- [ ] Code under `org.cru.soularium.domain` has no Android, iOS, data-layer, or Compose imports
-- [ ] Port interfaces live under `org.cru.soularium.domain.ports`; implementations live under `org.cru.soularium.data` or in a platform Koin module
-- [ ] `transition(state, event, ctx)` is a pure function — no IO, no clock reads, no logging; side effects modeled as `Effect` data and returned
+**Architecture Standards (module graph + package layering + state machine):**
+- [ ] Module dependency direction matches CLAUDE.md's module map (`:androidApp` → `:shared` → `:module:db` → `:module:model`; `:module:game`/`:module:analytics` per the map); library modules never depend on `:shared`
+- [ ] `org.cru.soularium.domain` does not import from `data`/`ui`; `data` does not import from `ui`
+- [ ] `transition(state, event, ctx)` (`:module:game`) is pure — no IO, no clock reads, no logging; side effects modeled as `Effect` data and returned
 - [ ] `SessionState`/`SessionEvent` are sealed; `when` over them is exhaustive
-- [ ] Domain errors flow through the `DomainError` sealed interface (no `Result<T>` wrapper)
+- [ ] Game errors flow through `TransitionResult.error` / the `GameError` sealed interface (no `Result<T>` wrapper)
 
-**DI Standards (Koin):**
-- [ ] `initKoin()` wires `appModule` + `platformModule`
-- [ ] Stateful objects (database, DAOs, repositories) registered as `single`; ViewModels via `viewModel { }`
-- [ ] Platform-specific bindings live in `platformModule` (expect/actual), not `appModule`
-- [ ] ViewModels obtained in composables via `koinViewModel<T>()` (or `koinViewModel { parametersOf(...) }`)
-- [ ] No Metro / `@CircuitInject` / `@ContributesBinding` / `@SingleIn` — this project uses Koin only
+**DI Standards (Metro):**
+- [ ] New impl classes use `@Inject` + `@ContributesBinding(AppScope::class)`; non-constructor-injectable types go through `@Provides` in a `@BindingContainer @ContributesTo(AppScope::class)` container
+- [ ] App-lifetime singletons carry `@SingleIn(AppScope::class)`
+- [ ] Platform-specific bindings live in the platform `PlatformBindings`/`RoomBindings` actuals
+- [ ] No new accessor properties on `SoulariumAppGraph` (use a contributed accessor interface + `asContribution<>()`)
+- [ ] No Koin, Hilt, Dagger, or Anvil annotations — DI is Metro-only
 
 **Build / Module Standards:**
-- [ ] Only the two expected modules: `:shared` and `:androidApp`
-- [ ] Each module's `build.gradle.kts` configures itself directly using `gradle/libs.versions.toml` aliases (no `build-logic/`, no convention plugins)
-- [ ] New dependencies are added via version-catalog aliases, not hardcoded coordinates
+- [ ] Cross-module conventions live in `build-logic/` convention plugins; KMP modules apply `soularium-kmp.module-conventions` explicitly (`soularium-kmp.test-fixtures-conventions` for test-fixtures modules)
+- [ ] `:androidApp` stays a pure `com.android.application` shell (no KMP plugin)
+- [ ] New dependencies are added via `gradle/libs.versions.toml` aliases, not hardcoded coordinates
 - [ ] Build commands run from the repo root (`./gradlew ...`)
 
 **KMP Source-Set Standards:**
-- [ ] `commonMain` contains no Android-specific (`android.*`, `androidx.*`) or iOS-specific imports
-- [ ] Every `expect` declaration has an `actual` for every active KMP target in `:shared` (`androidMain` + `iosMain`)
-- [ ] Cross-package imports respect the layering (`domain` → nothing; `data` → `domain`; `ui` → `domain` + `data`)
+- [ ] `commonMain` contains no Android- or iOS-specific imports
+- [ ] Every `expect` declaration has an `actual` for both `androidMain` and `iosMain` of its module
+- [ ] Cross-package imports respect the layering
 
 **Data Standards:**
-- [ ] Room schema bumps include a matching `Migration` and a regenerated exported schema JSON under `shared/schemas/`
-- [ ] `@Serializable` changes under `org.cru.soularium.domain` are backward-compatible with the persisted `SessionState` snapshot (`@SerialName` on renames, defaults on new fields)
-- [ ] Repository implementations satisfy a domain port; in-memory test fakes are kept in sync
+- [ ] Room `@Database` version bumps ship a matching exported schema JSON under `module/db/schemas/` and a migration path; existing schema JSONs are never edited in place
+- [ ] `@Serializable` changes in `:module:model` are backward-compatible with the persisted `SessionState` snapshot (`@SerialName` on renames, defaults on new fields; existing `@SerialName` values unchanged)
+- [ ] Repository implementations satisfy their port contracts; test fakes (`FakeSessionRepository` et al.) are kept in sync
 
-**UI Standards:**
-- [ ] Screen composables are public, stateless, `(data, on* callbacks, modifier: Modifier = Modifier)` with `modifier` LAST
-- [ ] ViewModels extend `androidx.lifecycle.ViewModel`, expose `StateFlow` via private `MutableStateFlow` + `.asStateFlow()`
-- [ ] `Routes` constants are registered in `NavGraph`
-- [ ] Material3 tokens used per `.claude/rules/design_system_rules.md`
+**UI Standards (Circuit):**
+- [ ] Screens are `@Parcelize` `Screen` types; Presenter + Layout pairs are wired via `@CircuitInject(<Feature>Screen::class, AppScope::class)` — no hand-written factories
+- [ ] Presenters are `@AssistedInject` classes implementing `Presenter<UiState>`, with `UiState : CircuitUiState` exposing `eventSink` and `UiEvent : CircuitUiEvent`
+- [ ] Layouts are public, stateless `(state, modifier)` composables; `modifier` LAST, applied first on the root
+- [ ] Material3 tokens used per `.claude/rules/design_system_rules.md`; user-visible strings via `stringResource(Res.string.*)`
 
 **Testing Standards:**
-- [ ] `kotlin.test` (`@Test`, `@BeforeTest`, `@AfterTest`) + Kotest assertions used as the test stack
-- [ ] All tests live in `commonTest`; no Robolectric, no `@RunOnAndroidWith`, no instrumentation
-- [ ] Coroutine tests use `runTest`, not `runBlocking`; `Flow` assertions use Turbine
-- [ ] Test fakes are in-memory classes in the test sources (no `test-fixtures` modules)
+- [ ] `kotlin.test` + Kotest assertions as the test stack; unit tests in each module's `commonTest`, Paparazzi in `androidHostTest`
+- [ ] Presenter/Compose-touching tests carry `@RunOnAndroidWith(AndroidJUnit4::class)`; pure domain tests are unannotated
+- [ ] Coroutine tests use `runTest`, not `runBlocking`; `Flow` assertions use Turbine; Presenter tests use `circuit-test`
+- [ ] Reusable fakes live in `test-fixtures` modules; single-use doubles stay private in test sources; no `mockk`
+- [ ] Test names are backtick-quoted; Presenter tests follow `UiEvent - <Event> - <behavior>` / `UiState - <field> - <behavior>`
 
 **Code Quality Standards:**
-- [ ] Passes `./gradlew ktlintCheck` (run from the repo root) with the `intellij_idea` code style
+- [ ] Passes `./gradlew ktlintCheck` (run from the repo root) with the `android_studio` code style
 - [ ] Max line length **120**
 - [ ] `@Composable` functions are exempt from function-naming rules; non-composable functions use camelCase
-- [ ] Trailing commas allowed but not enforced
-- [ ] No debug output left in production code (`println`, `Log.*`, debug-level Kermit calls on sensitive data)
+- [ ] Trailing commas follow the pr-review skill's convention (only touch commas on lines you're already modifying)
+- [ ] No debug output left in production code (`println`, `Log.*`, logging of sensitive data)
 - [ ] No `TODO` without an issue reference in the comment
 - [ ] No platform-specific imports leaking into `commonMain`
+- [ ] New `CompositionLocal`s are added to `compose_allowed_composition_locals` in a scoped `.editorconfig`
 
 **Package & Naming Standards:**
-- [ ] Package follows `org.cru.soularium.*`
+- [ ] Package follows `org.cru.soularium.*` (`org.cru.soularium.app` reserved for `:androidApp`)
 - [ ] Module namespace matches the package
 
 **Output format:**
@@ -827,8 +846,8 @@ Read `.claude/CLAUDE.md` thoroughly, then check each standard:
 [Same format]
 
 ### Standards Checklist Results
-**Architecture (3-layer + hexagonal + state machine)**: ✅/⚠️/❌
-**DI (Koin)**: ✅/⚠️/❌
+**Architecture (module graph + layering + state machine)**: ✅/⚠️/❌
+**DI (Metro)**: ✅/⚠️/❌
 **Build / Modules**: ✅/⚠️/❌
 **KMP Source-Sets**: ✅/⚠️/❌
 **Data**: ✅/⚠️/❌ (or N/A)
@@ -844,7 +863,7 @@ Read `.claude/CLAUDE.md` thoroughly, then check each standard:
 ### Confidence
 ```
 
-**CODEBASE CONTEXT SEARCH:** Before flagging a pattern as an issue, use Grep to search for at least 3 other instances of the same pattern in `shared/`, `shared/`, and `shared/` (Kotlin source roots). If the pattern is used consistently in 3+ other locations, it is an established project convention — do NOT flag it. If it appears only in the current PR or in fewer than 3 places, flag it.
+**CODEBASE CONTEXT SEARCH:** Before flagging a pattern as an issue, use Grep to search for at least 3 other instances of the same pattern in `shared/` and `module/*/` (Kotlin source roots). If the pattern is used consistently in 3+ other locations, it is an established project convention — do NOT flag it. If it appears only in the current PR or in fewer than 3 places, flag it.
 
 **AUTOMATED FIX GENERATION:** For every issue with a clear fix, generate a ready-to-apply code patch. Show the exact file path and line range. Provide a before/after code block (Kotlin / Gradle Kotlin DSL / YAML / TOML / SQL as appropriate). Only generate fixes where the correct solution is unambiguous.
 
@@ -863,35 +882,35 @@ After launching all selected agents, display:
 
 **IMPORTANT:** Launch this as an additional Task tool invocation in the **same message** as the Stage 1 agent launches. This ensures it runs truly in parallel with the review agents. Do NOT try to run this in the main context "while agents are running" — foreground Task calls block until completion.
 
-Analyze dependency impact using KMP/Kotlin-specific patterns. For each changed file, identify the dependents that may be affected. The module graph is small and fixed: `:androidApp` → `:shared`, with internal package layering inside `:shared` (`ui` → `domain` + `data`; `data` → `domain`).
+Analyze dependency impact using KMP/Kotlin-specific patterns. For each changed file, identify the dependents that may be affected. The module graph (per CLAUDE.md): `:androidApp` → `:shared` → `:module:db` → `:module:model`, with `:shared` also depending on `:module:model`, `:module:game`, and `:module:analytics`; `:module:game` depends only on `:module:model`; `:module:db:test-fixtures` sits beside `:module:db` for shared test doubles.
 
-**Module-level Gradle dependents:** For each changed module's `build.gradle.kts`, identify the dependents. Only `:shared` and `:androidApp` exist; `:androidApp` depends on `:shared`. `api(...)` dependencies in `:shared` propagate transitively to `:androidApp`; `implementation(...)` does not.
+**Module-level Gradle dependents:** For each changed module's `build.gradle.kts`, identify the downstream modules per the graph above. `api(...)` dependencies propagate transitively to dependents; `implementation(...)` does not. A change in `:module:model` can ripple through every other module.
 
-**Public symbol consumers (Kotlin):** For each public class, function, or constant changed or removed in `commonMain`/`androidMain`/`iosMain`, Grep across `shared/` and `androidApp/` for import statements (`import org.cru.soularium.<...>`) and direct usages.
+**Public symbol consumers (Kotlin):** For each public class, function, or constant changed or removed in any source set, Grep across `shared/`, `module/*/`, and `androidApp/` for import statements (`import org.cru.soularium.<...>`) and direct usages.
 
 **`expect`/`actual` consumers:** For each changed `expect` declaration, list every `actual` (one per active target) and every consumer of the declaration. Removing or renaming an `expect` breaks every consumer; changing its signature breaks every `actual`.
 
-**Port interface consumers:** For each changed port interface in `domain/ports/` (`ContentRepository`, `SessionRepository`, `DeviceStateRepository`, `AnalyticsTracker`, `CrashReporter`, `Sharer`), search for its implementations under `org.cru.soularium.data` / platform Koin modules, its Koin registration, its UI ViewModel consumers, and the in-memory fakes in `commonTest`. Adding a method without a default implementation breaks every implementation and every fake.
+**Port interface consumers:** For each changed port interface (`DeviceStateRepository` in `domain/ports/`, `SessionRepository` in `:module:db`, `AnalyticsTracker`/`CrashReporter` in `:module:analytics`), search for its implementations, its Metro binding (`@ContributesBinding` or a `@Provides` in a binding container), its Presenter consumers, and the fakes (`FakeSessionRepository` in `:module:db:test-fixtures`, doubles in test sources). Adding a method without a default implementation breaks every implementation and every fake.
 
-**Koin definition consumers:** For each changed `single`/`viewModel`/`factory` definition in `appModule`/`platformModule`, identify the resolution sites (`koinViewModel`, `get`, constructor injection). A removed or re-typed definition breaks resolution at runtime, not compile time.
+**Metro binding consumers:** For each changed `@ContributesBinding`/`@Provides` binding, identify the injection sites (constructor injection in Presenters/impls, contributed accessor interfaces). Metro validates the graph at compile time — a removed binding fails the `:shared` compile; verify the fix updates all consumers rather than working around the graph.
 
-**`Routes` / navigation consumers:** For each changed `Routes` constant, search `NavGraph.kt` and every `navigate(...)` call site. A route string is not type-checked — a mismatch breaks navigation at runtime.
+**Circuit screen consumers:** For each changed `Screen` type, search for `navigator.goTo(...)` call sites and the `@CircuitInject` annotations binding its Presenter/Layout. Removing the wiring leaves the screen unreachable or blank at runtime.
 
-**Room entity/DAO consumers:** For each changed `@Entity`, list the DAOs that select or upsert it and the repository methods that expose it. Schema-breaking changes require a `Migration` plus a regenerated schema JSON under `shared/schemas/`.
+**Room entity/DAO consumers:** For each changed `@Entity`, list the DAOs that select or upsert it and the repository methods that expose it. Schema-breaking changes require a version bump plus a regenerated schema JSON under `module/db/schemas/`.
 
-**`@Serializable` consumers:** For each changed `@Serializable` class, identify call sites that serialize/deserialize it (`Json.encodeToString`/`decodeFromString`, the persisted `SessionState` snapshot column, DataStore values). Renaming a property without `@SerialName` breaks the wire format and any persisted JSON.
+**`@Serializable` consumers:** For each changed `@Serializable` class, identify call sites that serialize/deserialize it (`Json.encodeToString`/`decodeFromString`, the persisted `SessionState` snapshot column, share-link generation). Renaming a property without `@SerialName` breaks the wire format and any persisted JSON.
 
 For high-impact files (10+ dependents) flag as critical. Display:
 
 ```
 📦 DEPENDENCY IMPACT ANALYSIS
 
-🚨 CRITICAL IMPACT: shared/.../ports/SessionRepository.kt — [N] dependents (impl in data package + ViewModels + in-memory fakes)
-⚠️  HIGH IMPACT: shared/.../session/SessionState.kt — [N] dependents (state machine + persisted snapshot)
-📊 MEDIUM IMPACT: shared/.../ui/nav/Routes.kt — [N] navigate() call sites
+🚨 CRITICAL IMPACT: module/db/.../repository/SessionRepository.kt — [N] dependents (Room impl + Presenters + FakeSessionRepository)
+⚠️  HIGH IMPACT: module/model/.../game/SessionState.kt — [N] dependents (state machine + persisted snapshot)
+📊 MEDIUM IMPACT: shared/.../ui/nav/Screens.kt — [N] navigator.goTo() call sites
 
 Breaking Changes:
-[List any removed public symbols, renamed expect declarations without actual updates, removed/renamed Routes constants, changed port methods without fake updates, or non-backward-compatible @Serializable changes]
+[List any removed public symbols, renamed expect declarations without actual updates, removed Screen wiring, changed port methods without fake updates, or non-backward-compatible @Serializable changes]
 ```
 
 ---
@@ -958,14 +977,14 @@ Exclude from gap review:
 
 Files with good coverage:
   ✅ shared/.../session/SessionStateMachine.kt — 4 findings (Architecture, Data Integrity, Testing, Standards)
-  ✅ shared/.../ui/session/SessionViewModel.kt — 3 findings (Architecture, Testing, Standards)
+  ✅ shared/.../ui/conversation/ConversationPresenter.kt — 3 findings (Architecture, Testing, Standards)
 
 Files with thin coverage:
-  ⚠️ shared/.../commonTest/SessionViewModelTest.kt — 1 finding (Testing only)
+  ⚠️ shared/.../commonTest/ConversationPresenterTest.kt — 1 finding (Testing only)
 
 Files with NO coverage:
   ❌ shared/.../db/ConversationDao.kt — 0 findings
-  ❌ shared/schemas/org.cru.soularium.data.db.SoulariumDatabase/2.json — 0 findings
+  ❌ module/db/schemas/org.cru.soularium.db.room.SoulariumDatabase/2.json — 0 findings
 
 [If gap review needed]:
 🔍 [N] file(s) need focused gap review — launching fresh agents...
@@ -993,7 +1012,7 @@ For each file (or group of files) needing gap review, launch a **fresh** general
 
 If more than 5 files need gap review, group them by relatedness:
 - Group an entity + its DAO + its migration + its schema JSON together
-- Group a screen composable + its ViewModel together
+- Group a screen's Layout + its Presenter together
 - Group a port interface + its implementation + its in-memory fake together
 - Otherwise group by directory
 
@@ -1031,7 +1050,7 @@ MISSION: Perform an exhaustive, line-by-line review of the assigned files' chang
 3. **Data integrity** — Room migration safety, schema export drift, persisted SessionState snapshot compatibility, expect/actual correctness
 4. **Testing** — Are the changes adequately tested in commonTest? Missing edge cases?
 5. **Standards** — Does it follow the patterns in .claude/CLAUDE.md?
-6. **Architecture** — Is the code in the right layer? Pure domain kept pure, ports respected, Koin wired correctly?
+6. **Architecture** — Is the code in the right layer/module? Pure game logic kept pure, ports respected, Metro bindings contributed correctly?
 
 IMPORTANT RULES:
 - SCOPE RULE: Only flag issues in code that was added or modified in the diff. You may READ surrounding code for context, but every finding MUST reference a line that appears in the diff.
@@ -1264,7 +1283,7 @@ Analyze all findings, debates, and final severity scores to build consensus. The
 
 This step catches bugs that individual agents miss because they review from a single perspective.
 
-1. **Operation Inventory**: List every distinct operation the PR implements (e.g., "advance a session via a `SessionEvent`", "load the card content", "persist a `CardPick`", "restore a session from its snapshot"). For each operation, identify ALL code paths that perform it — including the `transition` handler, the ViewModel method, repository methods, the persisted-snapshot write, and the navigation step.
+1. **Operation Inventory**: List every distinct operation the PR implements (e.g., "advance a session via a `SessionEvent`", "load the card content", "persist a `CardPick`", "restore a session from its snapshot"). For each operation, identify ALL code paths that perform it — including the `transition` handler, the Presenter's event handling, repository methods, the persisted-snapshot write, and the navigation step.
 
 2. **Safeguard Parity Check**: For each operation with multiple code paths, verify they all have equivalent:
 
@@ -1549,10 +1568,10 @@ Format: `<!-- severity:X.X --> [Label] Description...`
 Example:
 ```json
 {
-  "path": "shared/src/commonMain/kotlin/org/cru/soularium/ui/session/SessionViewModel.kt",
+  "path": "shared/src/commonMain/kotlin/org/cru/soularium/ui/conversation/ConversationPresenter.kt",
   "line": 42,
   "side": "RIGHT",
-  "body": "<!-- severity:5.2 --> [Medium] Consider hoisting this transient flag into the StateFlow for consistency with existing ViewModels."
+  "body": "<!-- severity:5.2 --> [Medium] Consider hoisting this transient flag into UiState for consistency with existing Presenters."
 }
 ```
 
@@ -1656,15 +1675,15 @@ Do NOT trigger the workflow if any condition is not met (e.g., BLOCKERS_FOUND ve
 **Worked example (Kotlin diff):**
 
 ```diff
-@@ -56,6 +57,7 @@ class SessionViewModel(                       <- new file lines start at 57
+@@ -56,6 +57,7 @@ class ConversationPresenter(                  <- new file lines start at 57
 
-     private val _state = MutableStateFlow(SessionUiState())          <- line 58
-     val state: StateFlow<SessionUiState> = _state.asStateFlow()      <- line 59
-+    private var pendingEffects: List<Effect> = emptyList()           <- line 60 (use line: 60, side: "RIGHT")
-     init { restoreSession() }                                        <- line 61
+     private val json: Json,                                          <- line 58
+     private val repository: SessionRepository,                       <- line 59
++    private val analytics: AnalyticsTracker,                         <- line 60 (use line: 60, side: "RIGHT")
+ ) : Presenter<ConversationPresenter.UiState> {                       <- line 61
 ```
 
-The `+57` means the new file starts this hunk at line 57. The added line `+    private var pendingEffects...` is line 60 — comment on it as `{"line": 60, "side": "RIGHT"}`.
+The `+57` means the new file starts this hunk at line 57. The added line `+    private val analytics...` is line 60 — comment on it as `{"line": 60, "side": "RIGHT"}`.
 
 **IMPORTANT:** The `line` MUST fall within the diff hunk range for that file. You can only comment on lines that appear in the diff output (added, removed, or context lines). You CANNOT comment on arbitrary lines that are outside the diff hunks. Lines in the file that are not surfaced as added/removed/context in the diff are out of bounds.
 
@@ -1835,11 +1854,11 @@ For each approved finding, make the code change:
 
 **Conflict handling:** if two fixes target the same file/lines and would conflict, apply the higher-severity fix and report the lower-severity one as deferred ("Deferred to next iteration: <finding> conflicted with <higher-severity-finding>"). The deferred fix will reappear in the next iteration's review (or won't, if the higher-severity fix incidentally addresses it).
 
-After all fixes are applied, run the verification commands from the `` directory (in this order — stop and fix on the first failure rather than running the rest):
+After all fixes are applied, run the verification commands from the repo root (in this order — stop and fix on the first failure rather than running the rest):
 
 1. **Format Kotlin sources:** `./gradlew ktlintFormat` — auto-fix any new style issues introduced by the edits
 2. **Lint check:** `./gradlew ktlintCheck` (from the repo root) — fail on any remaining ktlint violations. Note: `ktlintFormat` handles auto-fixable rules only; some rules can still flag issues here even after step 1. Treat those as a real fix-needed signal — do not loop step 1 expecting it to clear them.
-3. **All unit tests:** `./gradlew :shared:allTests` (from the repo root) — runs every `commonTest` suite across all `:shared` KMP targets. For a fast inner-loop check, `:shared:testAndroidHostTest` covers the Android-host JVM subset.
+3. **All unit tests:** `./gradlew allTests` (from the repo root) — runs every module's `commonTest` suite across all KMP targets. For a fast inner-loop check, `testAndroidHostTest` covers the Android-host JVM subset.
 4. **Android assembly:** `./gradlew :androidApp:assembleDebug` (from the repo root) — confirms the Android app still compiles
 5. **iOS framework link** (only on macOS hosts): `./gradlew :shared:linkDebugFrameworkIosSimulatorArm64` (from the repo root) — if not running on macOS, skip with a note: "iOS framework link skipped (not on macOS); CI will run it on `macos-14`"
 
@@ -1869,8 +1888,8 @@ EOF
 ```
 
 Examples:
-- `Fix expect/actual contract drift in getDatabaseBuilder (agent review iteration 1)`
-- `Add missing test coverage for SessionViewModel.dispatch (agent review iteration 2)`
+- `Fix expect/actual contract drift in PlatformBackHandler (agent review iteration 1)`
+- `Add missing test coverage for ConversationPresenter event handling (agent review iteration 2)`
 
 Prefer `git add <file>` over `git add -A` to avoid accidentally staging unrelated files. Confirm the commit succeeded with `git status` before continuing.
 

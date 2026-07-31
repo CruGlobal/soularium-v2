@@ -18,9 +18,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -107,7 +107,7 @@ fun SummaryLayout(state: ConversationPresenter.UiState.Summary, modifier: Modifi
         ) {
             // Tab bar — only shown when there are multiple participants
             if (participants.size > 1) {
-                TabRow(selectedTabIndex = selectedTabIndex) {
+                SecondaryTabRow(selectedTabIndex = selectedTabIndex) {
                     participants.forEachIndexed { index, participant ->
                         Tab(
                             selected = selectedTabIndex == index,

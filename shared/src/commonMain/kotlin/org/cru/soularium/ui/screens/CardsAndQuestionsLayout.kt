@@ -33,7 +33,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -58,8 +57,6 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 private const val CARD_GRID_COLUMNS = 3
-private const val TAB_IMAGES = 0
-private const val TAB_QUESTIONS = 1
 
 /**
  * Reference screen showing all 50 Soularium card images in a grid and the 5
@@ -70,7 +67,7 @@ private const val TAB_QUESTIONS = 1
 @Composable
 fun CardsAndQuestionsLayout(state: CardsAndQuestionsPresenter.UiState, modifier: Modifier = Modifier) {
     val backLabel = stringResource(Res.string.action_back)
-    var selectedTab by remember { mutableIntStateOf(TAB_IMAGES) }
+    var selectedTab by state.selectedTab
     var viewerCardId by remember { mutableStateOf<Int?>(null) }
 
     Scaffold(

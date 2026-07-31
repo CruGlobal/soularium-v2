@@ -15,34 +15,39 @@ class SelectionLayoutPaparazziTest(
     @TestParameter(valuesProvider = DeviceConfigProvider::class) deviceConfig: DeviceConfig,
     @TestParameter nightMode: NightMode,
 ) : BasePaparazziTest(deviceConfig = deviceConfig, nightMode = nightMode) {
-    // No picks yet: the "finish making your selections" hint is visible, Confirm is
-    // disabled, and each card shows only its zoom badge.
+    // Selection states: empty, partial (multi-pick questions 1-2 require 3
+    // cards), and complete with the confirm button enabled.
     @Test
-    fun `SelectionLayout() - no selections`() = snapshot {
-        SelectionLayout(state = selectionState())
+    fun `SelectionLayout() - question 1 - no selection`() = snapshot {
+        SelectionLayout(state = selectionState(questionNumber = 1, selectedCardIds = emptyList()))
     }
 
-    // Picks complete: selected cards show their check badge, the hint is gone, and
-    // Confirm is enabled. Low card ids keep the badges within the visible rows.
     @Test
-    fun `SelectionLayout() - selections complete`() = snapshot {
-        SelectionLayout(state = selectionState(selectedCardIds = listOf(2, 4, 9), isConfirmEnabled = true))
+    fun `SelectionLayout() - question 2 - partial selection`() = snapshot {
+        SelectionLayout(state = selectionState(questionNumber = 2, selectedCardIds = listOf(8, 25)))
+    }
+
+    @Test
+    fun `SelectionLayout() - question 3 - selection complete`() = snapshot {
+        SelectionLayout(
+            state = selectionState(questionNumber = 3, selectedCardIds = listOf(15), isConfirmEnabled = true),
+        )
     }
 
     // The zoom overlay shown over the grid: the translucent scrim dims the cards
     // behind the full-size artwork and its Close / Select actions.
     @Test
     fun `SelectionLayout() - card zoom overlay`() = snapshot {
-        SelectionLayout(state = selectionState())
+        SelectionLayout(state = selectionState(questionNumber = 1, selectedCardIds = emptyList()))
         OverlayEffect {
             show(CardZoomOverlay(CardAsset.CARD_02, isSelected = false))
         }
     }
 }
 
-private fun selectionState(selectedCardIds: List<Int> = emptyList(), isConfirmEnabled: Boolean = false) =
+private fun selectionState(questionNumber: Int, selectedCardIds: List<Int>, isConfirmEnabled: Boolean = false) =
     ConversationPresenter.UiState.Selection(
-        questionNumber = 1,
+        questionNumber = questionNumber,
         selectedCardIds = selectedCardIds,
         isConfirmEnabled = isConfirmEnabled,
         showExitDialog = false,

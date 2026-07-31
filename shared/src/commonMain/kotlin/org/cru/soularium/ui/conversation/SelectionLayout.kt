@@ -218,10 +218,6 @@ private fun SelectableCardItem(
     onZoom: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val cardLabel = card.contentDescription?.let { stringResource(it) }
-    val zoomLabel = cardLabel?.let { stringResource(Res.string.cd_card_zoom_named, it) }
-        ?: stringResource(Res.string.cd_card_zoom)
-
     Box(
         modifier = modifier
             .aspectRatio(1f)
@@ -238,7 +234,6 @@ private fun SelectableCardItem(
             )
             .clickable(onClick = onToggle)
             .semantics {
-                cardLabel?.let { contentDescription = it }
                 selected = isSelected
                 role = Role.Checkbox
             },
@@ -246,7 +241,7 @@ private fun SelectableCardItem(
     ) {
         Image(
             painter = painterResource(card.thumbnail ?: card.full),
-            contentDescription = null,
+            contentDescription = card.contentDescription?.let { stringResource(it) },
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize(),
         )
@@ -281,7 +276,9 @@ private fun SelectableCardItem(
             ) {
                 Icon(
                     imageVector = Icons.Filled.ZoomOutMap,
-                    contentDescription = zoomLabel,
+                    contentDescription = card.contentDescription
+                        ?.let { stringResource(Res.string.cd_card_zoom_named, stringResource(it)) }
+                        ?: stringResource(Res.string.cd_card_zoom),
                     tint = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.size(18.dp),
                 )

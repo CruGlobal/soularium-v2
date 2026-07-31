@@ -4,7 +4,6 @@ import app.cash.paparazzi.DeviceConfig
 import com.android.resources.NightMode
 import com.google.testing.junit.testparameterinjector.TestParameter
 import com.google.testing.junit.testparameterinjector.TestParameterInjector
-import org.cru.soularium.domain.DomainError
 import org.cru.soularium.ui.test.BasePaparazziTest
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -21,7 +20,7 @@ class ConversationSummaryLayoutPaparazziTest(
             state = ConversationSummaryPresenter.UiState(
                 participants = emptyList(),
                 isLoading = true,
-                error = null,
+                loadFailed = false,
                 eventSink = {},
             ),
         )
@@ -34,7 +33,7 @@ class ConversationSummaryLayoutPaparazziTest(
             state = ConversationSummaryPresenter.UiState(
                 participants = emptyList(),
                 isLoading = false,
-                error = DomainError.PersistenceFailed,
+                loadFailed = true,
                 eventSink = {},
             ),
         )
@@ -47,7 +46,7 @@ class ConversationSummaryLayoutPaparazziTest(
             state = ConversationSummaryPresenter.UiState(
                 participants = listOf(ada()),
                 isLoading = false,
-                error = null,
+                loadFailed = false,
                 eventSink = {},
             ),
         )
@@ -60,7 +59,7 @@ class ConversationSummaryLayoutPaparazziTest(
             state = ConversationSummaryPresenter.UiState(
                 participants = listOf(ada(), grace(), alan()),
                 isLoading = false,
-                error = null,
+                loadFailed = false,
                 eventSink = {},
             ),
         )

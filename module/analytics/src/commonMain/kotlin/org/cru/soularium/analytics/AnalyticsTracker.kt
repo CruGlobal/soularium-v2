@@ -1,4 +1,4 @@
-package org.cru.soularium.domain.ports
+package org.cru.soularium.analytics
 
 interface AnalyticsTracker {
     fun screenView(screenName: String)

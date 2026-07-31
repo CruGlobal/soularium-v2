@@ -25,18 +25,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import org.cru.soularium.game.content.Question
 import org.cru.soularium.generated.resources.Res
 import org.cru.soularium.generated.resources.action_change_selection
 import org.cru.soularium.generated.resources.action_confirm
 import org.cru.soularium.generated.resources.finalizing_review_hint
 import org.cru.soularium.generated.resources.finalizing_title
-import org.cru.soularium.generated.resources.q1_finalizing
-import org.cru.soularium.generated.resources.q2_finalizing
-import org.cru.soularium.generated.resources.q3_finalizing
-import org.cru.soularium.generated.resources.q4_finalizing
-import org.cru.soularium.generated.resources.q5_finalizing
 import org.cru.soularium.ui.content.CardAsset
-import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -82,7 +77,7 @@ fun FinalizingLayout(state: ConversationPresenter.UiState.Finalizing, modifier: 
 
                 // Per-question finalizing prompt
                 Text(
-                    text = stringResource(questionFinalizingResource(questionNumber)),
+                    text = stringResource(Question.forNumber(questionNumber).finalizingRes),
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onBackground,
                     textAlign = TextAlign.Center,
@@ -163,13 +158,4 @@ fun FinalizingLayout(state: ConversationPresenter.UiState.Finalizing, modifier: 
             Spacer(modifier = Modifier.height(24.dp))
         }
     }
-}
-
-/** Returns the [StringResource] for the finalizing prompt of the given 1-based [questionNumber]. */
-private fun questionFinalizingResource(questionNumber: Int): StringResource = when (questionNumber) {
-    1 -> Res.string.q1_finalizing
-    2 -> Res.string.q2_finalizing
-    3 -> Res.string.q3_finalizing
-    4 -> Res.string.q4_finalizing
-    else -> Res.string.q5_finalizing
 }

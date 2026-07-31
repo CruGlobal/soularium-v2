@@ -5,17 +5,16 @@ import com.slack.circuit.test.FakeNavigator
 import com.slack.circuit.test.test
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
-import kotlin.test.assertNull
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.SerializationException
 import org.ccci.gto.support.androidx.test.junit.runners.AndroidJUnit4
 import org.ccci.gto.support.androidx.test.junit.runners.RunOnAndroidWith
+import org.cru.soularium.analytics.CrashReporter
 import org.cru.soularium.db.repository.FakeSessionRepository
 import org.cru.soularium.db.repository.SessionRepository
-import org.cru.soularium.domain.ports.CrashReporter
 import org.cru.soularium.model.CardPick
 import org.cru.soularium.model.ContactInfo
 import org.cru.soularium.model.Conversation
@@ -46,7 +45,7 @@ class ConversationSummaryPresenterTest {
             seedPicks(bob.id, listOf(finalPick(bob.id, 1, cardId = 12)))
         }
         presenter(repo).test {
-            val loaded = awaitUntil { !it.isLoading && it.error == null && it.participants.size == 2 }
+            val loaded = awaitUntil { !it.isLoading && !it.loadFailed && it.participants.size == 2 }
             assertEquals(listOf("Alice", "Bob"), loaded.participants.map { it.name })
             assertEquals(
                 listOf(QuestionSelections(1, listOf(3)), QuestionSelections(2, listOf(7))),
@@ -97,8 +96,8 @@ class ConversationSummaryPresenterTest {
             observeConversationsError = SerializationException("db decode failure")
         }
         presenter(repo).test {
-            val errored = awaitUntil { it.error != null }
-            assertNotNull(errored.error)
+            val errored = awaitUntil { it.loadFailed }
+            assertTrue(errored.loadFailed)
             assertTrue(errored.participants.isEmpty())
             cancelAndIgnoreRemainingEvents()
         }
@@ -114,7 +113,7 @@ class ConversationSummaryPresenterTest {
         presenter(repo).test {
             val first = awaitItem()
             assertTrue(first.isLoading)
-            assertNull(first.error)
+            assertFalse(first.loadFailed)
             assertTrue(first.participants.isEmpty())
             cancelAndIgnoreRemainingEvents()
         }

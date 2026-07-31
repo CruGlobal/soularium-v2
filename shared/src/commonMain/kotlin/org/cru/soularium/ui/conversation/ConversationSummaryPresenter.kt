@@ -20,9 +20,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import org.cru.soularium.analytics.CrashReporter
 import org.cru.soularium.db.repository.SessionRepository
-import org.cru.soularium.domain.DomainError
-import org.cru.soularium.domain.ports.CrashReporter
 import org.cru.soularium.model.Session
 import org.cru.soularium.ui.nav.ConversationSummaryScreen
 
@@ -43,7 +42,7 @@ class ConversationSummaryPresenter(
     data class UiState(
         val participants: List<ParticipantSummary>,
         val isLoading: Boolean,
-        val error: DomainError?,
+        val loadFailed: Boolean,
         val eventSink: (UiEvent) -> Unit,
     ) : CircuitUiState
 
@@ -59,7 +58,7 @@ class ConversationSummaryPresenter(
         return UiState(
             participants = (summaryState as? SummaryState.Loaded)?.participants.orEmpty(),
             isLoading = summaryState is SummaryState.Loading,
-            error = (summaryState as? SummaryState.Failed)?.error,
+            loadFailed = summaryState is SummaryState.Failed,
         ) { event ->
             when (event) {
                 UiEvent.Back -> navigator.pop()
@@ -93,13 +92,13 @@ class ConversationSummaryPresenter(
             .map<List<ParticipantSummary>, SummaryState> { SummaryState.Loaded(it) }
             .catch { throwable ->
                 crashReporter.recordNonFatal(throwable, "observeSummaries")
-                emit(SummaryState.Failed(DomainError.PersistenceFailed))
+                emit(SummaryState.Failed)
             }
 
     private sealed interface SummaryState {
         data object Loading : SummaryState
         data class Loaded(val participants: List<ParticipantSummary>) : SummaryState
-        data class Failed(val error: DomainError) : SummaryState
+        data object Failed : SummaryState
     }
 
     @CircuitInject(ConversationSummaryScreen::class, AppScope::class)

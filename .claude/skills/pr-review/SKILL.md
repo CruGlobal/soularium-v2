@@ -32,7 +32,7 @@ Use the branch name and commit log as the "title" in the review header.
 ./gradlew lint
 ./gradlew iosSimulatorArm64Test
 ```
-`iosSimulatorArm64Test` (no project prefix) runs the iOS suite across every module that has one (`:shared`, `:module:model`, `:module:db`).
+`iosSimulatorArm64Test` (no project prefix) runs the iOS suite across every module that has one.
 Any failures are reported as **❌ Must Fix** items in the review output. They do not stop the rest of the review.
 Run the iOS simulator suite even when the diff looks Android-only: Kotlin/Native compiles and runs
 differently from the Android host, and tests have failed on iOS while passing on Android (ktlint and lint never
@@ -136,15 +136,14 @@ To dismiss a finding so it won't appear in future reviews, say:
 
 ### Architecture & Hexagonal Layering
 
-The app spans four modules — `:module:model` (`@Serializable` domain models), `:module:db`
-(the Room persistence layer + the `SessionRepository` contract), `:shared` (domain ports,
-session state machine, UI, DI), and `:androidApp` (the Android shell). Dependencies flow one
-way: `:androidApp` → `:shared` → `:module:db` → `:module:model` (`:shared` also depends on
-`:module:model` directly). Layering is enforced by package/module convention:
+The app is `:androidApp` (the Android shell), `:shared` (domain ports, UI, DI), and focused
+KMP library modules under `module/` (models, game rules, persistence — CLAUDE.md carries the
+current module map). Dependencies flow one way: `:androidApp` → `:shared` → the library
+modules, which depend only on other library modules (bottoming out at `:module:model`) and
+never on `:shared`. Layering is enforced by package/module convention:
 
 - [ ] Code in `org.cru.soularium.domain` does NOT depend on our `ui` layer. It may use models (`:module:model`) and platform APIs (a domain port's Android/iOS `actual` may use e.g. `Context`), but not our UI logic
 - [ ] Code in `org.cru.soularium.data` does NOT import from `ui`
-- [ ] `:module:model` depends on nothing else in-repo; `:module:db` depends only on `:module:model` — neither depends on `:shared`
 - [ ] No Android (`android.*`, `androidx.*`) or iOS (`platform.*`, `kotlinx.cinterop`) imports in `commonMain` — bridge via `expect`/`actual`
 - [ ] `:androidApp` depends on `:shared`; `:shared` has no dependency on `:androidApp`
 - [ ] Inter-module dependencies use the type-safe project accessors (`projects.module.model`, `projects.module.db`)
@@ -158,10 +157,10 @@ way: `:androidApp` → `:shared` → `:module:db` → `:module:model` (`:shared`
 
 ### Domain Layer (`:shared` / `org.cru.soularium.domain`)
 
-- [ ] Ports (`ContentRepository`, `DeviceStateRepository`, `AnalyticsTracker`, `CrashReporter`, `Sharer`) are interfaces in `domain/ports/`. The `SessionRepository` contract lives in `:module:db` (`org.cru.soularium.db.repository`). Cross-platform impls live in `data` / `:module:db`; platform-specific ones live in `androidMain`/`iosMain` (e.g. `AndroidSharer`, `IosSharer`) and are bound via `@ContributesBinding(AppScope::class)`
-- [ ] `transition(state, event, ctx)` in `domain/session/` is **pure** — no I/O, no suspending calls, no `Dispatchers.*`. Side effects are returned as `Effect` data for the Presenter to execute. It operates over `model.game.SessionState`
+- [ ] `DeviceStateRepository` is the interface in `domain/ports/`; `AnalyticsTracker`/`CrashReporter` live in `:module:analytics` instead (`CrashReporter` is a temporary resident, pending a Kermit logging refactor). The `SessionRepository` contract lives in `:module:db` (`org.cru.soularium.db.repository`). Cross-platform impls live in `data` / `:module:db`; platform-specific ones live in `androidMain`/`iosMain` (e.g. `AndroidLanguageRepository`, `IosLanguageRepository`) and are bound via `@ContributesBinding(AppScope::class)`
+- [ ] `transition(state, event, ctx)` in `:module:game` (`org.cru.soularium.game`) is **pure** — no I/O, no suspending calls, no `Dispatchers.*`. Side effects are returned as `Effect` data for the Presenter to execute. It operates over `model.game.SessionState`
 - [ ] New `SessionEvent` variants are added to the sealed hierarchy and handled exhaustively in `transition()` (no `else ->` swallowing)
-- [ ] Errors surface via `TransitionResult.error` (`DomainError` sealed interface) — no `Result<T>` wrapper, no thrown exceptions for control flow
+- [ ] Errors surface via `TransitionResult.error` (`GameError` sealed interface in `:module:game`) — no `Result<T>` wrapper, no thrown exceptions for control flow
 
 ### Persistence Layer (`:module:db`)
 
@@ -215,7 +214,7 @@ way: `:androidApp` → `:shared` → `:module:db` → `:module:model` (`:shared`
 **Screen & wiring**
 - [ ] New `Screen` destinations are `@Parcelize` `data object`/`data class` types — either in `ui/nav/Screens.kt` or co-located in a self-contained feature package next to its Presenter/Layout (e.g. `ui/terms/TermsScreen.kt`)
 - [ ] Presenter + Layout wired via `@CircuitInject(<Feature>Screen::class, AppScope::class)` codegen — Metro generates the `Presenter.Factory` / `Ui.Factory` and contributes them to the multibindings consumed by `CircuitBindings.providesCircuit`. There is no hand-written factory or switch table
-- [ ] Loading / error / empty states are first-class on every screen that loads data (the app is offline-first, but `DomainError.PersistenceFailed` still needs a path)
+- [ ] Loading / error / empty states are first-class on every screen that loads data (the app is offline-first, but a persistence failure still needs a rendered path — e.g. `ConversationSummaryPresenter.UiState.loadFailed`)
 
 ### Compose / Design System
 
@@ -240,7 +239,7 @@ Cross-reference `.claude/rules/design_system_rules.md` while reviewing UI code.
 
 - [ ] Every `expect` declaration has an `actual` for **both** `androidMain` and `iosMain` with matching signatures
 - [ ] Android-specific APIs live in `androidMain`; iOS-specific in `iosMain`; `commonMain` stays platform-neutral
-- [ ] New platform seams (`Sharer`, `PlatformBackHandler`, DataStore path, etc.) follow the `expect val`/`expect fun` + per-platform `actual` pattern — not `if (Platform.isAndroid)` branching. The Room DB builder is instead supplied by platform Metro `@Provides` in `:module:db`'s `Android`/`Ios RoomBindings`; `SoulariumDatabaseConstructor` is the one Room `expect object` (in `:module:db`)
+- [ ] New platform seams (`PlatformBackHandler`, DataStore path, etc.) follow the `expect val`/`expect fun` + per-platform `actual` pattern — not `if (Platform.isAndroid)` branching. The Room DB builder is instead supplied by platform Metro `@Provides` in `:module:db`'s `Android`/`Ios RoomBindings`; `SoulariumDatabaseConstructor` is the one Room `expect object` (in `:module:db`)
 - [ ] `iosArm64` and `iosSimulatorArm64` are both covered when adding iOS-specific code (no single-target actuals). `iosX64` is intentionally NOT a configured target (Compose Multiplatform 1.11.x stopped publishing its `iosX64` binaries) — flag any attempt to re-add it without a documented reason
 
 ### Dependency Injection — Metro
@@ -249,7 +248,7 @@ DI is compile-time via [Metro](https://github.com/ZacSweers/metro). The graph is
 
 - [ ] New impl classes use `@Inject` (constructor or class) and bind to their port via `@ContributesBinding(AppScope::class)`; app-lifetime singletons are scoped with `@SingleIn(AppScope::class)`
 - [ ] Non-constructor-injectable types go through `@Provides` inside a `@BindingContainer @ContributesTo(AppScope::class)` container — the Room database + `SessionRepository` via `RoomBindings` in `:module:db`, DeviceState via `DataBindings` in `:shared`
-- [ ] Platform-specific bindings live in `expect class PlatformBindings` actuals. Android actual takes `(context: Context)` and provides it as `@Provides @SingleIn(AppScope::class) internal val context`; iOS actual is empty (Sharer/AnalyticsTracker/CrashReporter impls are common with `@ContributesBinding`)
+- [ ] Platform-specific bindings live in `expect class PlatformBindings` actuals. Android actual takes `(context: Context)` and provides it as `@Provides @SingleIn(AppScope::class) internal val context`; iOS actual is empty (the default `AnalyticsTracker`/`CrashReporter` impls — `NoOpAnalyticsTracker`/`NoOpCrashReporter` in `shared/.../di/Placeholders.kt` — are common `commonMain` classes that self-contribute via `@ContributesBinding`)
 - [ ] Set multibindings (`Set<Presenter.Factory>`, `Set<Ui.Factory>`) declared with `@Multibinds(allowEmpty = true)` in `CircuitBindings`; new factories contributed via `@Provides @IntoSet` or `@ContributesIntoSet(AppScope::class)`
 - [ ] The `SoulariumAppGraph` interface is NOT extended with new accessor properties. Code that needs to pull a value out of the graph defines its own `@ContributesTo(AppScope::class)` accessor interface (e.g. `AppGraphAccessor { val languageRepository: LanguageRepository }`, merged in as a graph supertype) and reads it from a graph instance via Metro's `asContribution<Accessor>()` — see `RecomposeOnAppLanguageChange` reaching the graph through `LocalSoulariumAppGraph.current`. Constructor-injectable consumers (Presenters, impls) still take deps via `@Inject`; the contributed-accessor path is for consumers that can't be — e.g. composables. The pre-existing `circuit`/`deviceStateRepo` accessors on `SoulariumAppGraph` are grandfathered.
 - [ ] `createSoulariumAppGraph(PlatformBindings(...))` is called once per entry point — `SoulariumApplication.onCreate()` on Android, `MainViewController()` on iOS — and the graph is passed into `App(graph)` rather than rebuilt per recomposition
@@ -282,7 +281,7 @@ DI is compile-time via [Metro](https://github.com/ZacSweers/metro). The graph is
 - [ ] Presenter tests are written with Circuit's `circuit-test` (`FakeNavigator`, `presenter.test { awaitItem().eventSink(...) }`)
 - [ ] Presenter tests are annotated `@RunOnAndroidWith(AndroidJUnit4::class)` so the Android-host variant runs them under Robolectric — required because the Compose Runtime's Android artifact touches `android.util.Log` on its error path. Pure domain tests are unannotated
 - [ ] `:module:db` repository integration tests follow the abstract-contract pattern — a persistence-agnostic `…RepositoryTest` (in `db.repository`, `commonTest`) plus a Room subclass (in `db.room.repository`) that supplies `repository` from the database, annotated `@RunOnAndroidWith(AndroidJUnit4::class)`. The in-memory DB comes from an `expect fun buildInMemorySoulariumDatabase()` (android/ios actuals) so the test runs on both Android host (Robolectric) and iOS
-- [ ] Test doubles: reusable fakes live in a sibling `test-fixtures` module — `:module:db:test-fixtures` provides `FakeSessionRepository` (a full in-memory `SessionRepository` with seeding, interaction recording, and fault injection); single-use doubles (e.g. `RecordingSharer`) stay plain private classes in the test sources — no `mockk`
+- [ ] Test doubles: reusable fakes live in a sibling `test-fixtures` module — `:module:db:test-fixtures` provides `FakeSessionRepository` (a full in-memory `SessionRepository` with seeding, interaction recording, and fault injection); single-use doubles (e.g. `RecordingAnalytics` in `ConversationPresenterTest`) stay plain private classes in the test sources — no `mockk`
 - [ ] Test function names are backtick-quoted. Presenter tests use the structured form `UiEvent - <Event> - <behavior>` (event handling) or `UiState - <field> - <behavior>` (state derivation) — e.g. `` `UiEvent - Back - pops the navigator` ``. Other tests use a descriptive sentence, e.g. `` `solo session completes from start through summary` ``
 - [ ] The pure session state machine (`transition()`) has exhaustive case coverage; share-URL generation and other pure utilities have explicit edge-case tests
 

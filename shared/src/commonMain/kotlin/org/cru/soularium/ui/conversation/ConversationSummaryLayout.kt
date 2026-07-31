@@ -81,7 +81,7 @@ fun ConversationSummaryLayout(state: ConversationSummaryPresenter.UiState, modif
                 .fillMaxWidth()
                 .weight(1f)
             when {
-                state.error != null -> SummaryErrorPanel(modifier = panelModifier)
+                state.loadFailed -> SummaryErrorPanel(modifier = panelModifier)
                 state.isLoading -> SummaryLoadingPanel(modifier = panelModifier)
                 participants.isNotEmpty() -> {
                     val current = participants[selectedTabIndex.coerceIn(0, participants.lastIndex)]

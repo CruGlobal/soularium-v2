@@ -27,17 +27,12 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import org.cru.soularium.game.content.Question
 import org.cru.soularium.generated.resources.Res
 import org.cru.soularium.generated.resources.action_done
 import org.cru.soularium.generated.resources.discuss_instructions
 import org.cru.soularium.generated.resources.image_x_of_y
-import org.cru.soularium.generated.resources.q1_discussion
-import org.cru.soularium.generated.resources.q2_discussion
-import org.cru.soularium.generated.resources.q3_discussion
-import org.cru.soularium.generated.resources.q4_discussion
-import org.cru.soularium.generated.resources.q5_discussion
 import org.cru.soularium.ui.content.CardAsset
-import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -54,7 +49,7 @@ fun DiscussingLayout(state: ConversationPresenter.UiState.Discussing, modifier: 
     val questionNumber = state.questionNumber
     val participantName = state.participantName
     val cards = state.cardIds.map(CardAsset::fromId)
-    val discussionPrompt = stringResource(questionDiscussionResource(questionNumber))
+    val discussionPrompt = stringResource(Question.forNumber(questionNumber).discussionRes)
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -186,13 +181,4 @@ private fun MultiCardPager(cards: List<CardAsset>, modifier: Modifier = Modifier
             }
         }
     }
-}
-
-/** Returns the [StringResource] for the discussion prompt of the given 1-based [questionNumber]. */
-private fun questionDiscussionResource(questionNumber: Int): StringResource = when (questionNumber) {
-    1 -> Res.string.q1_discussion
-    2 -> Res.string.q2_discussion
-    3 -> Res.string.q3_discussion
-    4 -> Res.string.q4_discussion
-    else -> Res.string.q5_discussion
 }

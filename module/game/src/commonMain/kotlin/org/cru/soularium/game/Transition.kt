@@ -1,7 +1,6 @@
-package org.cru.soularium.domain.session
+package org.cru.soularium.game
 
-import org.cru.soularium.domain.DomainError
-import org.cru.soularium.domain.content.Questions
+import org.cru.soularium.game.content.Question
 import org.cru.soularium.model.game.SessionState
 import org.cru.soularium.model.game.SessionState.InQuestion.QuestionState
 
@@ -14,7 +13,7 @@ fun transition(state: SessionState, event: SessionEvent, ctx: SessionContext): T
     SessionState.Concluded ->
         TransitionResult(
             next = SessionState.Concluded,
-            error = DomainError.InvalidStateTransition("Concluded", event::class.simpleName ?: "?"),
+            error = GameError.InvalidStateTransition("Concluded", event::class.simpleName ?: "?"),
         )
 }
 
@@ -34,7 +33,7 @@ private fun transitionNotStarted(event: SessionEvent): TransitionResult = when (
     else ->
         TransitionResult(
             next = SessionState.NotStarted,
-            error = DomainError.InvalidStateTransition("NotStarted", event::class.simpleName ?: "?"),
+            error = GameError.InvalidStateTransition("NotStarted", event::class.simpleName ?: "?"),
         )
 }
 
@@ -60,7 +59,7 @@ private fun transitionAddingParticipants(event: SessionEvent, ctx: SessionContex
         if (ctx.participantNames.isEmpty()) {
             TransitionResult(
                 next = SessionState.AddingParticipants,
-                error = DomainError.InvalidStateTransition("AddingParticipants", "ConfirmParticipants(empty)"),
+                error = GameError.InvalidStateTransition("AddingParticipants", "ConfirmParticipants(empty)"),
             )
         } else {
             val next = SessionState.InQuestion(1, 0, QuestionState.ShowingPrompt)
@@ -73,7 +72,7 @@ private fun transitionAddingParticipants(event: SessionEvent, ctx: SessionContex
     else ->
         TransitionResult(
             next = SessionState.AddingParticipants,
-            error = DomainError.InvalidStateTransition("AddingParticipants", event::class.simpleName ?: "?"),
+            error = GameError.InvalidStateTransition("AddingParticipants", event::class.simpleName ?: "?"),
         )
 }
 
@@ -82,7 +81,7 @@ private fun transitionInQuestion(
     event: SessionEvent,
     ctx: SessionContext,
 ): TransitionResult {
-    val question = Questions.byNumber(state.questionNumber)
+    val question = Question.forNumber(state.questionNumber)
     return when (event) {
         SessionEvent.BeginSelection -> {
             val targetActivity =
@@ -106,13 +105,13 @@ private fun transitionInQuestion(
             if (state.activity != QuestionState.Selecting) {
                 return TransitionResult(
                     next = state,
-                    error = DomainError.InvalidStateTransition(state.toString(), event::class.simpleName ?: "?"),
+                    error = GameError.InvalidStateTransition(state.toString(), event::class.simpleName ?: "?"),
                 )
             }
             if (ctx.currentDraftPicks.size != question.requiredImageCount) {
                 return TransitionResult(
                     next = state,
-                    error = DomainError.InvalidSelectionCount(
+                    error = GameError.InvalidSelectionCount(
                         question.requiredImageCount,
                         ctx.currentDraftPicks.size,
                     ),
@@ -138,7 +137,7 @@ private fun transitionInQuestion(
             if (ctx.currentDraftPicks.size != question.requiredImageCount) {
                 return TransitionResult(
                     next = state,
-                    error = DomainError.InvalidSelectionCount(question.requiredImageCount, ctx.currentDraftPicks.size),
+                    error = GameError.InvalidSelectionCount(question.requiredImageCount, ctx.currentDraftPicks.size),
                 )
             }
             val next = state.copy(activity = QuestionState.Discussing)
@@ -189,7 +188,7 @@ private fun transitionInQuestion(
         else ->
             TransitionResult(
                 next = state,
-                error = DomainError.InvalidStateTransition(state.toString(), event::class.simpleName ?: "?"),
+                error = GameError.InvalidStateTransition(state.toString(), event::class.simpleName ?: "?"),
             )
     }
 }
@@ -223,7 +222,7 @@ private fun transitionSummary(event: SessionEvent): TransitionResult = when (eve
     else ->
         TransitionResult(
             next = SessionState.Summary,
-            error = DomainError.InvalidStateTransition("Summary", event::class.simpleName ?: "?"),
+            error = GameError.InvalidStateTransition("Summary", event::class.simpleName ?: "?"),
         )
 }
 
@@ -275,6 +274,6 @@ private fun transitionCollectingContact(
     else ->
         TransitionResult(
             next = state,
-            error = DomainError.InvalidStateTransition(state.toString(), event::class.simpleName ?: "?"),
+            error = GameError.InvalidStateTransition(state.toString(), event::class.simpleName ?: "?"),
         )
 }

@@ -8,8 +8,8 @@ import app.cash.paparazzi.Paparazzi
 import app.cash.paparazzi.detectEnvironment
 import com.android.resources.NightMode
 import com.google.testing.junit.testparameterinjector.TestParameterValuesProvider
-import com.slack.circuit.overlay.ContentWithOverlays
 import java.io.File
+import org.ccci.gto.android.common.testing.circuit.overlay.ContentWithInstantOverlays
 import org.cru.soularium.ui.theme.SoulariumTheme
 import org.jetbrains.compose.resources.PreviewContextConfigurationEffect
 import org.junit.Rule
@@ -53,7 +53,7 @@ abstract class BasePaparazziTest(
             PreviewContextConfigurationEffect()
         }
         SoulariumTheme {
-            ContentWithOverlays(content = content)
+            ContentWithInstantOverlays(content = content)
         }
     }
 }

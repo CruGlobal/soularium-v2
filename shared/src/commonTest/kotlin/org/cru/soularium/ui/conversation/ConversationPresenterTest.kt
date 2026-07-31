@@ -1,6 +1,5 @@
 package org.cru.soularium.ui.conversation
 
-import app.cash.turbine.ReceiveTurbine
 import com.slack.circuit.test.FakeNavigator
 import com.slack.circuit.test.test
 import kotlin.test.Test
@@ -12,14 +11,12 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.ccci.gto.support.androidx.test.junit.runners.AndroidJUnit4
 import org.ccci.gto.support.androidx.test.junit.runners.RunOnAndroidWith
-import org.cru.soularium.analytics.CrashReporter
-import org.cru.soularium.db.repository.FakeSessionRepository
-import org.cru.soularium.db.repository.SessionRepository
+import org.ccci.gto.support.turbine.awaitItemMatching
 import org.cru.soularium.game.FakeGameEngine
+import org.cru.soularium.game.GameEngine
 import org.cru.soularium.game.GameState
 import org.cru.soularium.game.SessionEvent
 import org.cru.soularium.model.CardPick
-import org.cru.soularium.model.ContactInfo
 import org.cru.soularium.model.Conversation
 import org.cru.soularium.model.Session
 import org.cru.soularium.model.game.SessionState
@@ -39,25 +36,11 @@ class ConversationPresenterTest {
     private val screen = ConversationScreen(sessionId, Session.Kind.SOLO)
     private val navigator = FakeNavigator(screen)
 
-    private fun presenter(
-        repo: SessionRepository = FakeSessionRepository(),
-        fakeEngine: FakeGameEngine = FakeGameEngine(),
-    ) = ConversationPresenter(
+    private fun presenter(fakeEngine: FakeGameEngine = FakeGameEngine()) = ConversationPresenter(
         navigator = navigator,
         screen = screen,
-        sessionRepository = repo,
         gameEngineFactory = FakeGameEngine.Factory(fakeEngine),
-        crashReporter = NoOpCrash,
     )
-
-    /** Drives the presenter to its first stable state (post-bootstrap). */
-    private suspend fun ReceiveTurbine<ConversationPresenter.UiState>.awaitStableState(
-        predicate: (ConversationPresenter.UiState) -> Boolean,
-    ): ConversationPresenter.UiState {
-        var item = awaitItem()
-        while (!predicate(item)) item = awaitItem()
-        return item
-    }
 
     // ── Bootstrap ─────────────────────────────────────────────────────────
 
@@ -156,35 +139,36 @@ class ConversationPresenterTest {
     }
 
     @Test
-    fun `UiState - Summary participants - populates once the engine reports idle`() = runTest {
-        val conversation = Conversation(Conversation.Id.random(), sessionId, 0, ContactInfo("Alice"))
-        val repo = FakeSessionRepository().apply {
-            seedConversations(sessionId, listOf(conversation))
-            seedPicks(
-                conversation.id,
-                listOf(
-                    CardPick(
-                        CardPick.Id.random(),
-                        conversation.id,
-                        questionNumber = 1,
-                        cardId = 3,
-                        pickOrder = 0,
-                        isFinal = true,
-                    ),
-                    CardPick(
-                        CardPick.Id.random(),
-                        conversation.id,
-                        questionNumber = 2,
-                        cardId = 9,
-                        pickOrder = 0,
-                        isFinal = true,
+    fun `UiState - Summary participants - maps the engine's summaries into per-question selections`() = runTest {
+        val conversationId = Conversation.Id.random()
+        val fakeEngine = FakeGameEngine(GameState(session = SessionState.Summary)).apply {
+            summaries = listOf(
+                GameEngine.ParticipantSummary(
+                    participantIndex = 0,
+                    name = "Alice",
+                    picks = listOf(
+                        CardPick(
+                            CardPick.Id.random(),
+                            conversationId,
+                            questionNumber = 1,
+                            cardId = 3,
+                            pickOrder = 0,
+                            isFinal = true,
+                        ),
+                        CardPick(
+                            CardPick.Id.random(),
+                            conversationId,
+                            questionNumber = 2,
+                            cardId = 9,
+                            pickOrder = 0,
+                            isFinal = true,
+                        ),
                     ),
                 ),
             )
         }
-        val fakeEngine = FakeGameEngine(GameState(session = SessionState.Summary))
-        presenter(repo, fakeEngine).test {
-            val summary = awaitStableState {
+        presenter(fakeEngine).test {
+            val summary = awaitItemMatching {
                 (it as? ConversationPresenter.UiState.Summary)?.participants?.isNotEmpty() == true
             } as ConversationPresenter.UiState.Summary
             assertEquals(
@@ -193,10 +177,7 @@ class ConversationPresenterTest {
             )
             cancelAndIgnoreRemainingEvents()
         }
-        assertTrue(
-            fakeEngine.awaitIdleCount >= 1,
-            "expected the presenter to await the engine before loading summaries",
-        )
+        assertTrue(fakeEngine.loadSummariesCount >= 1, "expected the presenter to load summaries from the engine")
     }
 
     @Test
@@ -359,9 +340,4 @@ class ConversationPresenterTest {
     // Note: closeCount is intentionally not asserted anywhere in this file — Circuit's test
     // harness may not run the composition's onDispose, so the assertion would be flaky rather
     // than meaningful (per the task brief).
-}
-
-private object NoOpCrash : CrashReporter {
-    override fun recordNonFatal(throwable: Throwable, breadcrumb: String?) = Unit
-    override fun setKey(key: String, value: String) = Unit
 }

@@ -9,6 +9,7 @@ import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
 import org.ccci.gto.support.androidx.test.junit.runners.AndroidJUnit4
 import org.ccci.gto.support.androidx.test.junit.runners.RunOnAndroidWith
+import org.ccci.gto.support.turbine.awaitItemMatching
 import org.cru.soularium.domain.DeviceState
 import org.cru.soularium.domain.ports.FakeDeviceStateRepository
 import org.cru.soularium.ui.home.HomeScreen
@@ -43,7 +44,7 @@ class TermsPresenterTest {
     @Test
     fun `offers Agree while the user has not yet accepted the terms`() = runTest {
         presenter.test {
-            assertTrue(awaitStable { it.showAgree }.showAgree)
+            assertTrue(awaitItemMatching { it.showAgree }.showAgree)
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -58,12 +59,4 @@ class TermsPresenterTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
-}
-
-private suspend fun app.cash.turbine.ReceiveTurbine<TermsPresenter.UiState>.awaitStable(
-    predicate: (TermsPresenter.UiState) -> Boolean,
-): TermsPresenter.UiState {
-    var item = awaitItem()
-    while (!predicate(item)) item = awaitItem()
-    return item
 }

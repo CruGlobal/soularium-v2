@@ -33,7 +33,7 @@ class GameEngineFlowTest {
         sessionId: Session.Id,
         kind: Session.Kind,
         analytics: AnalyticsTracker = SilentAnalytics,
-    ): GameEngine = GameEngineImpl(
+    ): GameEngineImpl = GameEngineImpl(
         host = GameEngineHostImpl(repo, analytics, SilentCrash),
         dispatcher = StandardTestDispatcher(testScheduler),
         sessionId = sessionId,
@@ -73,10 +73,11 @@ class GameEngineFlowTest {
         repeat(5) { playTurn(e) }
 
         assertEquals(SessionState.Summary, e.state.value.session)
-        e.awaitIdle()
 
-        val conversation = repo.loadConversations(sessionId).single()
-        assertEquals(9, repo.loadPicks(conversation.id).size)
+        // loadSummaries queues behind the played turns' effects, so no explicit await is needed.
+        val summary = e.loadSummaries().single()
+        assertEquals("Jordan", summary.name)
+        assertEquals(9, summary.picks.size)
 
         e.dispatch(SessionEvent.Conclude)
         assertEquals(SessionState.Concluded, e.state.value.session)
@@ -97,16 +98,11 @@ class GameEngineFlowTest {
         repeat(5 * 3) { playTurn(e) }
 
         assertEquals(SessionState.Summary, e.state.value.session)
-        e.awaitIdle()
 
-        val conversations = repo.loadConversations(sessionId)
-        assertEquals(3, conversations.size)
-        conversations.forEach { conversation ->
-            assertEquals(
-                9,
-                repo.loadPicks(conversation.id).size,
-                "${conversation.contact.name} should have 9 final picks"
-            )
+        val summaries = e.loadSummaries()
+        assertEquals(3, summaries.size)
+        summaries.forEach { summary ->
+            assertEquals(9, summary.picks.size, "${summary.name} should have 9 final picks")
         }
     }
 

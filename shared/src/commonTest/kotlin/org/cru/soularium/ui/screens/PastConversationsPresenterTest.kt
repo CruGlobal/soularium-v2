@@ -1,6 +1,5 @@
 package org.cru.soularium.ui.screens
 
-import app.cash.turbine.ReceiveTurbine
 import com.slack.circuit.test.FakeNavigator
 import com.slack.circuit.test.test
 import kotlin.test.Test
@@ -9,8 +8,9 @@ import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
 import org.ccci.gto.support.androidx.test.junit.runners.AndroidJUnit4
 import org.ccci.gto.support.androidx.test.junit.runners.RunOnAndroidWith
-import org.cru.soularium.analytics.CrashReporter
+import org.ccci.gto.support.turbine.awaitItemMatching
 import org.cru.soularium.db.repository.FakeSessionRepository
+import org.cru.soularium.di.NoOpCrashReporter
 import org.cru.soularium.model.ContactInfo
 import org.cru.soularium.model.Conversation
 import org.cru.soularium.model.Session
@@ -38,28 +38,15 @@ class PastConversationsPresenterTest {
         repo.persistState(sessionId, SessionState.Concluded)
 
         val navigator = FakeNavigator(PastConversationsScreen)
-        val presenter = PastConversationsPresenter(navigator, repo, NoOpCrash)
+        val presenter = PastConversationsPresenter(navigator, repo, NoOpCrashReporter())
 
         presenter.test {
-            val withRow = awaitStable { it.completed.size == 1 }
+            val withRow = awaitItemMatching { it.completed.size == 1 }
             assertEquals(sessionId, withRow.completed.single().sessionId)
             withRow.eventSink(PastConversationsPresenter.UiEvent.Delete(sessionId))
-            val empty = awaitStable { it.completed.isEmpty() }
+            val empty = awaitItemMatching { it.completed.isEmpty() }
             assertTrue(empty.completed.isEmpty(), "deleted session should leave the completed list")
             cancelAndIgnoreRemainingEvents()
         }
     }
-}
-
-private suspend fun ReceiveTurbine<PastConversationsPresenter.UiState>.awaitStable(
-    predicate: (PastConversationsPresenter.UiState) -> Boolean,
-): PastConversationsPresenter.UiState {
-    var item = awaitItem()
-    while (!predicate(item)) item = awaitItem()
-    return item
-}
-
-private object NoOpCrash : CrashReporter {
-    override fun recordNonFatal(throwable: Throwable, breadcrumb: String?) = Unit
-    override fun setKey(key: String, value: String) = Unit
 }

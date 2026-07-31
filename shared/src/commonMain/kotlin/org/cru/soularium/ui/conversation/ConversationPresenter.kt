@@ -19,8 +19,6 @@ import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
 import kotlinx.coroutines.launch
-import org.cru.soularium.analytics.CrashReporter
-import org.cru.soularium.db.repository.SessionRepository
 import org.cru.soularium.game.GameEngine
 import org.cru.soularium.game.GameState
 import org.cru.soularium.game.SessionEvent
@@ -34,9 +32,7 @@ import org.cru.soularium.ui.nav.ConversationScreen
 class ConversationPresenter(
     @Assisted private val navigator: Navigator,
     @Assisted private val screen: ConversationScreen,
-    private val sessionRepository: SessionRepository,
     private val gameEngineFactory: GameEngine.Factory,
-    private val crashReporter: CrashReporter,
 ) : Presenter<ConversationPresenter.UiState> {
 
     /**
@@ -177,10 +173,9 @@ class ConversationPresenter(
         // If we land on Summary (either fresh or via load), populate summaries.
         LaunchedEffect(game.session) {
             if (game.session == SessionState.Summary) {
-                engine.awaitIdle()
-                runCatching { loadSummaries() }
-                    .onSuccess { summaries = it }
-                    .onFailure { crashReporter.recordNonFatal(it, "loadSummaries") }
+                summaries = engine.loadSummaries().map {
+                    ParticipantSummary(it.participantIndex, it.name, it.picks.toQuestionSelections())
+                }
             }
             if (game.session == SessionState.Concluded) {
                 navigator.pop()
@@ -332,16 +327,6 @@ class ConversationPresenter(
                 eventSink = eventSink,
             )
     }
-
-    /** Loads each participant's final 9 picks for the Summary screen. */
-    private suspend fun loadSummaries(): List<ParticipantSummary> =
-        sessionRepository.loadConversations(screen.sessionId).map { conversation ->
-            ParticipantSummary(
-                participantIndex = conversation.displayOrder,
-                name = conversation.contact.name,
-                selections = sessionRepository.loadPicks(conversation.id).toQuestionSelections(),
-            )
-        }
 
     @CircuitInject(ConversationScreen::class, AppScope::class)
     @AssistedFactory

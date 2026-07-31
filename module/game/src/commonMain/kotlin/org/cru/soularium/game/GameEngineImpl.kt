@@ -26,11 +26,11 @@ import org.cru.soularium.model.game.SessionState.InQuestion.QuestionState
 
 @AssistedInject
 internal class GameEngineImpl(
-    private val host: GameEngine.Host,
-    dispatcher: CoroutineDispatcher = Dispatchers.Default,
+    private val host: Host,
     @Assisted private val sessionId: Session.Id,
     @Assisted private val kind: Session.Kind,
-    @Assisted initialState: GameState,
+    dispatcher: CoroutineDispatcher = Dispatchers.Default,
+    initialState: GameState = GameState(),
 ) : GameEngine {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private val queue = Channel<QueuedOp>(Channel.UNLIMITED)
@@ -40,46 +40,40 @@ internal class GameEngineImpl(
 
     init {
         scope.launch {
-            for (queued in queue) {
-                withContext(NonCancellable) {
+            withContext(NonCancellable) {
+                for (queued in queue) {
                     runCatching { queued.op() }
-                        .onFailure { host.reportNonFatal(it, queued.context) }
+                        .onFailure { host.reportNonFatal(it, queued.context()) }
                 }
             }
         }.invokeOnCompletion { scope.cancel() }
     }
 
     override fun dispatch(event: SessionEvent) {
-        val current = _state.value
-        val result = step(current.session, event, current)
-        val context = "applyEffects after $event"
-        if (result.error != null) {
-            enqueue(context) {
-                host.execute(
-                    sessionId,
+        val result = step(event, _state.value)
+        val effects: List<Effect>
+        if (result.error == null) {
+            _state.value = result.next
+            effects = result.effects
+        } else {
+            effects =
+                listOf(
                     Effect.LogAnalytics(
                         "transition_error",
-                        mapOf(
-                            "error" to (result.error::class.simpleName ?: "unknown")
-                        )
+                        mapOf("error" to (result.error::class.simpleName ?: "unknown")),
                     ),
                 )
-            }
-            return
         }
-        _state.value = evolve(current, event, result)
-        result.effects.forEach { effect -> enqueue(context) { host.execute(sessionId, effect) } }
+        if (effects.isEmpty()) return
+        val context = { "applyEffects after $event" }
+        effects.forEach { effect -> enqueue(context) { host.execute(sessionId, effect) } }
     }
 
     override suspend fun start() {
-        var loadFailed = false
-        val loaded =
+        val loadResult =
             runCatching { host.findSessionState(sessionId) }
-                .onFailure {
-                    loadFailed = true
-                    host.reportNonFatal(it, "findSessionState on start")
-                }
-                .getOrNull()
+                .onFailure { host.reportNonFatal(it, "findSessionState on start") }
+        val loaded = loadResult.getOrNull()
         if (loaded != null) {
             _state.update { it.copy(session = snapBackToPromptIfMidQuestion(loaded)) }
             runCatching { host.loadParticipantNames(sessionId) }
@@ -93,7 +87,7 @@ internal class GameEngineImpl(
                         host.reportNonFatal(it, "sessionExists on start")
                         false
                     }
-            if (!exists || loadFailed) {
+            if (!exists || loadResult.isFailure) {
                 runCatching { host.createSession(Session(id = sessionId, kind = kind), SessionState.NotStarted) }
                     .onFailure { host.reportNonFatal(it, "createSession on start") }
             }
@@ -101,88 +95,73 @@ internal class GameEngineImpl(
         }
     }
 
-    override suspend fun awaitIdle() {
-        val done = CompletableDeferred<Unit>()
-        enqueue("awaitIdle") { done.complete(Unit) }
-        done.await()
+    override suspend fun loadSummaries(): List<GameEngine.ParticipantSummary> {
+        var summaries = emptyList<GameEngine.ParticipantSummary>()
+        awaitQueued("loadSummaries") { summaries = host.loadSummaries(sessionId) }
+        return summaries
     }
 
-    override suspend fun bookmark() {
-        val done = CompletableDeferred<Unit>()
-        enqueue("bookmarkAndExit") {
-            try {
-                runCatching { host.setBookmarked(sessionId, true) }
-                    .onFailure { host.reportNonFatal(it, "bookmarkAndExit") }
-                host.execute(sessionId, Effect.LogAnalytics("conversation_bookmarked", emptyMap()))
-            } finally {
-                done.complete(Unit)
-            }
-        }
-        done.await()
+    /** Suspends until every effect enqueued so far has finished executing against the host. */
+    suspend fun awaitIdle() = awaitQueued("awaitIdle") {}
+
+    override suspend fun bookmark() = awaitQueued("bookmarkAndExit") {
+        runCatching { host.setBookmarked(sessionId, true) }
+            .onFailure { host.reportNonFatal(it, "bookmarkAndExit") }
+        host.execute(sessionId, Effect.LogAnalytics("conversation_bookmarked", emptyMap()))
     }
 
-    override suspend fun discard() {
-        val done = CompletableDeferred<Unit>()
-        enqueue("discardAndExit") {
-            try {
-                host.deleteSession(sessionId)
-            } finally {
-                done.complete(Unit)
-            }
-        }
-        done.await()
-    }
+    override suspend fun discard() = awaitQueued("discardAndExit") { host.deleteSession(sessionId) }
 
     override fun close() {
         queue.close() // worker drains what is already queued, then the scope dies
     }
 
-    private fun enqueue(context: String, op: suspend () -> Unit) {
+    private fun enqueue(context: () -> String, op: suspend () -> Unit) {
         queue.trySend(QueuedOp(context, op))
     }
 
-    private class QueuedOp(val context: String, val op: suspend () -> Unit)
-
-    private fun evolve(current: GameState, event: SessionEvent, result: StepResult): GameState {
-        var next = current.copy(session = result.next)
-        if (event is SessionEvent.ToggleCard) {
-            next =
-                next.copy(
-                    draftPicks =
-                    if (event.cardId in next.draftPicks) {
-                        next.draftPicks - event.cardId
-                    } else {
-                        next.draftPicks + event.cardId
-                    },
-                )
+    /**
+     * Enqueues [op] behind every effect queued so far and suspends until it has run. The caller
+     * always resumes — failures thrown by [op] are reported by the worker loop, not rethrown.
+     */
+    private suspend fun awaitQueued(context: String, op: suspend () -> Unit) {
+        val done = CompletableDeferred<Unit>()
+        enqueue({ context }) {
+            try {
+                op()
+            } finally {
+                done.complete(Unit)
+            }
         }
-        if (event is SessionEvent.DismissInstructions) next = next.copy(instructionsShown = true)
-        for (effect in result.effects) {
-            if (effect is Effect.PersistParticipants) next = next.copy(participantNames = effect.names)
-        }
-        val enteringPromptForNewTurn =
-            (result.next as? SessionState.InQuestion)?.activity == QuestionState.ShowingPrompt
-        if (enteringPromptForNewTurn) next = next.copy(draftPicks = emptyList())
-        return next
+        done.await()
     }
 
-    private fun step(session: SessionState, event: SessionEvent, state: GameState): StepResult = when (session) {
-        SessionState.NotStarted -> transitionNotStarted(event)
-        SessionState.AddingParticipants -> transitionAddingParticipants(event, state)
-        is SessionState.InQuestion -> transitionInQuestion(session, event, state)
-        SessionState.Summary -> transitionSummary(event)
-        is SessionState.CollectingContact -> transitionCollectingContact(session, event, state)
-        SessionState.Concluded ->
-            StepResult(
-                next = SessionState.Concluded,
-                error = GameError.InvalidStateTransition("Concluded", event::class.simpleName ?: "?"),
-            )
+    private class QueuedOp(val context: () -> String, val op: suspend () -> Unit)
+
+    private fun step(event: SessionEvent, state: GameState): StepResult {
+        val result = when (val session = state.session) {
+            SessionState.NotStarted -> transitionNotStarted(event, state)
+            SessionState.AddingParticipants -> transitionAddingParticipants(event, state)
+            is SessionState.InQuestion -> transitionInQuestion(session, event, state)
+            SessionState.Summary -> transitionSummary(event, state)
+            is SessionState.CollectingContact -> transitionCollectingContact(session, event, state)
+            SessionState.Concluded -> invalid(state, "Concluded", event)
+        }
+        if (result.error != null) return result
+        // A turn always begins with an empty draft-pick tray.
+        val next = result.next
+        val startsNewTurn = (next.session as? SessionState.InQuestion)?.activity == QuestionState.ShowingPrompt
+        return if (startsNewTurn && next.draftPicks.isNotEmpty()) {
+            result.copy(next = next.copy(draftPicks = emptyList()))
+        } else {
+            result
+        }
     }
 
-    private fun transitionNotStarted(event: SessionEvent): StepResult = when (event) {
+    private fun transitionNotStarted(event: SessionEvent, state: GameState): StepResult = when (event) {
         is SessionEvent.StartSession ->
             StepResult(
-                next = SessionState.AddingParticipants,
+                next = state.copy(session = SessionState.AddingParticipants),
                 effects =
                 listOf(
                     Effect.PersistState(SessionState.AddingParticipants),
@@ -192,51 +171,39 @@ internal class GameEngineImpl(
                     ),
                 ),
             )
-        else ->
-            StepResult(
-                next = SessionState.NotStarted,
-                error = GameError.InvalidStateTransition("NotStarted", event::class.simpleName ?: "?"),
-            )
+        else -> invalid(state, "NotStarted", event)
     }
 
     private fun transitionAddingParticipants(event: SessionEvent, state: GameState): StepResult = when (event) {
-        is SessionEvent.AddParticipant -> {
-            val names = state.participantNames + event.name
-            StepResult(
-                next = SessionState.AddingParticipants,
-                effects = listOf(Effect.PersistParticipants(names)),
-            )
-        }
-        is SessionEvent.RemoveParticipant -> {
-            val names =
+        is SessionEvent.AddParticipant -> persistParticipants(state, state.participantNames + event.name)
+        is SessionEvent.RemoveParticipant ->
+            persistParticipants(
+                state,
                 state.participantNames.toMutableList().also {
                     if (event.index in it.indices) it.removeAt(event.index)
-                }
-            StepResult(
-                next = SessionState.AddingParticipants,
-                effects = listOf(Effect.PersistParticipants(names)),
+                },
             )
-        }
         SessionEvent.ConfirmParticipants -> {
             if (state.participantNames.isEmpty()) {
                 StepResult(
-                    next = SessionState.AddingParticipants,
+                    next = state,
                     error = GameError.InvalidStateTransition("AddingParticipants", "ConfirmParticipants(empty)"),
                 )
             } else {
                 val next = SessionState.InQuestion(1, 0, QuestionState.ShowingPrompt)
                 StepResult(
-                    next = next,
+                    next = state.copy(session = next),
                     effects = listOf(Effect.PersistState(next)),
                 )
             }
         }
-        else ->
-            StepResult(
-                next = SessionState.AddingParticipants,
-                error = GameError.InvalidStateTransition("AddingParticipants", event::class.simpleName ?: "?"),
-            )
+        else -> invalid(state, "AddingParticipants", event)
     }
+
+    private fun persistParticipants(state: GameState, names: List<String>) = StepResult(
+        next = state.copy(participantNames = names),
+        effects = listOf(Effect.PersistParticipants(names)),
+    )
 
     private fun transitionInQuestion(
         session: SessionState.InQuestion,
@@ -255,24 +222,24 @@ internal class GameEngineImpl(
                         QuestionState.Selecting
                     }
                 val next = session.copy(activity = targetActivity)
-                StepResult(next = next, effects = listOf(Effect.PersistState(next)))
+                StepResult(next = state.copy(session = next), effects = listOf(Effect.PersistState(next)))
             }
 
             SessionEvent.DismissInstructions -> {
                 val next = session.copy(activity = QuestionState.Selecting)
-                StepResult(next = next, effects = listOf(Effect.PersistState(next)))
+                StepResult(
+                    next = state.copy(session = next, instructionsShown = true),
+                    effects = listOf(Effect.PersistState(next)),
+                )
             }
 
             SessionEvent.ConfirmSelection -> {
                 if (session.activity != QuestionState.Selecting) {
-                    return StepResult(
-                        next = session,
-                        error = GameError.InvalidStateTransition(session.toString(), event::class.simpleName ?: "?"),
-                    )
+                    return invalid(state, session.toString(), event)
                 }
                 if (state.draftPicks.size != question.requiredImageCount) {
                     return StepResult(
-                        next = session,
+                        next = state,
                         error =
                         GameError.InvalidSelectionCount(
                             question.requiredImageCount,
@@ -282,7 +249,7 @@ internal class GameEngineImpl(
                 }
                 val next = session.copy(activity = QuestionState.Finalizing)
                 StepResult(
-                    next = next,
+                    next = state.copy(session = next),
                     effects =
                     listOf(
                         Effect.PersistState(next),
@@ -299,13 +266,13 @@ internal class GameEngineImpl(
             SessionEvent.ConfirmFinal -> {
                 if (state.draftPicks.size != question.requiredImageCount) {
                     return StepResult(
-                        next = session,
+                        next = state,
                         error = GameError.InvalidSelectionCount(question.requiredImageCount, state.draftPicks.size),
                     )
                 }
                 val next = session.copy(activity = QuestionState.Discussing)
                 StepResult(
-                    next = next,
+                    next = state.copy(session = next),
                     effects =
                     listOf(
                         Effect.PersistState(next),
@@ -345,32 +312,31 @@ internal class GameEngineImpl(
                             )
                         else -> SessionState.Summary
                     }
-                StepResult(next = next, effects = listOf(Effect.PersistState(next)))
+                StepResult(next = state.copy(session = next), effects = listOf(Effect.PersistState(next)))
             }
 
             is SessionEvent.ToggleCard ->
                 if (session.activity == QuestionState.Selecting) {
-                    StepResult(next = session)
+                    val toggled =
+                        if (event.cardId in state.draftPicks) {
+                            state.draftPicks - event.cardId
+                        } else {
+                            state.draftPicks + event.cardId
+                        }
+                    StepResult(next = state.copy(draftPicks = toggled))
                 } else {
-                    StepResult(
-                        next = session,
-                        error = GameError.InvalidStateTransition(session.toString(), event::class.simpleName ?: "?"),
-                    )
+                    invalid(state, session.toString(), event)
                 }
 
-            else ->
-                StepResult(
-                    next = session,
-                    error = GameError.InvalidStateTransition(session.toString(), event::class.simpleName ?: "?"),
-                )
+            else -> invalid(state, session.toString(), event)
         }
     }
 
-    private fun transitionSummary(event: SessionEvent): StepResult = when (event) {
+    private fun transitionSummary(event: SessionEvent, state: GameState): StepResult = when (event) {
         is SessionEvent.CollectContact -> {
             val next = SessionState.CollectingContact(event.participantIndex)
             StepResult(
-                next = next,
+                next = state.copy(session = next),
                 effects =
                 listOf(
                     Effect.PersistState(next),
@@ -380,74 +346,58 @@ internal class GameEngineImpl(
         }
         SessionEvent.SkipContact ->
             StepResult(
-                next = SessionState.Concluded,
+                next = state.copy(session = SessionState.Concluded),
                 effects = listOf(Effect.PersistState(SessionState.Concluded)),
             )
-        SessionEvent.Conclude ->
-            StepResult(
-                next = SessionState.Concluded,
-                effects =
-                listOf(
-                    Effect.PersistState(SessionState.Concluded),
-                    Effect.LogAnalytics(event = "session_completed", params = emptyMap()),
-                ),
-            )
-        else ->
-            StepResult(
-                next = SessionState.Summary,
-                error = GameError.InvalidStateTransition("Summary", event::class.simpleName ?: "?"),
-            )
+        SessionEvent.Conclude -> concludeResult(state)
+        else -> invalid(state, "Summary", event)
     }
 
     private fun transitionCollectingContact(
         session: SessionState.CollectingContact,
         event: SessionEvent,
         state: GameState,
-    ): StepResult = when (event) {
-        is SessionEvent.CollectContact -> {
-            val nextIndex = session.participantIndex + 1
-            val next =
-                if (nextIndex >= state.participantNames.size) {
-                    SessionState.Concluded
-                } else {
-                    SessionState.CollectingContact(nextIndex)
-                }
-            StepResult(
-                next = next,
-                effects =
-                listOf(
-                    Effect.PersistState(next),
-                    Effect.PersistContact(event.participantIndex, event.info),
-                ),
-            )
-        }
-        SessionEvent.SkipContact -> {
-            val nextIndex = session.participantIndex + 1
+    ): StepResult {
+        val nextIndex = session.participantIndex + 1
+        val advanced =
             if (nextIndex >= state.participantNames.size) {
-                StepResult(
-                    next = SessionState.Concluded,
-                    effects = listOf(Effect.PersistState(SessionState.Concluded)),
-                )
+                SessionState.Concluded
             } else {
-                val next = SessionState.CollectingContact(nextIndex)
-                StepResult(next = next, effects = listOf(Effect.PersistState(next)))
+                SessionState.CollectingContact(nextIndex)
             }
+        return when (event) {
+            is SessionEvent.CollectContact ->
+                StepResult(
+                    next = state.copy(session = advanced),
+                    effects =
+                    listOf(
+                        Effect.PersistState(advanced),
+                        Effect.PersistContact(event.participantIndex, event.info),
+                    ),
+                )
+            SessionEvent.SkipContact ->
+                StepResult(
+                    next = state.copy(session = advanced),
+                    effects = listOf(Effect.PersistState(advanced)),
+                )
+            SessionEvent.Conclude -> concludeResult(state)
+            else -> invalid(state, session.toString(), event)
         }
-        SessionEvent.Conclude ->
-            StepResult(
-                next = SessionState.Concluded,
-                effects =
-                listOf(
-                    Effect.PersistState(SessionState.Concluded),
-                    Effect.LogAnalytics(event = "session_completed", params = emptyMap()),
-                ),
-            )
-        else ->
-            StepResult(
-                next = session,
-                error = GameError.InvalidStateTransition(session.toString(), event::class.simpleName ?: "?"),
-            )
     }
+
+    private fun concludeResult(state: GameState) = StepResult(
+        next = state.copy(session = SessionState.Concluded),
+        effects =
+        listOf(
+            Effect.PersistState(SessionState.Concluded),
+            Effect.LogAnalytics(event = "session_completed", params = emptyMap()),
+        ),
+    )
+
+    private fun invalid(state: GameState, from: String, event: SessionEvent) = StepResult(
+        next = state,
+        error = GameError.InvalidStateTransition(from, event::class.simpleName ?: "?"),
+    )
 
     /**
      * A session bookmarked mid-question persists an in-progress activity (Selecting, Finalizing,
@@ -462,8 +412,12 @@ internal class GameEngineImpl(
             state
         }
 
+    /**
+     * A pure transition's outcome: the full [next] engine state, the [effects] to run against
+     * the host, or the [error] that leaves state unchanged.
+     */
     private data class StepResult(
-        val next: SessionState,
+        val next: GameState,
         val effects: List<Effect> = emptyList(),
         val error: GameError? = null,
     )
@@ -471,6 +425,32 @@ internal class GameEngineImpl(
     @AssistedFactory
     @ContributesBinding(AppScope::class)
     interface Factory : GameEngine.Factory {
-        override fun create(sessionId: Session.Id, kind: Session.Kind, initialState: GameState): GameEngineImpl
+        override fun create(sessionId: Session.Id, kind: Session.Kind): GameEngineImpl
+    }
+
+    /**
+     * Everything a running engine may do to the outside world — rehydration reads,
+     * effect and session-lifecycle writes, and telemetry; implemented over
+     * [SessionRepository][org.cru.soularium.db.repository.SessionRepository] and the
+     * analytics ports.
+     */
+    interface Host {
+        suspend fun findSessionState(id: Session.Id): SessionState?
+
+        suspend fun loadParticipantNames(id: Session.Id): List<String>
+
+        suspend fun loadSummaries(id: Session.Id): List<GameEngine.ParticipantSummary>
+
+        suspend fun sessionExists(id: Session.Id): Boolean
+
+        suspend fun createSession(session: Session, initialState: SessionState)
+
+        suspend fun setBookmarked(id: Session.Id, bookmarked: Boolean)
+
+        suspend fun deleteSession(id: Session.Id)
+
+        suspend fun execute(id: Session.Id, effect: Effect)
+
+        fun reportNonFatal(throwable: Throwable, context: String)
     }
 }

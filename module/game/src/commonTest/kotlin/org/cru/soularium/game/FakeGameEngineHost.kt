@@ -3,11 +3,13 @@ package org.cru.soularium.game
 import org.cru.soularium.model.Session
 import org.cru.soularium.model.game.SessionState
 
-internal class FakeGameEngineHost : GameEngine.Host {
+internal class FakeGameEngineHost : GameEngineImpl.Host {
     var persistedState: SessionState? = null
     var participantNames: List<String> = emptyList()
+    var summaries: List<GameEngine.ParticipantSummary> = emptyList()
     var sessionExists = false
     var findSessionStateError: Throwable? = null
+    var loadSummariesError: Throwable? = null
     var executeError: Throwable? = null
     var setBookmarkedError: Throwable? = null
     var deleteSessionError: Throwable? = null
@@ -24,6 +26,11 @@ internal class FakeGameEngineHost : GameEngine.Host {
     }
 
     override suspend fun loadParticipantNames(id: Session.Id): List<String> = participantNames
+
+    override suspend fun loadSummaries(id: Session.Id): List<GameEngine.ParticipantSummary> {
+        loadSummariesError?.let { throw it }
+        return summaries
+    }
 
     override suspend fun sessionExists(id: Session.Id): Boolean = sessionExists
 

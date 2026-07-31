@@ -49,12 +49,13 @@ module dependency graph rather than by convention.
   `CrashReporter` live in `:module:analytics` (`CrashReporter` is a temporary
   resident — pending a Kermit logging refactor; don't invest in that interface).
 - **Game engine** (`:module:game`, `org.cru.soularium.game`): `GameEngine` is an
-  interface — instances come from the graph via the nested `GameEngine.Factory` (a
-  `fun interface`, assisted-injected internally); tests construct the internal
+  interface — instances come from the graph via the nested `GameEngine.Factory`
+  (assisted-injected internally); tests construct the internal
   `GameEngineImpl` directly or script a `FakeGameEngine`. It owns the game
   loop — it exposes `StateFlow<GameState>` (persisted `SessionState` + volatile
-  context), `dispatch(event)`, rehydration via `start()`, and serialized effect
-  execution through the `GameEngine.Host` port (implemented in `:module:game` over
+  context), `dispatch(event)`, rehydration via `start()`, summary reads via
+  `loadSummaries()`, and serialized effect execution through the engine-internal
+  `GameEngineImpl.Host` port (implemented in `:module:game` over
   `SessionRepository`). The per-state transition logic is **pure** private methods on
   the engine — no I/O; side effects are returned as `Effect` data and executed by the
   engine's FIFO queue, which drains on `close()` so navigation can't drop writes. The

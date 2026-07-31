@@ -7,15 +7,17 @@ import org.cru.soularium.model.Session
 
 /**
  * Scripted [GameEngine] for isolated presenter tests: set [stateFlow] to drive
- * the UI, and assert on the recorded [dispatched] events and lifecycle counters.
+ * the UI, script [summaries], and assert on the recorded [dispatched] events and
+ * lifecycle counters.
  */
 class FakeGameEngine(initialState: GameState = GameState()) : GameEngine {
     val stateFlow = MutableStateFlow(initialState)
     override val state: StateFlow<GameState> = stateFlow.asStateFlow()
 
     val dispatched = mutableListOf<SessionEvent>()
+    var summaries: List<GameEngine.ParticipantSummary> = emptyList()
     var startCount = 0
-    var awaitIdleCount = 0
+    var loadSummariesCount = 0
     var bookmarkCount = 0
     var discardCount = 0
     var closeCount = 0
@@ -26,8 +28,9 @@ class FakeGameEngine(initialState: GameState = GameState()) : GameEngine {
     override fun dispatch(event: SessionEvent) {
         dispatched += event
     }
-    override suspend fun awaitIdle() {
-        awaitIdleCount++
+    override suspend fun loadSummaries(): List<GameEngine.ParticipantSummary> {
+        loadSummariesCount++
+        return summaries
     }
     override suspend fun bookmark() {
         bookmarkCount++
@@ -39,18 +42,8 @@ class FakeGameEngine(initialState: GameState = GameState()) : GameEngine {
         closeCount++
     }
 
-    /**
-     * [GameEngine.Factory] that always returns [engine], recording each [create] call
-     * so tests can assert on the requested session id, kind, and initial state.
-     */
+    /** [GameEngine.Factory] that always returns [engine]. */
     class Factory(val engine: FakeGameEngine = FakeGameEngine()) : GameEngine.Factory {
-        val createCalls = mutableListOf<CreateCall>()
-
-        override fun create(sessionId: Session.Id, kind: Session.Kind, initialState: GameState): GameEngine {
-            createCalls += CreateCall(sessionId, kind, initialState)
-            return engine
-        }
-
-        data class CreateCall(val sessionId: Session.Id, val kind: Session.Kind, val initialState: GameState)
+        override fun create(sessionId: Session.Id, kind: Session.Kind): GameEngine = engine
     }
 }

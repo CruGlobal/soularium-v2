@@ -22,7 +22,7 @@ class GameEngineTest {
         host: FakeGameEngineHost = FakeGameEngineHost(),
         initial: GameState? = null,
         kind: Session.Kind = Session.Kind.SOLO,
-    ): GameEngine = GameEngineImpl(
+    ): GameEngineImpl = GameEngineImpl(
         host = host,
         dispatcher = StandardTestDispatcher(testScheduler),
         sessionId = sessionId,
@@ -622,5 +622,25 @@ class GameEngineTest {
         val e = engine(host, initial = GameState(session = SessionState.AddingParticipants))
         e.discard() // completing without hanging is the assertion
         assertEquals(listOf("discardAndExit"), host.nonFatals)
+    }
+
+    @Test
+    fun `loadSummaries runs after queued effects`() = runTest {
+        val host = FakeGameEngineHost().apply {
+            summaries = listOf(GameEngine.ParticipantSummary(0, "Alice", emptyList()))
+        }
+        val e = engine(host, initial = GameState(session = SessionState.AddingParticipants))
+        e.dispatch(SessionEvent.AddParticipant("Alice"))
+        val loaded = e.loadSummaries()
+        assertEquals(host.summaries, loaded)
+        assertTrue(host.executed.any { it is Effect.PersistParticipants }) // FIFO: effect first
+    }
+
+    @Test
+    fun `loadSummaries returns empty and reports when the host read fails`() = runTest {
+        val host = FakeGameEngineHost().apply { loadSummariesError = IllegalStateException("db down") }
+        val e = engine(host, initial = GameState(session = SessionState.Summary))
+        assertEquals(emptyList(), e.loadSummaries())
+        assertEquals(listOf("loadSummaries"), host.nonFatals)
     }
 }

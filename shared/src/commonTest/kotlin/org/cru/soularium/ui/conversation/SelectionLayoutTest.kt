@@ -1,91 +1,87 @@
 package org.cru.soularium.ui.conversation
 
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
-import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
-import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
-import com.slack.circuit.overlay.ContentWithOverlays
+import com.slack.circuit.overlay.LocalOverlayHost
+import com.slack.circuit.test.TestEventSink
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertIs
+import kotlin.test.assertTrue
 import org.ccci.gto.support.androidx.test.junit.runners.AndroidJUnit4
 import org.ccci.gto.support.androidx.test.junit.runners.RunOnAndroidWith
 import org.cru.soularium.generated.resources.Res
-import org.cru.soularium.generated.resources.action_deselect
-import org.cru.soularium.generated.resources.action_select
 import org.cru.soularium.generated.resources.card_a11y_description_1
-import org.cru.soularium.generated.resources.cd_card_zoom_close
 import org.cru.soularium.generated.resources.cd_card_zoom_named
+import org.cru.soularium.ui.content.CardAsset
+import org.cru.soularium.ui.test.FakeOverlayHost
 import org.jetbrains.compose.resources.getString
 
 @OptIn(ExperimentalTestApi::class)
 @RunOnAndroidWith(AndroidJUnit4::class)
 class SelectionLayoutTest {
+    private val overlayHost = FakeOverlayHost()
+    private val eventSink = TestEventSink<ConversationPresenter.UiEvent>()
+
+    private val state = ConversationPresenter.UiState.Selection(
+        questionNumber = 1,
+        selectedCardIds = emptyList(),
+        isConfirmEnabled = false,
+        showExitDialog = false,
+        eventSink = eventSink::invoke,
+    )
+
     @Test
-    fun `Zoom - Tap - shows the full screen image overlay`() = runComposeUiTest {
-        setContent { ContentWithOverlays { SelectionLayout(selectionState()) } }
-        waitForIdle()
+    fun `Zoom - Tap - shows the card zoom overlay`() = runComposeUiTest {
+        setSelectionLayoutContent(state)
 
         onNode(hasContentDescription(card1ZoomLabel())).performClick()
-        waitForIdle()
-
-        onNode(hasContentDescription(getString(Res.string.cd_card_zoom_close))).assertIsDisplayed()
+        val overlay = assertIs<CardZoomOverlay>(overlayHost.awaitOverlay())
+        assertEquals(CardAsset.CARD_01, overlay.card)
+        assertFalse(overlay.isSelected)
     }
 
     @Test
-    fun `Zoom - Select in overlay - emits ToggleCard for that card and closes`() = runComposeUiTest {
-        val events = mutableListOf<ConversationPresenter.UiEvent>()
-        setContent { ContentWithOverlays { SelectionLayout(selectionState(eventSink = events::add)) } }
-        waitForIdle()
+    fun `Zoom - selected card - shows the overlay as selected`() = runComposeUiTest {
+        setSelectionLayoutContent(state.copy(selectedCardIds = listOf(1)))
 
         onNode(hasContentDescription(card1ZoomLabel())).performClick()
-        waitForIdle()
-        onNode(hasText(getString(Res.string.action_select))).performClick()
-        waitForIdle()
-
-        val expected = listOf<ConversationPresenter.UiEvent>(ConversationPresenter.UiEvent.Selection.ToggleCard(1))
-        assertEquals(expected, events)
-        onNode(hasContentDescription(getString(Res.string.cd_card_zoom_close))).assertDoesNotExist()
+        val overlay = assertIs<CardZoomOverlay>(overlayHost.awaitOverlay())
+        assertEquals(CardAsset.CARD_01, overlay.card)
+        assertTrue(overlay.isSelected)
     }
 
     @Test
-    fun `Zoom - selected card - offers Deselect in overlay`() = runComposeUiTest {
-        setContent { ContentWithOverlays { SelectionLayout(selectionState(selectedCardIds = listOf(1))) } }
-        waitForIdle()
+    fun `Zoom - Select in overlay - emits ToggleCard for that card`() = runComposeUiTest {
+        setSelectionLayoutContent(state)
 
         onNode(hasContentDescription(card1ZoomLabel())).performClick()
-        waitForIdle()
+        overlayHost.awaitOverlayNavigator().finish(CardZoomOverlay.Result.ToggleSelection)
+        awaitIdle()
 
-        onNode(hasText(getString(Res.string.action_deselect))).assertIsDisplayed()
+        eventSink.assertEvent(ConversationPresenter.UiEvent.Selection.ToggleCard(1))
     }
 
     @Test
-    fun `Zoom - Close - emits nothing and returns to the grid`() = runComposeUiTest {
-        val events = mutableListOf<ConversationPresenter.UiEvent>()
-        setContent { ContentWithOverlays { SelectionLayout(selectionState(eventSink = events::add)) } }
-        waitForIdle()
+    fun `Zoom - Close - emits nothing`() = runComposeUiTest {
+        setSelectionLayoutContent(state)
 
         onNode(hasContentDescription(card1ZoomLabel())).performClick()
-        waitForIdle()
-        onNode(hasContentDescription(getString(Res.string.cd_card_zoom_close))).performClick()
-        waitForIdle()
+        overlayHost.awaitOverlayNavigator().finish(CardZoomOverlay.Result.Dismissed)
+        awaitIdle()
 
-        assertEquals(emptyList<ConversationPresenter.UiEvent>(), events)
-        onNode(hasContentDescription(getString(Res.string.cd_card_zoom_close))).assertDoesNotExist()
+        eventSink.assertNoEvents()
+    }
+
+    private fun ComposeUiTest.setSelectionLayoutContent(state: ConversationPresenter.UiState.Selection) = setContent {
+        CompositionLocalProvider(LocalOverlayHost provides overlayHost) { SelectionLayout(state) }
     }
 
     private suspend fun card1ZoomLabel() =
         getString(Res.string.cd_card_zoom_named, getString(Res.string.card_a11y_description_1))
-
-    private fun selectionState(
-        selectedCardIds: List<Int> = emptyList(),
-        eventSink: (ConversationPresenter.UiEvent) -> Unit = {},
-    ) = ConversationPresenter.UiState.Selection(
-        questionNumber = 1,
-        selectedCardIds = selectedCardIds,
-        isConfirmEnabled = false,
-        showExitDialog = false,
-        eventSink = eventSink,
-    )
 }

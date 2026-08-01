@@ -45,8 +45,7 @@ private const val SCRIM_ALPHA = 0.9f
  * An [Overlay] that shows [card]'s full-size artwork over the selection grid and
  * returns whether the user chose to toggle the card's selection while viewing it.
  */
-internal class CardZoomOverlay(private val card: CardAsset, private val isSelected: Boolean) :
-    Overlay<CardZoomOverlay.Result> {
+internal class CardZoomOverlay(val card: CardAsset, val isSelected: Boolean) : Overlay<CardZoomOverlay.Result> {
     sealed interface Result {
         data object ToggleSelection : Result
         data object Dismissed : Result

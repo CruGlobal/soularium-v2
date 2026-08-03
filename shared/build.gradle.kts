@@ -85,11 +85,13 @@ kotlin {
         commonTest {
             dependencies {
                 implementation(projects.module.db.testFixtures)
+                implementation(projects.module.game.testFixtures)
 
                 implementation(libs.circuit.test)
                 implementation(libs.compose.ui.test)
                 implementation(libs.coroutines.test)
                 implementation(libs.gtoSupport.circuit.test)
+                implementation(libs.gtoSupport.turbine)
                 implementation(libs.kotest.assertions)
                 implementation(libs.turbine)
             }

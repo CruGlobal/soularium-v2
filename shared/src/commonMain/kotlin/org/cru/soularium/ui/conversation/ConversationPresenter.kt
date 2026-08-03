@@ -1,7 +1,9 @@
 package org.cru.soularium.ui.conversation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -16,45 +18,21 @@ import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import org.cru.soularium.analytics.AnalyticsTracker
-import org.cru.soularium.analytics.CrashReporter
-import org.cru.soularium.db.repository.SessionRepository
-import org.cru.soularium.game.Effect
-import org.cru.soularium.game.SessionContext
+import org.cru.soularium.game.GameEngine
+import org.cru.soularium.game.GameState
 import org.cru.soularium.game.SessionEvent
 import org.cru.soularium.game.content.Question
-import org.cru.soularium.game.transition
 import org.cru.soularium.model.ContactInfo
-import org.cru.soularium.model.Session
 import org.cru.soularium.model.game.SessionState
 import org.cru.soularium.model.game.SessionState.InQuestion.QuestionState
 import org.cru.soularium.ui.nav.ConversationScreen
-
-private const val TOTAL_QUESTIONS = 5
-
-/**
- * Volatile per-conversation UI context that doesn't belong on [SessionState]:
- * participant names (loaded into memory), draft / pending picks while the user
- * is selecting cards, and a one-shot flag that the per-session instruction
- * panel has been seen.
- */
-internal data class ConversationUiContext(
-    val participantNames: List<String> = emptyList(),
-    val draftPicks: List<Int> = emptyList(),
-    val instructionsShown: Boolean = false,
-)
 
 @AssistedInject
 class ConversationPresenter(
     @Assisted private val navigator: Navigator,
     @Assisted private val screen: ConversationScreen,
-    private val sessionRepository: SessionRepository,
-    private val analytics: AnalyticsTracker,
-    private val crashReporter: CrashReporter,
+    private val gameEngineFactory: GameEngine.Factory,
 ) : Presenter<ConversationPresenter.UiState> {
 
     /**
@@ -183,210 +161,126 @@ class ConversationPresenter(
     @Composable
     override fun present(): UiState {
         val scope = rememberCoroutineScope()
-        // The repository serializer: keeps effect application from one event
-        // from interleaving with another's effects on the shared DAOs.
-        val repoMutex = remember { Mutex() }
+        val engine = remember(screen.sessionId) { gameEngineFactory.create(screen.sessionId, screen.kind) }
+        DisposableEffect(engine) { onDispose { engine.close() } }
 
-        var sessionState by remember { mutableStateOf<SessionState>(SessionState.NotStarted) }
-        var ui by remember { mutableStateOf(ConversationUiContext()) }
+        val game by engine.state.collectAsState()
         var summaries by remember { mutableStateOf(emptyList<ParticipantSummary>()) }
         var showExitDialog by remember { mutableStateOf(false) }
-        var bootstrapped by remember { mutableStateOf(false) }
 
-        // Initial load + ensureStarted in one effect: load any persisted state,
-        // rehydrate participant names, and bootstrap if this is a brand-new
-        // session id.
-        LaunchedEffect(screen.sessionId) {
-            var loadStateFailed = false
-            val loaded = runCatching { sessionRepository.findSessionState(screen.sessionId) }
-                .onFailure {
-                    loadStateFailed = true
-                    crashReporter.recordNonFatal(it, "loadState on init")
-                }
-                .getOrNull()
-            if (loaded != null) {
-                sessionState = snapBackToPromptIfMidQuestion(loaded)
-                runCatching {
-                    val names = sessionRepository.loadConversations(screen.sessionId)
-                        .sortedBy { it.displayOrder }
-                        .map { it.contact.name }
-                    if (names.isNotEmpty()) {
-                        ui = ui.copy(participantNames = names)
-                    }
-                }.onFailure { crashReporter.recordNonFatal(it, "loadConversations on init") }
-            }
-
-            if (!bootstrapped) {
-                bootstrapped = true
-                if (sessionState == SessionState.NotStarted) {
-                    val existing =
-                        runCatching { sessionRepository.findSession(screen.sessionId) }
-                            .getOrElse {
-                                crashReporter.recordNonFatal(it, "findSession in ensureStarted")
-                                null
-                            }
-                    if (existing == null || loadStateFailed) {
-                        runCatching {
-                            sessionRepository.createSession(
-                                session = Session(id = screen.sessionId, kind = screen.kind),
-                                initialState = SessionState.NotStarted,
-                            )
-                        }.onFailure { crashReporter.recordNonFatal(it, "createSession") }
-                    }
-                    val (newState, newUi) = applyDispatch(
-                        event = SessionEvent.StartSession(screen.kind),
-                        previousState = sessionState,
-                        ui = ui,
-                        scope = scope,
-                        repoMutex = repoMutex,
-                    )
-                    sessionState = newState
-                    ui = newUi
-                }
-            }
-        }
+        LaunchedEffect(engine) { engine.start() }
 
         // If we land on Summary (either fresh or via load), populate summaries.
-        LaunchedEffect(sessionState) {
-            if (sessionState == SessionState.Summary) {
-                runCatching {
-                    repoMutex.withLock { loadSummaries() }
-                }.onSuccess { summaries = it }
-                    .onFailure { crashReporter.recordNonFatal(it, "loadSummaries") }
+        LaunchedEffect(game.session) {
+            if (game.session == SessionState.Summary) {
+                summaries = engine.loadSummaries().map {
+                    ParticipantSummary(it.participantIndex, it.name, it.picks.toQuestionSelections())
+                }
             }
-            if (sessionState == SessionState.Concluded) {
+            if (game.session == SessionState.Concluded) {
                 navigator.pop()
             }
-        }
-
-        fun dispatch(sessionEvent: SessionEvent) {
-            val (newState, newUi) = applyDispatch(
-                event = sessionEvent,
-                previousState = sessionState,
-                ui = ui,
-                scope = scope,
-                repoMutex = repoMutex,
-            )
-            sessionState = newState
-            ui = newUi
         }
 
         val eventSink: (UiEvent) -> Unit = { event ->
             when (event) {
                 // Page-specific events
                 is UiEvent.AddingParticipants.AddParticipant ->
-                    dispatch(SessionEvent.AddParticipant(event.name))
+                    engine.dispatch(SessionEvent.AddParticipant(event.name))
                 is UiEvent.AddingParticipants.RemoveParticipant ->
-                    dispatch(SessionEvent.RemoveParticipant(event.index))
+                    engine.dispatch(SessionEvent.RemoveParticipant(event.index))
                 UiEvent.AddingParticipants.Confirm ->
-                    dispatch(SessionEvent.ConfirmParticipants)
+                    engine.dispatch(SessionEvent.ConfirmParticipants)
 
                 UiEvent.QuestionPrompt.BeginSelection ->
-                    dispatch(SessionEvent.BeginSelection)
+                    engine.dispatch(SessionEvent.BeginSelection)
 
                 UiEvent.Instructions.Dismiss ->
-                    dispatch(SessionEvent.DismissInstructions)
+                    engine.dispatch(SessionEvent.DismissInstructions)
 
-                is UiEvent.Selection.ToggleCard -> {
-                    // Draft picks are volatile UI state — toggle directly without
-                    // round-tripping through the pure transition function.
-                    ui = if (event.cardId in ui.draftPicks) {
-                        ui.copy(draftPicks = ui.draftPicks - event.cardId)
-                    } else {
-                        ui.copy(draftPicks = ui.draftPicks + event.cardId)
-                    }
-                }
+                is UiEvent.Selection.ToggleCard ->
+                    engine.dispatch(SessionEvent.ToggleCard(event.cardId))
                 UiEvent.Selection.Confirm ->
-                    dispatch(SessionEvent.ConfirmSelection)
+                    engine.dispatch(SessionEvent.ConfirmSelection)
 
                 UiEvent.Finalizing.Confirm ->
-                    dispatch(SessionEvent.ConfirmFinal)
+                    engine.dispatch(SessionEvent.ConfirmFinal)
                 UiEvent.Finalizing.ChangeSelection ->
-                    dispatch(SessionEvent.BeginSelection)
+                    engine.dispatch(SessionEvent.BeginSelection)
 
                 UiEvent.Discussing.Done ->
-                    dispatch(SessionEvent.EndDiscussion)
+                    engine.dispatch(SessionEvent.EndDiscussion)
 
                 is UiEvent.Summary.StartCollectingContact -> {
-                    val name = ui.participantNames.getOrElse(event.participantIndex) { "" }
-                    dispatch(SessionEvent.CollectContact(event.participantIndex, ContactInfo(name)))
+                    val name = game.participantNames.getOrElse(event.participantIndex) { "" }
+                    engine.dispatch(SessionEvent.CollectContact(event.participantIndex, ContactInfo(name)))
                 }
                 UiEvent.Summary.Done ->
-                    dispatch(SessionEvent.Conclude)
+                    engine.dispatch(SessionEvent.Conclude)
 
                 is UiEvent.CollectingContact.Save -> {
-                    val current = sessionState as? SessionState.CollectingContact
+                    val current = game.session as? SessionState.CollectingContact
                     if (current != null) {
-                        dispatch(SessionEvent.CollectContact(current.participantIndex, event.info))
+                        engine.dispatch(SessionEvent.CollectContact(current.participantIndex, event.info))
                     }
                 }
                 UiEvent.CollectingContact.Skip ->
-                    dispatch(SessionEvent.SkipContact)
+                    engine.dispatch(SessionEvent.SkipContact)
 
                 // Global events
-                UiEvent.RequestExit -> if (sessionState != SessionState.Concluded) {
+                UiEvent.RequestExit -> if (game.session != SessionState.Concluded) {
                     showExitDialog = true
                 }
                 UiEvent.DismissExitDialog -> showExitDialog = false
                 UiEvent.BookmarkAndExit -> {
                     showExitDialog = false
                     scope.launch {
-                        runCatching {
-                            repoMutex.withLock {
-                                sessionRepository.setBookmarked(screen.sessionId, true)
-                            }
-                        }.onFailure { crashReporter.recordNonFatal(it, "bookmarkAndExit") }
-                        analytics.event("conversation_bookmarked", emptyMap())
+                        engine.bookmark()
                         navigator.pop()
                     }
                 }
                 UiEvent.DiscardAndExit -> {
                     showExitDialog = false
                     scope.launch {
-                        runCatching {
-                            repoMutex.withLock {
-                                sessionRepository.deleteSession(screen.sessionId)
-                            }
-                        }.onFailure { crashReporter.recordNonFatal(it, "discardAndExit") }
+                        engine.discard()
                         navigator.pop()
                     }
                 }
             }
         }
 
-        return buildUiState(sessionState, ui, summaries, showExitDialog, eventSink)
+        return buildUiState(game, summaries, showExitDialog, eventSink)
     }
 
     /**
-     * Projects the presenter's internal state onto the page-specific [UiState]
+     * Projects the engine's [GameState] onto the page-specific [UiState]
      * subtype. All the branching that used to live in the Layout (question
      * lookup, participant name resolution, round numbering, selection-count
      * validity) is resolved here.
      */
     private fun buildUiState(
-        sessionState: SessionState,
-        ui: ConversationUiContext,
+        game: GameState,
         summaries: List<ParticipantSummary>,
         showExitDialog: Boolean,
         eventSink: (UiEvent) -> Unit,
-    ): UiState = when (sessionState) {
+    ): UiState = when (val sessionState = game.session) {
         SessionState.NotStarted, SessionState.Concluded ->
             UiState.Loading(showExitDialog, eventSink)
 
         SessionState.AddingParticipants ->
-            UiState.AddingParticipants(ui.participantNames, showExitDialog, eventSink)
+            UiState.AddingParticipants(game.participantNames, showExitDialog, eventSink)
 
         is SessionState.InQuestion -> {
             val question = Question.forNumber(sessionState.questionNumber)
             val participantName =
-                ui.participantNames.getOrElse(sessionState.activeParticipantIndex) { "" }
+                game.participantNames.getOrElse(sessionState.activeParticipantIndex) { "" }
             when (sessionState.activity) {
                 QuestionState.ShowingPrompt ->
                     UiState.QuestionPrompt(
                         questionNumber = sessionState.questionNumber,
-                        totalQuestions = TOTAL_QUESTIONS,
+                        totalQuestions = Question.entries.size,
                         participantName = participantName,
-                        isGroup = ui.participantNames.size > 1,
+                        isGroup = game.participantNames.size > 1,
                         showExitDialog = showExitDialog,
                         eventSink = eventSink,
                     )
@@ -397,8 +291,8 @@ class ConversationPresenter(
                 QuestionState.Selecting ->
                     UiState.Selection(
                         questionNumber = sessionState.questionNumber,
-                        selectedCardIds = ui.draftPicks,
-                        isConfirmEnabled = ui.draftPicks.size == question.requiredImageCount,
+                        selectedCardIds = game.draftPicks,
+                        isConfirmEnabled = game.draftPicks.size == question.requiredImageCount,
                         showExitDialog = showExitDialog,
                         eventSink = eventSink,
                     )
@@ -406,7 +300,7 @@ class ConversationPresenter(
                 QuestionState.Finalizing ->
                     UiState.Finalizing(
                         questionNumber = sessionState.questionNumber,
-                        cardIds = ui.draftPicks,
+                        cardIds = game.draftPicks,
                         showExitDialog = showExitDialog,
                         eventSink = eventSink,
                     )
@@ -415,7 +309,7 @@ class ConversationPresenter(
                     UiState.Discussing(
                         questionNumber = sessionState.questionNumber,
                         participantName = participantName,
-                        cardIds = ui.draftPicks,
+                        cardIds = game.draftPicks,
                         showExitDialog = showExitDialog,
                         eventSink = eventSink,
                     )
@@ -427,116 +321,11 @@ class ConversationPresenter(
 
         is SessionState.CollectingContact ->
             UiState.CollectingContact(
-                participantName = ui.participantNames.getOrElse(sessionState.participantIndex) { "" },
+                participantName = game.participantNames.getOrElse(sessionState.participantIndex) { "" },
                 participantIndex = sessionState.participantIndex,
                 showExitDialog = showExitDialog,
                 eventSink = eventSink,
             )
-    }
-
-    /**
-     * Runs the pure transition function for [event] and applies its effects
-     * asynchronously. Returns the new (state, ui) pair to assign.
-     */
-    private fun applyDispatch(
-        event: SessionEvent,
-        previousState: SessionState,
-        ui: ConversationUiContext,
-        scope: CoroutineScope,
-        repoMutex: Mutex,
-    ): Pair<SessionState, ConversationUiContext> {
-        val ctx =
-            SessionContext(
-                participantNames = ui.participantNames,
-                currentDraftPicks = ui.draftPicks,
-                showInstructionsForThisSession = !ui.instructionsShown,
-            )
-        val result = transition(previousState, event, ctx)
-
-        if (result.error != null) {
-            analytics.event(
-                name = "transition_error",
-                params = mapOf("error" to (result.error?.let { it::class.simpleName } ?: "unknown")),
-            )
-            return previousState to ui
-        }
-
-        var nextUi = ui
-        if (event is SessionEvent.DismissInstructions) {
-            nextUi = nextUi.copy(instructionsShown = true)
-        }
-        // Apply effect-driven ui changes synchronously so callers see the new
-        // participant list in the same emission as the state transition. Repo
-        // persistence still happens asynchronously below.
-        for (effect in result.effects) {
-            if (effect is Effect.PersistParticipants) {
-                nextUi = nextUi.copy(participantNames = effect.names)
-            }
-        }
-        nextUi = resetDraftIfNeeded(next = result.next, ui = nextUi)
-
-        scope.launch {
-            runCatching { repoMutex.withLock { applyEffects(result.effects) } }
-                .onFailure { crashReporter.recordNonFatal(it, "applyEffects after $event") }
-        }
-        return result.next to nextUi
-    }
-
-    /**
-     * Draft picks are kept all the way through the Finalizing and Discussing
-     * activities so those screens can display them; they are cleared only when
-     * a fresh turn begins (a new ShowingPrompt).
-     */
-    private fun resetDraftIfNeeded(next: SessionState, ui: ConversationUiContext): ConversationUiContext {
-        val nextQ = next as? SessionState.InQuestion
-        return if (nextQ?.activity == QuestionState.ShowingPrompt) {
-            ui.copy(draftPicks = emptyList())
-        } else {
-            ui
-        }
-    }
-
-    /** Loads each participant's final picks (grouped per question) for the Summary screen. */
-    private suspend fun loadSummaries(): List<ParticipantSummary> =
-        sessionRepository.loadConversations(screen.sessionId).map { conversation ->
-            ParticipantSummary(
-                participantIndex = conversation.displayOrder,
-                name = conversation.contact.name,
-                selections = sessionRepository.loadPicks(conversation.id).toQuestionSelections(),
-            )
-        }
-
-    private suspend fun applyEffects(effects: List<Effect>) {
-        for (effect in effects) {
-            when (effect) {
-                is Effect.PersistState ->
-                    sessionRepository.persistState(screen.sessionId, effect.state)
-                is Effect.PersistParticipants -> {
-                    sessionRepository.upsertParticipants(screen.sessionId, effect.names)
-                }
-                is Effect.PersistPicks -> {
-                    val conversations = sessionRepository.loadConversations(screen.sessionId)
-                    val convId =
-                        conversations.firstOrNull { it.displayOrder == effect.participantIndex }?.id
-                            ?: continue
-                    sessionRepository.upsertPicks(
-                        conversationId = convId,
-                        questionNumber = effect.questionNumber,
-                        cardIds = effect.cardIds,
-                        isFinal = effect.isFinal,
-                    )
-                }
-                is Effect.PersistContact -> {
-                    val conversations = sessionRepository.loadConversations(screen.sessionId)
-                    val convId =
-                        conversations.firstOrNull { it.displayOrder == effect.participantIndex }?.id
-                            ?: continue
-                    sessionRepository.upsertContact(convId, effect.info)
-                }
-                is Effect.LogAnalytics ->
-                    analytics.event(effect.event, effect.params)
-            }
-        }
     }
 
     @CircuitInject(ConversationScreen::class, AppScope::class)
@@ -545,17 +334,3 @@ class ConversationPresenter(
         fun create(navigator: Navigator, screen: ConversationScreen): ConversationPresenter
     }
 }
-
-/**
- * A session bookmarked mid-question persists an in-progress activity
- * (Selecting, Finalizing, Discussing), but the volatile draft picks
- * behind it are not persisted. Snap back to the question prompt on resume so
- * the user restarts that question cleanly instead of landing on an empty
- * selection.
- */
-private fun snapBackToPromptIfMidQuestion(state: SessionState): SessionState =
-    if (state is SessionState.InQuestion && state.activity != QuestionState.ShowingPrompt) {
-        state.copy(activity = QuestionState.ShowingPrompt)
-    } else {
-        state
-    }

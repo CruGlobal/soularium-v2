@@ -62,6 +62,7 @@ gtoSupport-androidx-test-junit = { module = "org.ccci.gto.android:gto-support-an
 gtoSupport-circuit-test = { module = "org.ccci.gto.android.testing:gto-support-circuit", version.ref = "gtoSupport" }
 gtoSupport-compose = { module = "org.ccci.gto.android:gto-support-compose", version.ref = "gtoSupport" }
 gtoSupport-parcelize = { module = "org.ccci.gto.android:gto-support-parcelize", version.ref = "gtoSupport" }
+gtoSupport-turbine = { module = "org.ccci.gto.android:gto-support-turbine", version.ref = "gtoSupport" }
 kotest-assertions = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest" }
 kotlin-gradle = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 kotlin-serialization-gradle = { module = "org.jetbrains.kotlin.plugin.serialization:org.jetbrains.kotlin.plugin.serialization.gradle.plugin", version.ref = "kotlin" }

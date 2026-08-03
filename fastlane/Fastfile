@@ -1,5 +1,6 @@
 platform :ios do
     lane :build do |options|
+        prebuild_cocoapods_dependencies
         build_app(
             project: './iosApp/iosApp.xcodeproj',
             configuration: ENV['releaseBuild'] == 'true' ? 'Release' : 'Debug',
@@ -11,5 +12,15 @@ platform :ios do
             skip_codesigning: true,
             skip_archive: true
         )
+    end
+
+    # The synthetic CocoaPods build breaks when it runs nested inside the Xcode build
+    # (the outer build's environment leaks into the inner xcodebuild and corrupts the
+    # pods' privacy-bundle resource phases), so build it up front from a clean
+    # environment; the nested Gradle invocation then finds it UP-TO-DATE and skips it.
+    private_lane :prebuild_cocoapods_dependencies do
+        Dir.chdir("..") do
+            sh("./gradlew :shared:podBuildFirebaseCrashlyticsIos")
+        end
     end
 end

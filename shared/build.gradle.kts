@@ -5,6 +5,7 @@ plugins {
     id("soularium-kmp.module-conventions")
     id("metro-conventions")
     id("serialization-conventions")
+    kotlin("native.cocoapods")
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.compose.compiler)
     id("kotlin-parcelize")
@@ -37,6 +38,12 @@ kotlin {
             baseName = "Shared"
             isStatic = true
         }
+    }
+
+    cocoapods {
+        noPodspec()
+        ios.deploymentTarget = "15.0"
+        pod("FirebaseCrashlytics", version = "11.8.0")
     }
 
     sourceSets {

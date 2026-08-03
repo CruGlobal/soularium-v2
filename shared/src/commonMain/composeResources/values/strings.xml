@@ -37,6 +37,7 @@
     <string name="action_confirm">Confirm</string>
     <string name="action_agree">Agree</string>
     <string name="action_select">Select</string>
+    <string name="action_deselect">Deselect</string>
     <string name="action_change_selection">Change Selection</string>
     <string name="action_discuss">Discuss</string>
     <string name="action_ready">Ready</string>
@@ -261,6 +262,9 @@
     <string name="card_a11y_description_49">Green glass bottle lying on the ground</string>
     <string name="card_a11y_description_50">Young man crouched inside a locker</string>
     <string name="cd_card_selected">Selected</string>
+    <string name="cd_card_zoom">View image full screen</string>
+    <string name="cd_card_zoom_named">View %1$s full screen</string>
+    <string name="cd_card_zoom_close">Close full screen image</string>
     <string name="cd_card_not_selected">Not selected</string>
     <string name="cd_menu_button">Open menu</string>
     <string name="cd_share_button">Share</string>

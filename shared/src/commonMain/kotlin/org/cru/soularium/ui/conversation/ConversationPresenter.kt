@@ -242,8 +242,18 @@ class ConversationPresenter(
                     engine.dispatch(SessionEvent.SkipContact)
 
                 // Global events
-                UiEvent.RequestExit -> if (game.session != SessionState.Concluded) {
-                    showExitDialog = true
+                UiEvent.RequestExit -> when {
+                    game.session == SessionState.Concluded -> Unit
+
+                    // Nothing meaningful entered yet — there is no progress to
+                    // bookmark, so back out directly and drop the empty session.
+                    game.session == SessionState.AddingParticipants && game.participantNames.isEmpty() ->
+                        scope.launch {
+                            engine.discard()
+                            navigator.pop()
+                        }
+
+                    else -> showExitDialog = true
                 }
                 UiEvent.DismissExitDialog -> showExitDialog = false
                 UiEvent.BookmarkAndExit -> {

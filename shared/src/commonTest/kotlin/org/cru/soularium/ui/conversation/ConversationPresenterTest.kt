@@ -17,6 +17,7 @@ import org.cru.soularium.game.GameEngine
 import org.cru.soularium.game.GameState
 import org.cru.soularium.game.SessionEvent
 import org.cru.soularium.model.CardPick
+import org.cru.soularium.model.ContactInfo
 import org.cru.soularium.model.Conversation
 import org.cru.soularium.model.Session
 import org.cru.soularium.model.game.SessionState
@@ -57,7 +58,7 @@ class ConversationPresenterTest {
     // ── UiState projections ──────────────────────────────────────────────
 
     @Test
-    fun `UiState - AddingParticipants participantNames - reflects the engine's participant list`() = runTest {
+    fun `UiState - AddingParticipants - participantNames - reflects the engine's participant list`() = runTest {
         val fakeEngine = FakeGameEngine(
             GameState(session = SessionState.AddingParticipants, participantNames = listOf("Alice", "Bob")),
         )
@@ -69,7 +70,7 @@ class ConversationPresenterTest {
     }
 
     @Test
-    fun `UiState - QuestionPrompt questionNumber - reflects the engine's current question`() = runTest {
+    fun `UiState - QuestionPrompt - questionNumber - reflects the engine's current question`() = runTest {
         val fakeEngine = FakeGameEngine(
             GameState(
                 session = SessionState.InQuestion(3, 0, QuestionState.ShowingPrompt),
@@ -85,7 +86,7 @@ class ConversationPresenterTest {
     }
 
     @Test
-    fun `UiState - QuestionPrompt participantName - resolves the active participant and group flag`() = runTest {
+    fun `UiState - QuestionPrompt - participantName - resolves the active participant and group flag`() = runTest {
         val fakeEngine = FakeGameEngine(
             GameState(
                 session = SessionState.InQuestion(2, 1, QuestionState.ShowingPrompt),
@@ -112,7 +113,7 @@ class ConversationPresenterTest {
     }
 
     @Test
-    fun `UiState - Selection selectedCardIds - reflects the engine's draft picks`() = runTest {
+    fun `UiState - Selection - selectedCardIds - reflects the engine's draft picks`() = runTest {
         val fakeEngine = FakeGameEngine(
             GameState(session = SessionState.InQuestion(1, 0, QuestionState.Selecting), draftPicks = listOf(7, 12)),
         )
@@ -124,7 +125,7 @@ class ConversationPresenterTest {
     }
 
     @Test
-    fun `UiState - Selection isConfirmEnabled - true only once picks equal the required count`() = runTest {
+    fun `UiState - Selection - isConfirmEnabled - true only once picks equal the required count`() = runTest {
         val fakeEngine = FakeGameEngine(
             GameState(session = SessionState.InQuestion(1, 0, QuestionState.Selecting), draftPicks = listOf(1, 2)),
         )
@@ -139,7 +140,7 @@ class ConversationPresenterTest {
     }
 
     @Test
-    fun `UiState - Summary participants - maps the engine's summaries into per-question selections`() = runTest {
+    fun `UiState - Summary - participants - maps the engine's summaries into per-question selections`() = runTest {
         val conversationId = Conversation.Id.random()
         val fakeEngine = FakeGameEngine(GameState(session = SessionState.Summary)).apply {
             summaries = listOf(
@@ -181,6 +182,40 @@ class ConversationPresenterTest {
     }
 
     @Test
+    fun `UiState - CollectingContact - firstName - seeded with the collecting participant's name`() = runTest {
+        val fakeEngine = FakeGameEngine(
+            GameState(session = SessionState.CollectingContact(1), participantNames = listOf("Alice", "Bob")),
+        )
+        presenter(fakeEngine = fakeEngine).test {
+            val state = awaitItem() as ConversationPresenter.UiState.CollectingContact
+            assertEquals("Bob", state.firstName.value)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `UiState - CollectingContact - provides fresh field state for each participant`() = runTest {
+        val fakeEngine = FakeGameEngine(
+            GameState(session = SessionState.CollectingContact(0), participantNames = listOf("Alice", "Bob")),
+        )
+        presenter(fakeEngine = fakeEngine).test {
+            val first = awaitItem() as ConversationPresenter.UiState.CollectingContact
+            first.lastName.value = "Smith"
+            first.email.value = "alice@example.com"
+
+            fakeEngine.stateFlow.value = fakeEngine.stateFlow.value.copy(session = SessionState.CollectingContact(1))
+            val second = awaitItemMatching {
+                (it as? ConversationPresenter.UiState.CollectingContact)?.participantIndex == 1
+            } as ConversationPresenter.UiState.CollectingContact
+
+            assertEquals("Bob", second.firstName.value)
+            assertEquals("", second.lastName.value)
+            assertEquals("", second.email.value)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `UiState - Concluded - pops the navigator`() = runTest {
         val fakeEngine = FakeGameEngine(GameState(session = SessionState.Concluded))
         presenter(fakeEngine = fakeEngine).test {
@@ -193,7 +228,7 @@ class ConversationPresenterTest {
     // ── UiEvent routing ───────────────────────────────────────────────────
 
     @Test
-    fun `UiEvent - AddingParticipants AddParticipant - dispatches AddParticipant to the engine`() = runTest {
+    fun `UiEvent - AddingParticipants - AddParticipant - dispatches AddParticipant to the engine`() = runTest {
         val fakeEngine = FakeGameEngine(GameState(session = SessionState.AddingParticipants))
         presenter(fakeEngine = fakeEngine).test {
             awaitItem().eventSink(ConversationPresenter.UiEvent.AddingParticipants.AddParticipant("Alice"))
@@ -203,7 +238,7 @@ class ConversationPresenterTest {
     }
 
     @Test
-    fun `UiEvent - AddingParticipants RemoveParticipant - dispatches RemoveParticipant to the engine`() = runTest {
+    fun `UiEvent - AddingParticipants - RemoveParticipant - dispatches RemoveParticipant to the engine`() = runTest {
         val fakeEngine = FakeGameEngine(
             GameState(session = SessionState.AddingParticipants, participantNames = listOf("Alice", "Bob")),
         )
@@ -215,7 +250,7 @@ class ConversationPresenterTest {
     }
 
     @Test
-    fun `UiEvent - AddingParticipants Confirm - dispatches ConfirmParticipants`() = runTest {
+    fun `UiEvent - AddingParticipants - Confirm - dispatches ConfirmParticipants`() = runTest {
         val fakeEngine = FakeGameEngine(
             GameState(session = SessionState.AddingParticipants, participantNames = listOf("Alice")),
         )
@@ -227,7 +262,7 @@ class ConversationPresenterTest {
     }
 
     @Test
-    fun `UiEvent - QuestionPrompt BeginSelection - dispatches BeginSelection`() = runTest {
+    fun `UiEvent - QuestionPrompt - BeginSelection - dispatches BeginSelection`() = runTest {
         val fakeEngine = FakeGameEngine(
             GameState(session = SessionState.InQuestion(1, 0, QuestionState.ShowingPrompt)),
         )
@@ -239,7 +274,7 @@ class ConversationPresenterTest {
     }
 
     @Test
-    fun `UiEvent - Instructions Dismiss - dispatches DismissInstructions`() = runTest {
+    fun `UiEvent - Instructions - Dismiss - dispatches DismissInstructions`() = runTest {
         val fakeEngine = FakeGameEngine(
             GameState(session = SessionState.InQuestion(1, 0, QuestionState.ShowingInstructions)),
         )
@@ -251,7 +286,7 @@ class ConversationPresenterTest {
     }
 
     @Test
-    fun `UiEvent - Selection ToggleCard - dispatches ToggleCard with the tapped card id`() = runTest {
+    fun `UiEvent - Selection - ToggleCard - dispatches ToggleCard with the tapped card id`() = runTest {
         val fakeEngine = FakeGameEngine(
             GameState(session = SessionState.InQuestion(1, 0, QuestionState.Selecting)),
         )
@@ -263,7 +298,7 @@ class ConversationPresenterTest {
     }
 
     @Test
-    fun `UiEvent - Selection Confirm - dispatches ConfirmSelection`() = runTest {
+    fun `UiEvent - Selection - Confirm - dispatches ConfirmSelection`() = runTest {
         val fakeEngine = FakeGameEngine(
             GameState(session = SessionState.InQuestion(1, 0, QuestionState.Selecting), draftPicks = listOf(1, 2, 3)),
         )
@@ -275,7 +310,7 @@ class ConversationPresenterTest {
     }
 
     @Test
-    fun `UiEvent - Finalizing Confirm - dispatches ConfirmFinal`() = runTest {
+    fun `UiEvent - Finalizing - Confirm - dispatches ConfirmFinal`() = runTest {
         val fakeEngine = FakeGameEngine(
             GameState(
                 session = SessionState.InQuestion(1, 0, QuestionState.Finalizing),
@@ -290,7 +325,7 @@ class ConversationPresenterTest {
     }
 
     @Test
-    fun `UiEvent - Discussing Done - dispatches EndDiscussion`() = runTest {
+    fun `UiEvent - Discussing - Done - dispatches EndDiscussion`() = runTest {
         val fakeEngine = FakeGameEngine(
             GameState(session = SessionState.InQuestion(1, 0, QuestionState.Discussing)),
         )
@@ -302,13 +337,46 @@ class ConversationPresenterTest {
     }
 
     @Test
-    fun `UiEvent - Summary Done - dispatches Conclude`() = runTest {
+    fun `UiEvent - Summary - Done - dispatches Conclude`() = runTest {
         val fakeEngine = FakeGameEngine(GameState(session = SessionState.Summary))
         presenter(fakeEngine = fakeEngine).test {
             awaitItem().eventSink(ConversationPresenter.UiEvent.Summary.Done)
             cancelAndIgnoreRemainingEvents()
         }
         assertEquals(SessionEvent.Conclude, fakeEngine.dispatched.single())
+    }
+
+    @Test
+    fun `UiEvent - CollectingContact - Save - dispatches CollectContact built from the field state`() = runTest {
+        val fakeEngine = FakeGameEngine(
+            GameState(session = SessionState.CollectingContact(0), participantNames = listOf("Alice")),
+        )
+        presenter(fakeEngine = fakeEngine).test {
+            val state = awaitItem() as ConversationPresenter.UiState.CollectingContact
+            state.lastName.value = "Smith"
+            state.email.value = "alice@example.com"
+            state.eventSink(ConversationPresenter.UiEvent.CollectingContact.Save)
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertEquals(
+            SessionEvent.CollectContact(
+                0,
+                ContactInfo(name = "Alice", surname = "Smith", email = "alice@example.com"),
+            ),
+            fakeEngine.dispatched.single(),
+        )
+    }
+
+    @Test
+    fun `UiEvent - CollectingContact - Skip - dispatches SkipContact`() = runTest {
+        val fakeEngine = FakeGameEngine(
+            GameState(session = SessionState.CollectingContact(0), participantNames = listOf("Alice")),
+        )
+        presenter(fakeEngine = fakeEngine).test {
+            awaitItem().eventSink(ConversationPresenter.UiEvent.CollectingContact.Skip)
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertEquals(SessionEvent.SkipContact, fakeEngine.dispatched.single())
     }
 
     // ── Bookmark / discard ────────────────────────────────────────────────

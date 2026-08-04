@@ -199,12 +199,18 @@ must contain no Android- or iOS-specific imports.
   in `GameEngineFlowTest`) stay as plain private classes in the test sources.
 - Coroutine tests use `runTest { }` with an injected `TestDispatcher` — never
   `runBlocking`. Flow tests use Turbine (`flow.test { awaitItem() }`).
-- Test functions use backtick-quoted names. **Presenter tests** name each case by the
-  thing under test, `<subject> - <name> - <behavior>`: `UiEvent - <Event> - <behavior>`
-  for event handling and `UiState - <field> - <behavior>` for state derivation — e.g.
-  `` `UiEvent - Back - pops the navigator` `` and
-  `` `UiState - selectedLanguage - reflects stored language` ``. Other tests use a
-  descriptive sentence, e.g. `` `solo session completes from start through summary` ``.
+- Test functions use backtick-quoted names built from ` - `-separated segments — a
+  path from the thing under test down to the behavior, with each hierarchy level as
+  its own segment: `UiEvent - <Event> - <behavior>` for presenter event handling,
+  `UiState - <field> - <behavior>` for presenter state derivation, and
+  `UI - <element/concern> - <behavior>` for Compose UI interaction tests. When a
+  presenter has page-scoped `UiState`/`UiEvent` subtypes (e.g. the conversation
+  flow), the page is its own segment: `UiState - <Page> - <field> - <behavior>` and
+  `UiEvent - <Page> - <Event> - <behavior>` — e.g.
+  `` `UiEvent - Back - pops the navigator` ``,
+  `` `UiState - selectedLanguage - reflects stored language` ``,
+  `` `UiState - CollectingContact - firstName - seeded with the collecting participant's name` ``, and
+  `` `UI - Email - typing writes into the state` ``.
 - The `GameEngine`'s game rules should have exhaustive coverage (driven through
   `dispatch` in `GameEngineTest`); Presenters should have behavior tests.
 - **Paparazzi screenshot tests** (in `androidHostTest`) cover each `<Feature>Layout` by

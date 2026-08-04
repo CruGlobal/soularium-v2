@@ -12,10 +12,11 @@ kotlin {
         commonMain {
             dependencies {
                 api(projects.module.model)
-                api(libs.coroutines.core)
-
                 implementation(projects.module.analytics)
                 implementation(projects.module.db)
+
+                api(libs.coroutines.core)
+                implementation(libs.kermit)
             }
         }
 

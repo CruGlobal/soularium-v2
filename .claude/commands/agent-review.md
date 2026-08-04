@@ -133,7 +133,7 @@ Start with a base score of 0, then add points.
 
 **Medium-Risk File Patterns (+1 point each):**
 - `shared/src/commonMain/kotlin/**/ui/**` — Circuit Presenters/Layouts, theme (excluding `ui/nav/**` which is High)
-- `module/analytics/src/**`, `shared/src/commonMain/kotlin/**/analytics/**` — the `AnalyticsTracker`/`CrashReporter` ports and `scrubAnalyticsParams`
+- `module/analytics/src/**`, `shared/src/commonMain/kotlin/**/analytics/**` — the `AnalyticsTracker` port and `scrubAnalyticsParams`
 
 **Low-Risk Files (0 points):**
 - `**/commonTest/**`, `**/androidHostTest/**`, `**/test-fixtures/**` — test sources and shared test fakes
@@ -486,7 +486,7 @@ Soularium is an **offline app with a minimal security surface**: no auth, no log
 
 - **Module dependency direction**: `:androidApp` → `:shared` → `:module:db` → `:module:model`, with `:shared` also depending on `:module:model`, `:module:game`, and `:module:analytics` directly. Library modules never depend on `:shared` or on each other except as CLAUDE.md's module map allows. Flag any new inter-module edge not in that map, and any dependency not using the type-safe project accessors (`projects.module.model`).
 - **Package-layer direction inside `:shared`**: `org.cru.soularium.domain` must not import from `data`, `ui`, or platform packages; `data` must not import from `ui`. Domain code may use platform APIs in platform `actual`s and lightweight multiplatform value types (e.g. Compose's `Locale`), but no Compose UI.
-- **Hexagonal ports**: port interfaces live where CLAUDE.md places them (`domain/ports/` in `:shared`, the repository contracts in `:module:db`, `AnalyticsTracker`/`CrashReporter` in `:module:analytics`). Flag a port with no bound implementation, an implementation leaking framework types into the port signature, or `ui` code bypassing a port to talk to Room/DataStore directly.
+- **Hexagonal ports**: port interfaces live where CLAUDE.md places them (`domain/ports/` in `:shared`, the repository contracts in `:module:db`, `AnalyticsTracker` in `:module:analytics`). Flag a port with no bound implementation, an implementation leaking framework types into the port signature, or `ui` code bypassing a port to talk to Room/DataStore directly.
 - **Pure session state machine** (`:module:game`): `transition(state, event, ctx): TransitionResult` must be a **pure function** — no IO, no clock reads, no logging. Side effects are returned as `Effect` data and executed by the caller (the Presenter), never inside the module. Flag impurity in `transition`, a non-exhaustive `when` over the sealed state/event types, or an `Effect` executed inside `:module:game`.
 - **Metro DI**: the graph is `SoulariumAppGraph` (`@DependencyGraph(AppScope::class)`), built once per platform. New bindings come from `@Inject` + `@ContributesBinding(AppScope::class)` on the implementation, or `@Provides` in a `@BindingContainer @ContributesTo(AppScope::class)` container; app-lifetime singletons carry `@SingleIn(AppScope::class)`. Flag hand-written factories, graph accessor additions on `SoulariumAppGraph` itself, or any Koin/Hilt/Dagger/Anvil annotation — DI is Metro-only.
 - **Circuit UI discipline**: each screen is a `@Parcelize` `Screen` + `@AssistedInject` Presenter + stateless Layout wired by `@CircuitInject(<Feature>Screen::class, AppScope::class)`. Navigation is `navigator.goTo(...)`/`navigator.pop()` from inside Presenters. There are no ViewModels — flag any `androidx.lifecycle.ViewModel` usage.
@@ -890,7 +890,7 @@ Analyze dependency impact using KMP/Kotlin-specific patterns. For each changed f
 
 **`expect`/`actual` consumers:** For each changed `expect` declaration, list every `actual` (one per active target) and every consumer of the declaration. Removing or renaming an `expect` breaks every consumer; changing its signature breaks every `actual`.
 
-**Port interface consumers:** For each changed port interface (`DeviceStateRepository` in `domain/ports/`, `SessionRepository` in `:module:db`, `AnalyticsTracker`/`CrashReporter` in `:module:analytics`), search for its implementations, its Metro binding (`@ContributesBinding` or a `@Provides` in a binding container), its Presenter consumers, and the fakes (`FakeSessionRepository` in `:module:db:test-fixtures`, doubles in test sources). Adding a method without a default implementation breaks every implementation and every fake.
+**Port interface consumers:** For each changed port interface (`DeviceStateRepository` in `domain/ports/`, `SessionRepository` in `:module:db`, `AnalyticsTracker` in `:module:analytics`), search for its implementations, its Metro binding (`@ContributesBinding` or a `@Provides` in a binding container), its Presenter consumers, and the fakes (`FakeSessionRepository` in `:module:db:test-fixtures`, doubles in test sources). Adding a method without a default implementation breaks every implementation and every fake.
 
 **Metro binding consumers:** For each changed `@ContributesBinding`/`@Provides` binding, identify the injection sites (constructor injection in Presenters/impls, contributed accessor interfaces). Metro validates the graph at compile time — a removed binding fails the `:shared` compile; verify the fix updates all consumers rather than working around the graph.
 

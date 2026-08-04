@@ -5,6 +5,7 @@ plugins {
     id("soularium-kmp.module-conventions")
     id("metro-conventions")
     id("serialization-conventions")
+    kotlin("native.cocoapods")
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.compose.compiler)
     id("kotlin-parcelize")
@@ -39,6 +40,12 @@ kotlin {
         }
     }
 
+    cocoapods {
+        noPodspec()
+        ios.deploymentTarget = "15.0"
+        pod("FirebaseCrashlytics", version = "11.8.0")
+    }
+
     sourceSets {
         commonMain {
             dependencies {
@@ -63,8 +70,10 @@ kotlin {
                 implementation(libs.compose.runtime)
                 implementation(libs.coroutines.core)
                 implementation(libs.datastore.preferences.core)
+                implementation(libs.gitlive.firebase.crashlytics)
                 implementation(libs.gtoSupport.compose)
                 implementation(libs.gtoSupport.parcelize)
+                implementation(libs.kermit)
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.ktor.http)
@@ -76,6 +85,8 @@ kotlin {
 
         androidMain {
             dependencies {
+                implementation(project.dependencies.platform(libs.firebase.bom))
+
                 implementation(libs.androidx.activity.compose)
                 implementation(libs.androidx.appcompat)
                 implementation(libs.gtoSupport.androidx.core)

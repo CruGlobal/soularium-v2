@@ -1,0 +1,49 @@
+{
+  "project_info": {
+    "project_number": "746186579175",
+    "firebase_url": "https://soularium-985bf.firebaseio.com",
+    "project_id": "soularium-985bf",
+    "storage_bucket": "soularium-985bf.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:746186579175:android:c7961b14294f2b6b",
+        "android_client_info": {
+          "package_name": "org.cru.soularium"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDzi0BqmwxBNdcRoMmuORJs6Cx5m7hp-Fs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:746186579175:android:973efbd8c92d4e3f079642",
+        "android_client_info": {
+          "package_name": "org.cru.soularium.dev"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDzi0BqmwxBNdcRoMmuORJs6Cx5m7hp-Fs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -9,7 +9,6 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.cru.soularium.analytics.AnalyticsTracker
-import org.cru.soularium.analytics.CrashReporter
 import org.cru.soularium.db.repository.FakeSessionRepository
 import org.cru.soularium.db.repository.SessionRepository
 import org.cru.soularium.game.content.Question
@@ -34,7 +33,7 @@ class GameEngineFlowTest {
         kind: Session.Kind,
         analytics: AnalyticsTracker = SilentAnalytics,
     ): GameEngineImpl = GameEngineImpl(
-        host = GameEngineHostImpl(repo, analytics, SilentCrash),
+        host = GameEngineHostImpl(repo, analytics),
         dispatcher = StandardTestDispatcher(testScheduler),
         sessionId = sessionId,
         kind = kind,
@@ -201,9 +200,4 @@ private class RecordingAnalytics : AnalyticsTracker {
     override fun event(name: String, params: Map<String, Any>) {
         events += name to params
     }
-}
-
-private object SilentCrash : CrashReporter {
-    override fun recordNonFatal(throwable: Throwable, breadcrumb: String?) = Unit
-    override fun setKey(key: String, value: String) = Unit
 }

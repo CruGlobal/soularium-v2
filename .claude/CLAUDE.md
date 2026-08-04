@@ -45,9 +45,9 @@ module dependency graph rather than by convention.
 
 ### Domain & game logic (`org.cru.soularium.domain`, `:module:game`)
 
-- **Ports**: `domain/ports/` retains `DeviceStateRepository`. `AnalyticsTracker` and
-  `CrashReporter` live in `:module:analytics` (`CrashReporter` is a temporary
-  resident — pending a Kermit logging refactor; don't invest in that interface).
+- **Ports**: `domain/ports/` retains `DeviceStateRepository`. `AnalyticsTracker` lives in
+  `:module:analytics`. (Crash/error reporting is not a port — code logs through the global
+  Kermit `Logger`; see "Logging & crash reporting".)
 - **Game engine** (`:module:game`, `org.cru.soularium.game`): `GameEngine` is an
   interface — instances come from the graph via the nested `GameEngine.Factory`
   (assisted-injected internally); tests construct the internal
@@ -152,6 +152,26 @@ module dependency graph rather than by convention.
   `<Feature>Layout.kt` annotated with `@CircuitInject(...)` (see above). Metro generates
   and contributes the factories — no factory registration is required.
 
+### Logging & crash reporting
+
+There is no `CrashReporter` port. Code logs through the **global Kermit `Logger`** (each
+file keeps a `private val logger = Logger.withTag("<Name>")`); error paths call
+`logger.e(throwable) { "breadcrumb" }`. The global logger is bootstrapped once at startup —
+`SoulariumApplication.onCreate` on Android, `MainViewController` on iOS — by
+`LoggingBindings.Accessors.configureLogging()`, which sets the global minimum severity
+(`logMinSeverity`, default `Severity.Error` — so only `Error`/`Assert` are emitted) and
+installs the Metro-assembled `Set<LogWriter>` onto `Logger`. Writers come from
+multibindings: `CrashlyticsLogWriter`
+(`org.cru.soularium.firebase`, `@ContributesIntoSet`) forwards messages + non-fatals to
+Firebase Crashlytics through the GitLive `firebase-crashlytics` KMP SDK, and the platform
+console writer is contributed per-target (`AndroidLoggingBindings` — logcat, debug builds
+only; `IosLoggingBindings` — NSLog). `CrashlyticsLogWriter` wraps its Firebase calls
+defensively, so it stays inert in processes where Firebase isn't initialized (unit tests,
+previews); in the apps Firebase initializes at startup — the google-services plugin on
+Android, `FirebaseApp.configure()` in `FirebaseAppDelegate.swift` (hooked in via
+`@UIApplicationDelegateAdaptor`, mirroring mpdx-kmp) on iOS. Tests exercise presenters
+without configuring the logger, so log calls hit only the default platform writer.
+
 ### Platform abstraction — expect/actual
 
 KMP platform seams use `expect`/`actual`: `PlatformBindings`,
@@ -254,5 +274,8 @@ author may dismiss severity < 7 findings.
 - User-visible strings come from Compose Multiplatform resources
   (`stringResource(Res.string.*)`), never inline literals. Source strings live in
   `shared/src/commonMain/composeResources/values/strings.xml`.
-- Firebase config files (`google-services.json`, `GoogleService-Info.plist`) and
-  `local.properties` are gitignored — never commit them.
+- Firebase config files (`google-services.json` in `androidApp/`,
+  `GoogleService-Info.plist` in `iosApp/`) are committed to the repo — they carry the
+  `soularium-985bf` project's client keys, which are not secrets (they ship inside the
+  distributed app and are guarded by Firebase security rules / App Check). `local.properties`
+  and signing keystores (`*.jks`, `*.keystore`) remain gitignored — never commit those.

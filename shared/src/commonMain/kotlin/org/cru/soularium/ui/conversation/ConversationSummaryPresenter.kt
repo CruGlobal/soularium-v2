@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import co.touchlab.kermit.Logger
 import com.slack.circuit.codegen.annotations.CircuitInject
 import com.slack.circuit.runtime.CircuitUiEvent
 import com.slack.circuit.runtime.CircuitUiState
@@ -20,10 +21,11 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
-import org.cru.soularium.analytics.CrashReporter
 import org.cru.soularium.db.repository.SessionRepository
 import org.cru.soularium.model.Session
 import org.cru.soularium.ui.nav.ConversationSummaryScreen
+
+private val logger = Logger.withTag("ConversationSummaryPresenter")
 
 /**
  * Read-only summary of a completed session, opened from PastConversations.
@@ -36,7 +38,6 @@ class ConversationSummaryPresenter(
     @Assisted private val navigator: Navigator,
     @Assisted private val screen: ConversationSummaryScreen,
     private val sessionRepository: SessionRepository,
-    private val crashReporter: CrashReporter,
 ) : Presenter<ConversationSummaryPresenter.UiState> {
 
     data class UiState(
@@ -91,7 +92,7 @@ class ConversationSummaryPresenter(
             }
             .map<List<ParticipantSummary>, SummaryState> { SummaryState.Loaded(it) }
             .catch { throwable ->
-                crashReporter.recordNonFatal(throwable, "observeSummaries")
+                logger.e(throwable) { "observeSummaries" }
                 emit(SummaryState.Failed)
             }
 

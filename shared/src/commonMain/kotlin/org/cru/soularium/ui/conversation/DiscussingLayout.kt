@@ -169,10 +169,10 @@ private fun MultiCardPager(cards: List<CardAsset>, modifier: Modifier = Modifier
                 state = pagerState,
                 modifier = Modifier.fillMaxWidth(),
             ) { page ->
-                val cardDesc = stringResource(Res.string.image_x_of_y, page + 1, totalPages)
+                val card = cards[page]
                 Image(
-                    painter = painterResource(cards[page].full),
-                    contentDescription = cardDesc,
+                    painter = painterResource(card.full),
+                    contentDescription = card.contentDescription?.let { stringResource(it) },
                     contentScale = ContentScale.Fit,
                     modifier = Modifier
                         .fillMaxWidth()

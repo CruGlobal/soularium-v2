@@ -3,6 +3,7 @@ package org.cru.soularium.ui.conversation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -95,8 +96,12 @@ class ConversationPresenter(
         ) : UiState
 
         data class CollectingContact(
-            val participantName: String,
             val participantIndex: Int,
+            val firstName: MutableState<String>,
+            val lastName: MutableState<String>,
+            val email: MutableState<String>,
+            val phone: MutableState<String>,
+            val notes: MutableState<String>,
             override val showExitDialog: Boolean,
             override val eventSink: (UiEvent) -> Unit,
         ) : UiState
@@ -153,7 +158,7 @@ class ConversationPresenter(
         }
 
         sealed interface CollectingContact : UiEvent {
-            data class Save(val info: ContactInfo) : CollectingContact
+            data object Save : CollectingContact
             data object Skip : CollectingContact
         }
     }
@@ -167,6 +172,13 @@ class ConversationPresenter(
         val game by engine.state.collectAsState()
         var summaries by remember { mutableStateOf(emptyList<ParticipantSummary>()) }
         var showExitDialog by remember { mutableStateOf(false) }
+
+        // Keyed on the collecting participant so each contact form starts fresh,
+        // seeded with that participant's own name.
+        val collectingIndex = (game.session as? SessionState.CollectingContact)?.participantIndex
+        val contactFields = remember(collectingIndex) {
+            ContactFieldStates(collectingIndex?.let { game.participantNames.getOrElse(it) { "" } }.orEmpty())
+        }
 
         LaunchedEffect(engine) { engine.start() }
 
@@ -218,10 +230,12 @@ class ConversationPresenter(
                 UiEvent.Summary.Done ->
                     engine.dispatch(SessionEvent.Conclude)
 
-                is UiEvent.CollectingContact.Save -> {
+                UiEvent.CollectingContact.Save -> {
                     val current = game.session as? SessionState.CollectingContact
                     if (current != null) {
-                        engine.dispatch(SessionEvent.CollectContact(current.participantIndex, event.info))
+                        engine.dispatch(
+                            SessionEvent.CollectContact(current.participantIndex, contactFields.toContactInfo()),
+                        )
                     }
                 }
                 UiEvent.CollectingContact.Skip ->
@@ -249,7 +263,28 @@ class ConversationPresenter(
             }
         }
 
-        return buildUiState(game, summaries, showExitDialog, eventSink)
+        return buildUiState(game, summaries, contactFields, showExitDialog, eventSink)
+    }
+
+    /**
+     * Snapshot-backed contact form fields. The Layout writes into these directly
+     * as the user types — no event roundtrip — and [toContactInfo] reads them
+     * when the form is saved.
+     */
+    private class ContactFieldStates(participantName: String) {
+        val firstName = mutableStateOf(participantName)
+        val lastName = mutableStateOf("")
+        val email = mutableStateOf("")
+        val phone = mutableStateOf("")
+        val notes = mutableStateOf("")
+
+        fun toContactInfo() = ContactInfo(
+            name = firstName.value,
+            surname = lastName.value.ifBlank { null },
+            email = email.value.ifBlank { null },
+            phone = phone.value.ifBlank { null },
+            notes = notes.value.ifBlank { null },
+        )
     }
 
     /**
@@ -261,6 +296,7 @@ class ConversationPresenter(
     private fun buildUiState(
         game: GameState,
         summaries: List<ParticipantSummary>,
+        contactFields: ContactFieldStates,
         showExitDialog: Boolean,
         eventSink: (UiEvent) -> Unit,
     ): UiState = when (val sessionState = game.session) {
@@ -321,8 +357,12 @@ class ConversationPresenter(
 
         is SessionState.CollectingContact ->
             UiState.CollectingContact(
-                participantName = game.participantNames.getOrElse(sessionState.participantIndex) { "" },
                 participantIndex = sessionState.participantIndex,
+                firstName = contactFields.firstName,
+                lastName = contactFields.lastName,
+                email = contactFields.email,
+                phone = contactFields.phone,
+                notes = contactFields.notes,
                 showExitDialog = showExitDialog,
                 eventSink = eventSink,
             )

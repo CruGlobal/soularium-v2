@@ -19,8 +19,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,7 +36,6 @@ import org.cru.soularium.generated.resources.contact_last_name
 import org.cru.soularium.generated.resources.contact_notes_label
 import org.cru.soularium.generated.resources.contact_phone_hint
 import org.cru.soularium.generated.resources.contact_title
-import org.cru.soularium.model.ContactInfo
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -60,11 +57,11 @@ fun isPhoneValid(phone: String): Boolean {
  */
 @Composable
 fun ContactCollectionLayout(state: ConversationPresenter.UiState.CollectingContact, modifier: Modifier = Modifier) {
-    var firstName by remember { mutableStateOf(state.participantName) }
-    var lastName by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-    var phone by remember { mutableStateOf("") }
-    var notes by remember { mutableStateOf("") }
+    var firstName by state.firstName
+    var lastName by state.lastName
+    var email by state.email
+    var phone by state.phone
+    var notes by state.notes
 
     val phoneError = phone.isNotEmpty() && !isPhoneValid(phone)
 
@@ -182,19 +179,7 @@ fun ContactCollectionLayout(state: ConversationPresenter.UiState.CollectingConta
 
             Button(
                 enabled = !phoneError,
-                onClick = {
-                    state.eventSink(
-                        ConversationPresenter.UiEvent.CollectingContact.Save(
-                            ContactInfo(
-                                name = firstName,
-                                surname = lastName.ifBlank { null },
-                                email = email.ifBlank { null },
-                                phone = phone.ifBlank { null },
-                                notes = notes.ifBlank { null },
-                            ),
-                        ),
-                    )
-                },
+                onClick = { state.eventSink(ConversationPresenter.UiEvent.CollectingContact.Save) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)

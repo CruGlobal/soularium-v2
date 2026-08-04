@@ -7,6 +7,27 @@ allowed-tools: Bash, Read, Grep, Glob, Write, Edit
 
 Review pull request $ARGUMENTS against the Soularium v2 project conventions.
 
+**Every invocation is a fresh review.** Execute every step from scratch each time this skill
+is invoked — even when a review already ran earlier in this conversation, and even when the
+delta since then looks tiny. Re-read the dismissed issues, re-fetch the full diff, re-run all
+pre-flight commands, and re-evaluate the complete checklist against **every** changed file in
+the diff — not just the files changed since the last pass. A prior green pre-flight certified
+a tree that no longer exists; prior findings may have shifted lines or been invalidated. The
+only earlier-pass state that may inform this pass is what steps 8–9 explicitly consume:
+comments already posted on the PR (for dedup and thread resolution).
+
+None of these permit reusing an earlier pass:
+- "Only a small / typo / test-only commit landed since" — fix commits break checks as readily
+  as feature commits.
+- "lint / the iOS suite can't see the changed file" — the pre-flight is unconditional; it
+  validates the tree, not the delta.
+- "The earlier categorization / findings are still in context" — re-derive them from the
+  fresh diff; carried-forward findings drift in line numbers and validity.
+- "The user is in a hurry / gradle is slow" — speed the pre-flight up by batching the tasks
+  into one gradle invocation or running it in the background while reviewing, never by
+  skipping commands.
+- "I'm near the context limit" — a fresh review beats a stale reused one.
+
 ## Steps
 
 1. Check for dismissed issues by reading `.claude/skills/pr-review/dismissed-issues.md` if it exists.
@@ -121,6 +142,24 @@ Use the exact file path from the diff and the line number in the current version
    - If it is a **self-review**, post with `--comment` (GitHub does not allow self-approval)
    - If it is **someone else's PR**, ask whether to approve or just comment, then post with `--approve` or `--comment` accordingly
    - Always append `\n\n🤖 Posted by [Claude Code](https://claude.ai/code)` to the body
+   - After posting, offer to mark the superseded full reviews as outdated. List the PR's
+     earlier reviews whose body contains the `🤖 Posted by [Claude Code]` attribution footer
+     (never a human's review, and skip empty-body reviews — those are inline-comment
+     carriers, and skip the review just posted). If any exist, **ask the user per review**
+     (identify each by its date and verdict) whether to mark it outdated, then minimize only
+     the ones they approve:
+
+     ```bash
+     gh api repos/$REPO/pulls/$ARGUMENTS/reviews \
+       --jq '.[] | select(.body | contains("Posted by [Claude Code]")) | {node_id, submitted_at, body: .body[0:100]}'
+     # For each review the user approved marking outdated:
+     gh api graphql -f query='
+     mutation {
+       minimizeComment(input: { subjectId: "<review node_id>", classifier: OUTDATED }) {
+         minimizedComment { isMinimized }
+       }
+     }'
+     ```
 
 11. After the review output, print:
 
@@ -277,7 +316,7 @@ DI is compile-time via [Metro](https://github.com/ZacSweers/metro). The graph is
 ### Testing
 
 - [ ] Unit tests (domain, presenter, data) live in `commonTest`; Paparazzi screenshot tests live in `androidHostTest`. There are still no on-device Android instrumented tests. Compose-UI interaction tests using `runComposeUiTest` are allowed in `commonTest`, annotated `@RunOnAndroidWith(AndroidJUnit4::class)` — see `HomeMenuOverlayTest`. The import must be `androidx.compose.ui.test.v2.runComposeUiTest` — the v1 `androidx.compose.ui.test.runComposeUiTest` is deprecated and is a **Must Fix**
-- [ ] Frameworks: `kotlin.test` (`@Test`, `@BeforeTest`, `@AfterTest`), Kotest assertions (`io.kotest.matchers.*`), Turbine for `Flow` assertions, `kotlinx-coroutines-test` (`runTest` with an injected `TestDispatcher`, `advanceUntilIdle`) — no JUnit4, no `runBlocking`, no manual `collect` + coroutine coordination
+- [ ] Frameworks: `kotlin.test` (`@Test`, `@BeforeTest`, `@AfterTest`); assertions may be either `kotlin.test` (`assertEquals`, `assertTrue`, …) or Kotest matchers (`io.kotest.matchers.*`) — both are acceptable, don't flag one in favor of the other or churn a test between them; Turbine for `Flow` assertions, `kotlinx-coroutines-test` (`runTest` with an injected `TestDispatcher`, `advanceUntilIdle`) — no JUnit4, no `runBlocking`, no manual `collect` + coroutine coordination
 - [ ] Presenter tests are written with Circuit's `circuit-test` (`FakeNavigator`, `presenter.test { awaitItem().eventSink(...) }`)
 - [ ] Presenter tests are annotated `@RunOnAndroidWith(AndroidJUnit4::class)` so the Android-host variant runs them under Robolectric — required because the Compose Runtime's Android artifact touches `android.util.Log` on its error path. Pure domain tests are unannotated
 - [ ] `:module:db` repository integration tests follow the abstract-contract pattern — a persistence-agnostic `…RepositoryTest` (in `db.repository`, `commonTest`) plus a Room subclass (in `db.room.repository`) that supplies `repository` from the database, annotated `@RunOnAndroidWith(AndroidJUnit4::class)`. The in-memory DB comes from an `expect fun buildInMemorySoulariumDatabase()` (android/ios actuals) so the test runs on both Android host (Robolectric) and iOS

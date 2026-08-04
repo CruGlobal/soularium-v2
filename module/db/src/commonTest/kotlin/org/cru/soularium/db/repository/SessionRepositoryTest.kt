@@ -97,6 +97,25 @@ abstract class SessionRepositoryTest {
     }
 
     @Test
+    fun `observeBookmarkedSessions - excludes sessions that have ended`() = runTest {
+        val inProgress = Session.Id.random()
+        val finished = Session.Id.random()
+        repository.createSession(Session(id = inProgress, kind = Session.Kind.SOLO), SessionState.AddingParticipants)
+        repository.createSession(Session(id = finished, kind = Session.Kind.SOLO), SessionState.AddingParticipants)
+        repository.setBookmarked(inProgress, bookmarked = true)
+        repository.setBookmarked(finished, bookmarked = true)
+        repository.persistState(finished, SessionState.Concluded)
+
+        repository.observeBookmarkedSessions().test {
+            assertEquals(
+                listOf(inProgress),
+                awaitItem().map { it.id },
+                "a bookmarked session that has ended stays out of the bookmarked list",
+            )
+        }
+    }
+
+    @Test
     fun `deleteSession - cascades to conversations and card picks`() = runTest {
         val sessionId = Session.Id.random()
         repository.createSession(Session(id = sessionId, kind = Session.Kind.SOLO), SessionState.AddingParticipants)

@@ -51,3 +51,12 @@ dependencies {
     add("kspIosArm64", libs.room.compiler)
     add("kspIosSimulatorArm64", libs.room.compiler)
 }
+
+// TODO: temporary workaround — AGP's androidHostTest lint tasks (LintModelWriterTask,
+//       AndroidLintAnalysisTask) consume the KSP-generated androidHostTest sources without
+//       declaring a dependency on the task that produces them, failing Gradle's
+//       implicit-dependency validation whenever both end up in the same task graph. Remove
+//       once KSP supports the KMP library plugin (https://github.com/google/ksp/issues/2476).
+//       Reproducer: ./gradlew :module:db:lintAnalyzeAndroidHostTest :module:db:kspAndroidHostTest
+tasks.matching { it.name == "generateAndroidHostTestLintModel" || it.name == "lintAnalyzeAndroidHostTest" }
+    .configureEach { dependsOn("kspAndroidHostTest") }

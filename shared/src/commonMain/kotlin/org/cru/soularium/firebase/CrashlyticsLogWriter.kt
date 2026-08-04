@@ -14,9 +14,11 @@ import dev.zacsweers.metro.Inject
  * [Throwable] is recorded as a non-fatal. Contributed into the `Set<LogWriter>` that
  * [org.cru.soularium.di.configureLogging] installs on the global [co.touchlab.kermit.Logger].
  *
- * Firebase access is lazy and defensive: until the config files (`google-services.json` /
- * `GoogleService-Info.plist`) are present, `Firebase.crashlytics` throws because Firebase isn't
- * initialized. Swallowing that keeps this writer inert — never crashing the app — until they land.
+ * Firebase access is lazy and defensive: in a process where Firebase isn't initialized (unit
+ * tests, previews), `Firebase.crashlytics` throws. Swallowing that keeps this writer inert —
+ * a logging call never crashes the process. In the apps themselves Firebase is initialized at
+ * startup — automatically on Android via the google-services plugin, and by
+ * `FirebaseApp.configure()` in `FirebaseAppDelegate.swift` on iOS.
  */
 @Inject
 @ContributesIntoSet(AppScope::class)
@@ -27,9 +29,9 @@ class CrashlyticsLogWriter : LogWriter() {
             crashlytics.log("$severity: ($tag) $message")
             if (throwable != null) crashlytics.recordException(throwable)
         } catch (_: Exception) {
-            // Firebase isn't configured yet (no google-services.json / GoogleService-Info.plist),
-            // so there's no Crashlytics instance to report to. Stay inert rather than let a logging
-            // call bring down the app; real reporting begins once the config files land.
+            // Firebase isn't initialized in this process (unit tests, previews), so there's no
+            // Crashlytics instance to report to. Stay inert rather than let a logging call bring
+            // down the process.
         }
     }
 }

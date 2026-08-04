@@ -165,10 +165,12 @@ multibindings: `CrashlyticsLogWriter`
 (`org.cru.soularium.firebase`, `@ContributesIntoSet`) forwards messages + non-fatals to
 Firebase Crashlytics through the GitLive `firebase-crashlytics` KMP SDK, and the platform
 console writer is contributed per-target (`AndroidLoggingBindings` — logcat, debug builds
-only; `IosLoggingBindings` — NSLog). `CrashlyticsLogWriter` is inert (its Firebase calls
-are wrapped defensively) until the `google-services.json` / `GoogleService-Info.plist`
-config files land. Tests exercise presenters without configuring the logger, so log calls
-hit only the default platform writer.
+only; `IosLoggingBindings` — NSLog). `CrashlyticsLogWriter` wraps its Firebase calls
+defensively, so it stays inert in processes where Firebase isn't initialized (unit tests,
+previews); in the apps Firebase initializes at startup — the google-services plugin on
+Android, `FirebaseApp.configure()` in `FirebaseAppDelegate.swift` (hooked in via
+`@UIApplicationDelegateAdaptor`, mirroring mpdx-kmp) on iOS. Tests exercise presenters
+without configuring the logger, so log calls hit only the default platform writer.
 
 ### Platform abstraction — expect/actual
 

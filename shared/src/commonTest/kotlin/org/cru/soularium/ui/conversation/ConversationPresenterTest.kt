@@ -379,6 +379,33 @@ class ConversationPresenterTest {
         assertEquals(SessionEvent.SkipContact, fakeEngine.dispatched.single())
     }
 
+    @Test
+    fun `UiEvent - RequestExit - discards and exits when nothing has been entered yet`() = runTest {
+        val fakeEngine = FakeGameEngine(
+            GameState(session = SessionState.AddingParticipants, participantNames = emptyList()),
+        )
+        presenter(fakeEngine = fakeEngine).test {
+            awaitItem().eventSink(ConversationPresenter.UiEvent.RequestExit)
+            advanceUntilIdle()
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertEquals(1, fakeEngine.discardCount, "an empty session is discarded without the exit dialog")
+        navigator.awaitPop()
+    }
+
+    @Test
+    fun `UiEvent - RequestExit - shows the exit dialog once participants exist`() = runTest {
+        val fakeEngine = FakeGameEngine(
+            GameState(session = SessionState.AddingParticipants, participantNames = listOf("Alice")),
+        )
+        presenter(fakeEngine = fakeEngine).test {
+            awaitItem().eventSink(ConversationPresenter.UiEvent.RequestExit)
+            assertTrue(awaitItem().showExitDialog, "a session with progress still offers bookmark or discard")
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertEquals(0, fakeEngine.discardCount)
+    }
+
     // ── Bookmark / discard ────────────────────────────────────────────────
 
     @Test

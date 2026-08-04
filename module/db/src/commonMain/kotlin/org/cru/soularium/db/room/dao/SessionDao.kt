@@ -20,7 +20,7 @@ interface SessionDao {
     @Query("SELECT * FROM sessions WHERE ended_at IS NOT NULL ORDER BY ended_at DESC")
     fun observeCompleted(): Flow<List<SessionEntity>>
 
-    @Query("SELECT * FROM sessions WHERE bookmarked_at IS NOT NULL ORDER BY bookmarked_at DESC")
+    @Query("SELECT * FROM sessions WHERE bookmarked_at IS NOT NULL AND ended_at IS NULL ORDER BY bookmarked_at DESC")
     fun observeBookmarked(): Flow<List<SessionEntity>>
 
     @Query("DELETE FROM sessions WHERE id = :id")

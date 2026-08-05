@@ -90,6 +90,12 @@ class FakeSessionRepository : SessionRepository {
         completedIds.update { it + id }
     }
 
+    override suspend fun setSelectionInstructionsShown(id: Session.Id) {
+        sessions.update { all ->
+            all[id]?.let { all + (id to it.copy(selectionInstructionsShown = true)) } ?: all
+        }
+    }
+
     override suspend fun upsertParticipants(sessionId: Session.Id, names: List<String>): List<Conversation.Id> {
         lastUpsertedParticipants = names
         val existing = conversations.value[sessionId].orEmpty()

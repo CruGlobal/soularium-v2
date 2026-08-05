@@ -17,5 +17,8 @@ sealed interface Effect {
 
     data class PersistContact(val participantIndex: Int, val info: ContactInfo) : Effect
 
+    /** The user dismissed the once-per-session selection instructions — remember across resumes. */
+    data object PersistInstructionsShown : Effect
+
     data class LogAnalytics(val event: String, val params: Map<String, Any>) : Effect
 }

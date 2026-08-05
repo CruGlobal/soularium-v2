@@ -19,9 +19,18 @@ internal class FakeGameEngineHost : GameEngineImpl.Host {
     val bookmarked = mutableListOf<Boolean>()
     var deleted = 0
 
+    var selectionInstructionsShown = false
+
     override suspend fun findSessionState(id: Session.Id): SessionState? {
         findSessionStateError?.let { throw it }
         return persistedState
+    }
+
+    var loadSelectionInstructionsShownError: Throwable? = null
+
+    override suspend fun loadSelectionInstructionsShown(id: Session.Id): Boolean {
+        loadSelectionInstructionsShownError?.let { throw it }
+        return selectionInstructionsShown
     }
 
     override suspend fun loadParticipantNames(id: Session.Id): List<String> = participantNames
@@ -52,5 +61,6 @@ internal class FakeGameEngineHost : GameEngineImpl.Host {
         executeError?.let { throw it }
         executed += effect
         if (effect is Effect.PersistState) persistedState = effect.state
+        if (effect is Effect.PersistInstructionsShown) selectionInstructionsShown = true
     }
 }

@@ -97,6 +97,22 @@ abstract class SessionRepositoryTest {
     }
 
     @Test
+    fun `setSelectionInstructionsShown - persists the flag`() = runTest {
+        val sessionId = Session.Id.random()
+        repository.createSession(Session(id = sessionId, kind = Session.Kind.SOLO), SessionState.NotStarted)
+        assertEquals(false, repository.findSession(sessionId)?.selectionInstructionsShown)
+
+        repository.setSelectionInstructionsShown(sessionId)
+
+        assertEquals(true, repository.findSession(sessionId)?.selectionInstructionsShown)
+    }
+
+    @Test
+    fun `setSelectionInstructionsShown - ignores an unknown session`() = runTest {
+        repository.setSelectionInstructionsShown(Session.Id.random())
+    }
+
+    @Test
     fun `observeBookmarkedSessions - excludes sessions that have ended`() = runTest {
         val inProgress = Session.Id.random()
         val finished = Session.Id.random()

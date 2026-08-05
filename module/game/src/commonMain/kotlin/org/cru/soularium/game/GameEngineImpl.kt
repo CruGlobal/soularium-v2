@@ -82,6 +82,9 @@ internal class GameEngineImpl(
             runCatching { host.loadParticipantNames(sessionId) }
                 .onSuccess { names -> if (names.isNotEmpty()) _state.update { it.copy(participantNames = names) } }
                 .onFailure { logger.e(it) { "loadParticipantNames on start" } }
+            runCatching { host.loadSelectionInstructionsShown(sessionId) }
+                .onSuccess { shown -> if (shown) _state.update { it.copy(instructionsShown = true) } }
+                .onFailure { logger.e(it) { "loadSelectionInstructionsShown on start" } }
         }
         if (_state.value.session == SessionState.NotStarted) {
             val exists =
@@ -232,7 +235,7 @@ internal class GameEngineImpl(
                 val next = session.copy(activity = QuestionState.Selecting)
                 StepResult(
                     next = state.copy(session = next, instructionsShown = true),
-                    effects = listOf(Effect.PersistState(next)),
+                    effects = listOf(Effect.PersistState(next), Effect.PersistInstructionsShown),
                 )
             }
 
@@ -439,6 +442,8 @@ internal class GameEngineImpl(
      */
     interface Host {
         suspend fun findSessionState(id: Session.Id): SessionState?
+
+        suspend fun loadSelectionInstructionsShown(id: Session.Id): Boolean
 
         suspend fun loadParticipantNames(id: Session.Id): List<String>
 

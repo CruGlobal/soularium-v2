@@ -25,6 +25,7 @@ import org.cru.soularium.game.GameState
 import org.cru.soularium.game.SessionEvent
 import org.cru.soularium.game.content.Question
 import org.cru.soularium.model.ContactInfo
+import org.cru.soularium.model.Session
 import org.cru.soularium.model.game.SessionState
 import org.cru.soularium.model.game.SessionState.InQuestion.QuestionState
 import org.cru.soularium.ui.nav.ConversationScreen
@@ -326,7 +327,7 @@ class ConversationPresenter(
                         questionNumber = sessionState.questionNumber,
                         totalQuestions = Question.entries.size,
                         participantName = participantName,
-                        isGroup = game.participantNames.size > 1,
+                        isGroup = screen.kind == Session.Kind.GROUP,
                         showExitDialog = showExitDialog,
                         eventSink = eventSink,
                     )

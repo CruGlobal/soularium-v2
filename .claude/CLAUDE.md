@@ -93,6 +93,9 @@ module dependency graph rather than by convention.
   breaks already-persisted sessions — treat such changes as schema changes.
 - Exported Room schema JSON lives in `module/db/schemas/`. A `@Database` version bump
   must ship a matching schema JSON and migration.
+- A repository method that reads a row and then writes it back (read-modify-write) runs
+  inside a Room `@Transaction`, so concurrent writers can't interleave between the read
+  and the write.
 
 ### UI layer (`org.cru.soularium.ui`) — Circuit conventions
 
@@ -222,8 +225,10 @@ must contain no Android- or iOS-specific imports.
 - Test functions use backtick-quoted names built from ` - `-separated segments — a
   path from the thing under test down to the behavior, with each hierarchy level as
   its own segment: `UiEvent - <Event> - <behavior>` for presenter event handling,
-  `UiState - <field> - <behavior>` for presenter state derivation, and
-  `UI - <element/concern> - <behavior>` for Compose UI interaction tests. When a
+  `UiState - <field> - <behavior>` for presenter state derivation,
+  `UI - <element/concern> - <behavior>` for Compose UI interaction tests, and
+  `dispatch - <Event> - <behavior>` for `GameEngine` rule tests (with the engine's
+  other entry points as their own subjects, e.g. `start - <behavior>`). When a
   presenter has page-scoped `UiState`/`UiEvent` subtypes (e.g. the conversation
   flow), the page is its own segment: `UiState - <Page> - <field> - <behavior>` and
   `UiEvent - <Page> - <Event> - <behavior>` — e.g.

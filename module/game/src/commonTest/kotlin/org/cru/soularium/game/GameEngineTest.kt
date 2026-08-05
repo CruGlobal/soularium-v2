@@ -8,6 +8,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -532,6 +533,48 @@ class GameEngineTest {
         e.dispatch(SessionEvent.AddParticipant("Ben"))
         advanceUntilIdle()
         assertTrue(host.executed.isNotEmpty())
+    }
+
+    @Test
+    fun `dispatch - DismissInstructions - persists the instructions-shown flag`() = runTest {
+        val host = FakeGameEngineHost()
+        val e = engine(host, initial = GameState(session = inQuestion(phase = QuestionState.ShowingInstructions)))
+        e.dispatch(SessionEvent.DismissInstructions)
+        advanceUntilIdle()
+        assertTrue(host.executed.any { it is Effect.PersistInstructionsShown })
+    }
+
+    @Test
+    fun `start - rehydrates the persisted instructions-shown flag`() = runTest {
+        val host =
+            FakeGameEngineHost().apply {
+                persistedState = inQuestion(q = 2)
+                selectionInstructionsShown = true
+                sessionExists = true
+            }
+        val e = engine(host)
+        e.start()
+        advanceUntilIdle()
+        assertTrue(e.state.value.instructionsShown, "the persisted flag rehydrates into GameState")
+        e.dispatch(SessionEvent.BeginSelection)
+        val next = assertIs<SessionState.InQuestion>(e.state.value.session)
+        assertEquals(QuestionState.Selecting, next.activity, "instructions are not shown again after resume")
+    }
+
+    @Test
+    fun `start - a failing instructions-shown read is logged and ignored`() = runTest {
+        val host =
+            FakeGameEngineHost().apply {
+                persistedState = inQuestion(q = 2)
+                sessionExists = true
+                loadSelectionInstructionsShownError = IllegalStateException("read failed")
+            }
+        val e = engine(host)
+        e.start()
+        advanceUntilIdle()
+        assertEquals(inQuestion(q = 2), e.state.value.session, "rehydration still completes")
+        assertFalse(e.state.value.instructionsShown)
+        assertTrue(logWriter.messages.contains("loadSelectionInstructionsShown on start"))
     }
 
     @Test

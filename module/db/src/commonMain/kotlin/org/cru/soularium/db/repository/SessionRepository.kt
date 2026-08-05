@@ -21,6 +21,9 @@ interface SessionRepository {
 
     suspend fun setEnded(id: Session.Id)
 
+    /** Marks the once-per-session selection instructions as seen; never unset. */
+    suspend fun setSelectionInstructionsShown(id: Session.Id)
+
     suspend fun upsertParticipants(sessionId: Session.Id, names: List<String>): List<Conversation.Id>
 
     suspend fun upsertContact(conversationId: Conversation.Id, info: ContactInfo)

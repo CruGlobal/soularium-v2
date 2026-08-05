@@ -30,6 +30,9 @@ internal class GameEngineHostImpl(
 
     override suspend fun findSessionState(id: Session.Id): SessionState? = sessionRepository.findSessionState(id)
 
+    override suspend fun loadSelectionInstructionsShown(id: Session.Id): Boolean =
+        sessionRepository.findSession(id)?.selectionInstructionsShown ?: false
+
     override suspend fun loadParticipantNames(id: Session.Id): List<String> =
         loadConversations(id).sortedBy { it.displayOrder }.map { it.contact.name }
 
@@ -78,6 +81,9 @@ internal class GameEngineHostImpl(
 
             is Effect.PersistContact ->
                 sessionRepository.upsertContact(conversationId(id, effect.participantIndex), effect.info)
+
+            Effect.PersistInstructionsShown ->
+                sessionRepository.setSelectionInstructionsShown(id)
 
             is Effect.LogAnalytics ->
                 analytics.event(effect.event, effect.params)

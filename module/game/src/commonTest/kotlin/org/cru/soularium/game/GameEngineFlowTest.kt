@@ -2,6 +2,7 @@ package org.cru.soularium.game
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -126,6 +127,32 @@ class GameEngineFlowTest {
         assertEquals(3, resumed.questionNumber)
         assertEquals(QuestionState.ShowingPrompt, resumed.activity)
         assertEquals(listOf("Riley"), second.state.value.participantNames)
+    }
+
+    @Test
+    fun `instructions stay dismissed after bookmark and resume`() = runTest {
+        val repo = FakeSessionRepository()
+        val sessionId = Session.Id.random()
+
+        val first = engine(repo, sessionId, Session.Kind.SOLO)
+        first.start()
+        first.dispatch(SessionEvent.AddParticipant("Riley"))
+        first.dispatch(SessionEvent.ConfirmParticipants)
+        first.dispatch(SessionEvent.BeginSelection)
+        first.dispatch(SessionEvent.DismissInstructions)
+        first.bookmark()
+
+        val second = engine(repo, sessionId, Session.Kind.SOLO)
+        second.start()
+        second.dispatch(SessionEvent.BeginSelection)
+        val resumed = assertIs<SessionState.InQuestion>(second.state.value.session)
+        assertEquals(QuestionState.Selecting, resumed.activity, "instructions do not reappear after resume")
+    }
+
+    @Test
+    fun `loadSelectionInstructionsShown is false for an unknown session`() = runTest {
+        val host = GameEngineHostImpl(FakeSessionRepository(), SilentAnalytics)
+        assertFalse(host.loadSelectionInstructionsShown(Session.Id.random()))
     }
 
     @Test

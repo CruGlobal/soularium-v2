@@ -1,6 +1,7 @@
 package org.cru.soularium.db.room.repository
 
 import androidx.room.Dao
+import androidx.room.Transaction
 import kotlin.time.Clock
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -57,6 +58,12 @@ internal abstract class SessionRoomRepository(private val db: SoulariumDatabase)
     override suspend fun setEnded(id: Session.Id) {
         val current = sessionDao.findSession(id) ?: return
         sessionDao.upsert(current.copy(endedAt = Clock.System.now()))
+    }
+
+    @Transaction
+    override suspend fun setSelectionInstructionsShown(id: Session.Id) {
+        val current = sessionDao.findSession(id) ?: return
+        sessionDao.upsert(current.copy(selectionInstructionsShown = true))
     }
 
     override suspend fun upsertParticipants(sessionId: Session.Id, names: List<String>): List<Conversation.Id> {

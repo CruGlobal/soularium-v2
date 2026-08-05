@@ -219,6 +219,9 @@ internal class GameEngineImpl(
         val question = Question.forNumber(session.questionNumber)
         return when (event) {
             SessionEvent.BeginSelection -> {
+                if (session.activity != QuestionState.ShowingPrompt && session.activity != QuestionState.Finalizing) {
+                    return invalid(state, session.toString(), event)
+                }
                 val targetActivity =
                     if (!state.instructionsShown &&
                         session.activity == QuestionState.ShowingPrompt
@@ -232,6 +235,9 @@ internal class GameEngineImpl(
             }
 
             SessionEvent.DismissInstructions -> {
+                if (session.activity != QuestionState.ShowingInstructions) {
+                    return invalid(state, session.toString(), event)
+                }
                 val next = session.copy(activity = QuestionState.Selecting)
                 StepResult(
                     next = state.copy(session = next, instructionsShown = true),
@@ -270,6 +276,9 @@ internal class GameEngineImpl(
             }
 
             SessionEvent.ConfirmFinal -> {
+                if (session.activity != QuestionState.Finalizing) {
+                    return invalid(state, session.toString(), event)
+                }
                 if (state.draftPicks.size != question.requiredImageCount) {
                     return StepResult(
                         next = state,
@@ -302,6 +311,9 @@ internal class GameEngineImpl(
             }
 
             SessionEvent.EndDiscussion -> {
+                if (session.activity != QuestionState.Discussing) {
+                    return invalid(state, session.toString(), event)
+                }
                 val isLastParticipant = session.activeParticipantIndex >= state.participantNames.size - 1
                 val next =
                     when {

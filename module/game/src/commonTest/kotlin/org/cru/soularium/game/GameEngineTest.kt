@@ -153,6 +153,75 @@ class GameEngineTest {
     }
 
     @Test
+    fun `dispatch - EndDiscussion - from ShowingPrompt is invalid`() = runTest {
+        val host = FakeGameEngineHost()
+        val e =
+            engine(
+                host,
+                initial =
+                GameState(
+                    session = inQuestion(q = 2, participant = 1),
+                    participantNames = listOf("Alice", "Bob"),
+                ),
+            )
+        e.dispatch(SessionEvent.EndDiscussion)
+        assertEquals(
+            inQuestion(q = 2, participant = 1),
+            e.state.value.session,
+            "a double-tapped Done cannot skip a turn",
+        )
+        advanceUntilIdle()
+        val analytics = host.executed.filterIsInstance<Effect.LogAnalytics>().single()
+        assertEquals("transition_error", analytics.event)
+    }
+
+    @Test
+    fun `dispatch - ConfirmFinal - from Discussing is invalid`() = runTest {
+        val host = FakeGameEngineHost()
+        val e =
+            engine(
+                host,
+                initial =
+                GameState(session = inQuestion(phase = QuestionState.Discussing), draftPicks = listOf(1, 2, 3)),
+            )
+        e.dispatch(SessionEvent.ConfirmFinal)
+        assertEquals(inQuestion(phase = QuestionState.Discussing), e.state.value.session)
+        advanceUntilIdle()
+        assertTrue(
+            host.executed.filterIsInstance<Effect.PersistPicks>().isEmpty(),
+            "a double-tapped confirm cannot persist duplicate picks",
+        )
+        val analytics = host.executed.filterIsInstance<Effect.LogAnalytics>().single()
+        assertEquals("transition_error", analytics.event)
+    }
+
+    @Test
+    fun `dispatch - BeginSelection - from ShowingInstructions is invalid`() = runTest {
+        val host = FakeGameEngineHost()
+        val e = engine(host, initial = GameState(session = inQuestion(phase = QuestionState.ShowingInstructions)))
+        e.dispatch(SessionEvent.BeginSelection)
+        assertEquals(
+            inQuestion(phase = QuestionState.ShowingInstructions),
+            e.state.value.session,
+            "a double-tapped Ready cannot skip the instructions panel",
+        )
+        advanceUntilIdle()
+        val analytics = host.executed.filterIsInstance<Effect.LogAnalytics>().single()
+        assertEquals("transition_error", analytics.event)
+    }
+
+    @Test
+    fun `dispatch - DismissInstructions - outside ShowingInstructions is invalid`() = runTest {
+        val host = FakeGameEngineHost()
+        val e = engine(host, initial = GameState(session = inQuestion(phase = QuestionState.Selecting)))
+        e.dispatch(SessionEvent.DismissInstructions)
+        assertEquals(inQuestion(phase = QuestionState.Selecting), e.state.value.session)
+        advanceUntilIdle()
+        val analytics = host.executed.filterIsInstance<Effect.LogAnalytics>().single()
+        assertEquals("transition_error", analytics.event)
+    }
+
+    @Test
     fun `BeginSelection from Finalizing returns to Selecting with picks intact`() = runTest {
         val e = engine(initial = GameState(session = inQuestion(phase = QuestionState.Finalizing)))
         e.dispatch(SessionEvent.BeginSelection)

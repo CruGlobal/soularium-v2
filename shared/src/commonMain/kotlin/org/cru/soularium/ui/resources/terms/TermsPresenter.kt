@@ -26,8 +26,11 @@ class TermsPresenter(@Assisted private val navigator: Navigator, private val dev
      * @param showAgree whether the Agree call-to-action should be offered — true only
      *   while the user has not yet accepted the terms (the Intro → Terms gate). When the
      *   screen is reached from Resources after agreeing, only Back is shown.
+     * @param showBack whether the Back affordance should be offered — false when Terms
+     *   is the backstack root (the post-intro launch gate), where popping would do nothing.
      */
-    data class UiState(val showAgree: Boolean, val eventSink: (UiEvent) -> Unit) : CircuitUiState
+    data class UiState(val showAgree: Boolean, val showBack: Boolean, val eventSink: (UiEvent) -> Unit) :
+        CircuitUiState
 
     sealed interface UiEvent : CircuitUiEvent {
         data object Agree : UiEvent
@@ -40,7 +43,10 @@ class TermsPresenter(@Assisted private val navigator: Navigator, private val dev
         // Null until device state resolves; treat "unknown" as already-agreed so the
         // Agree button never flashes for users reviewing the terms from Resources.
         val deviceState by remember { deviceStateRepo.deviceState }.collectAsState(initial = null)
-        return UiState(showAgree = deviceState?.agreedToTos == false) { event ->
+        return UiState(
+            showAgree = deviceState?.agreedToTos == false,
+            showBack = navigator.peekBackStack().size > 1,
+        ) { event ->
             when (event) {
                 UiEvent.Agree -> {
                     scope.launch { deviceStateRepo.markTosAgreed() }

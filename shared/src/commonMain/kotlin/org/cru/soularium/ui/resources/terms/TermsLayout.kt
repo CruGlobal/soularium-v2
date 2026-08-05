@@ -129,17 +129,19 @@ fun TermsLayout(state: TermsPresenter.UiState, modifier: Modifier = Modifier) {
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            OutlinedButton(
-                onClick = { state.eventSink(TermsPresenter.UiEvent.Back) },
-                modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .height(52.dp)
-            ) {
-                Text(
-                    text = stringResource(Res.string.action_back),
-                    style = MaterialTheme.typography.labelLarge,
-                )
+            if (state.showBack) {
+                OutlinedButton(
+                    onClick = { state.eventSink(TermsPresenter.UiEvent.Back) },
+                    modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .height(52.dp)
+                ) {
+                    Text(
+                        text = stringResource(Res.string.action_back),
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))

@@ -148,6 +148,7 @@
     <string name="contact_save_conversation">Save Conversation</string>
     <string name="contact_create_prompt">To create MySoularium, provide your name.</string>
     <string name="contact_ready_to_share">You’re ready to share your story in future Soularium conversations.</string>
+    <string name="contact_invalid_email">That email address doesn’t look right.</string>
     <string name="contact_invalid_phone">That phone number doesn’t look right.</string>
 
     <!-- Past conversations -->

@@ -103,6 +103,8 @@ class ConversationPresenter(
             val email: MutableState<String>,
             val phone: MutableState<String>,
             val notes: MutableState<String>,
+            val emailError: Boolean,
+            val phoneError: Boolean,
             override val showExitDialog: Boolean,
             override val eventSink: (UiEvent) -> Unit,
         ) : UiState
@@ -370,7 +372,11 @@ class ConversationPresenter(
         SessionState.Summary ->
             UiState.Summary(summaries, showExitDialog, eventSink)
 
-        is SessionState.CollectingContact ->
+        is SessionState.CollectingContact -> {
+            // Read as snapshot state so typing recomposes the presenter and the
+            // validation flags below stay fresh in the emitted UiState.
+            val emailError = contactFields.email.value.isNotEmpty() && !isEmailValid(contactFields.email.value)
+            val phoneError = contactFields.phone.value.isNotEmpty() && !isPhoneValid(contactFields.phone.value)
             UiState.CollectingContact(
                 participantIndex = sessionState.participantIndex,
                 firstName = contactFields.firstName,
@@ -378,9 +384,12 @@ class ConversationPresenter(
                 email = contactFields.email,
                 phone = contactFields.phone,
                 notes = contactFields.notes,
+                emailError = emailError,
+                phoneError = phoneError,
                 showExitDialog = showExitDialog,
                 eventSink = eventSink,
             )
+        }
     }
 
     @CircuitInject(ConversationScreen::class, AppScope::class)
@@ -388,4 +397,27 @@ class ConversationPresenter(
     fun interface Factory {
         fun create(navigator: Navigator, screen: ConversationScreen): ConversationPresenter
     }
+}
+
+private val emailPattern = Regex("[^@\\s]+@[^@\\s]+\\.[^@\\s]+")
+
+/**
+ * True when [email] is a plausible address, or blank (the field is optional). Checks
+ * the local@domain.tld shape without spaces — enough to catch typos without rejecting
+ * any real-world address format.
+ */
+private fun isEmailValid(email: String): Boolean {
+    val trimmed = email.trim()
+    return trimmed.isEmpty() || emailPattern.matches(trimmed)
+}
+
+/**
+ * True when [phone] is a plausible phone number, or blank (the field is optional).
+ * Strips spaces, dashes, parentheses, and a leading '+', then checks the remaining
+ * digits are absent or 7..15 long, covering every real-world national number format
+ * without a platform-specific library.
+ */
+private fun isPhoneValid(phone: String): Boolean {
+    val digits = phone.replace(Regex("[\\s\\-().+]"), "")
+    return digits.isEmpty() || digits.length in 7..15
 }

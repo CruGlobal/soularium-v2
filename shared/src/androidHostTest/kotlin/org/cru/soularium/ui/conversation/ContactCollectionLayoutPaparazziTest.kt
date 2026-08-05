@@ -37,7 +37,15 @@ class ContactCollectionLayoutPaparazziTest(
     // Implausible phone number: the field shows its error message and Save is disabled.
     @Test
     fun `ContactCollectionLayout() - invalid phone`() = snapshot {
-        ContactCollectionLayout(state = collectingContactState(phone = "1234"))
+        ContactCollectionLayout(state = collectingContactState(phone = "1234", phoneError = true))
+    }
+
+    // Implausible email: the field shows its error message and Save is disabled.
+    @Test
+    fun `ContactCollectionLayout() - invalid email`() = snapshot {
+        ContactCollectionLayout(
+            state = collectingContactState(email = "not-an-email", emailError = true),
+        )
     }
 }
 
@@ -47,6 +55,8 @@ private fun collectingContactState(
     email: String = "",
     phone: String = "",
     notes: String = "",
+    emailError: Boolean = false,
+    phoneError: Boolean = false,
 ) = ConversationPresenter.UiState.CollectingContact(
     participantIndex = 0,
     firstName = mutableStateOf(firstName),
@@ -54,6 +64,8 @@ private fun collectingContactState(
     email = mutableStateOf(email),
     phone = mutableStateOf(phone),
     notes = mutableStateOf(notes),
+    emailError = emailError,
+    phoneError = phoneError,
     showExitDialog = false,
     eventSink = {},
 )

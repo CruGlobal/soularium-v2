@@ -246,6 +246,79 @@ class ConversationPresenterTest {
     }
 
     @Test
+    fun `UiState - CollectingContact - emailError - flags only implausible addresses`() = runTest {
+        val fakeEngine = FakeGameEngine(
+            GameState(session = SessionState.CollectingContact(0), participantNames = listOf("Alice")),
+        )
+        presenter(fakeEngine = fakeEngine).test {
+            var state = awaitItem() as ConversationPresenter.UiState.CollectingContact
+            assertFalse(state.emailError, "a blank email is accepted — the field is optional")
+
+            // Alternate flagged and accepted values: every write flips the flag, so
+            // each one produces a fresh UiState emission to assert against.
+            val flagged = listOf("not-an-email", "user@localhost", "us er@example.com", "@example.com")
+            val accepted = listOf("   ", "test@example.com", "a.b+tag@mail.example.co", "user@mail.example.co.uk")
+            for ((bad, good) in flagged.zip(accepted)) {
+                state.email.value = bad
+                state = awaitItem() as ConversationPresenter.UiState.CollectingContact
+                assertTrue(state.emailError, "expected '$bad' to be flagged")
+
+                state.email.value = good
+                state = awaitItem() as ConversationPresenter.UiState.CollectingContact
+                assertFalse(state.emailError, "expected '$good' to be accepted")
+            }
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `UiState - CollectingContact - phoneError - flags only implausible numbers`() = runTest {
+        val fakeEngine = FakeGameEngine(
+            GameState(session = SessionState.CollectingContact(0), participantNames = listOf("Alice")),
+        )
+        presenter(fakeEngine = fakeEngine).test {
+            var state = awaitItem() as ConversationPresenter.UiState.CollectingContact
+            assertFalse(state.phoneError, "a blank phone is accepted — the field is optional")
+
+            // Alternate flagged and accepted values: every write flips the flag, so
+            // each one produces a fresh UiState emission to assert against.
+            val flagged = listOf("123456", "1234", "1234567890123456", "1 2 3 4 5 6")
+            val accepted = listOf(
+                "5551234",
+                "408-555-1234",
+                "(408) 555-1234",
+                "+14085551234",
+                "123456789012345",
+                "+1 (408) 555-1234",
+                "   ",
+                "4085551234",
+            )
+            var acceptedIndex = 0
+            for (bad in flagged) {
+                state.phone.value = bad
+                state = awaitItem() as ConversationPresenter.UiState.CollectingContact
+                assertTrue(state.phoneError, "expected '$bad' to be flagged")
+
+                val good = accepted[acceptedIndex]
+                state.phone.value = good
+                state = awaitItem() as ConversationPresenter.UiState.CollectingContact
+                assertFalse(state.phoneError, "expected '$good' to be accepted")
+                acceptedIndex++
+            }
+            for (good in accepted.drop(acceptedIndex)) {
+                state.phone.value = "1234"
+                state = awaitItem() as ConversationPresenter.UiState.CollectingContact
+                assertTrue(state.phoneError)
+
+                state.phone.value = good
+                state = awaitItem() as ConversationPresenter.UiState.CollectingContact
+                assertFalse(state.phoneError, "expected '$good' to be accepted")
+            }
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `UiState - Concluded - pops the navigator`() = runTest {
         val fakeEngine = FakeGameEngine(GameState(session = SessionState.Concluded))
         presenter(fakeEngine = fakeEngine).test {

@@ -31,25 +31,13 @@ import org.cru.soularium.generated.resources.action_save
 import org.cru.soularium.generated.resources.action_skip_for_now
 import org.cru.soularium.generated.resources.contact_email_hint
 import org.cru.soularium.generated.resources.contact_first_name
+import org.cru.soularium.generated.resources.contact_invalid_email
 import org.cru.soularium.generated.resources.contact_invalid_phone
 import org.cru.soularium.generated.resources.contact_last_name
 import org.cru.soularium.generated.resources.contact_notes_label
 import org.cru.soularium.generated.resources.contact_phone_hint
 import org.cru.soularium.generated.resources.contact_title
 import org.jetbrains.compose.resources.stringResource
-
-/**
- * Returns true if [phone] is a plausible phone number, or is blank/empty (field is optional).
- *
- * Strips spaces, dashes, parentheses, and a leading '+', then checks that the
- * remaining digits are either absent (blank entry) or in the range 7..15 digits,
- * which covers every real-world national number format without pulling in a
- * platform-specific library.
- */
-fun isPhoneValid(phone: String): Boolean {
-    val digits = phone.replace(Regex("[\\s\\-().+]"), "")
-    return digits.isEmpty() || digits.length in 7..15
-}
 
 /**
  * Contact-collection form shown after a participant completes all five questions.
@@ -63,11 +51,7 @@ fun ContactCollectionLayout(state: ConversationPresenter.UiState.CollectingConta
     var phone by state.phone
     var notes by state.notes
 
-    val phoneError = phone.isNotEmpty() && !isPhoneValid(phone)
-
     val scrollState = rememberScrollState()
-
-    val invalidPhoneMessage = stringResource(Res.string.contact_invalid_phone)
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -132,6 +116,18 @@ fun ContactCollectionLayout(state: ConversationPresenter.UiState.CollectingConta
                     onValueChange = { email = it },
                     label = { Text(stringResource(Res.string.contact_email_hint)) },
                     singleLine = true,
+                    isError = state.emailError,
+                    supportingText = when {
+                        state.emailError -> {
+                            {
+                                Text(
+                                    stringResource(Res.string.contact_invalid_email),
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                        else -> null
+                    },
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Email,
                         imeAction = ImeAction.Next,
@@ -147,11 +143,17 @@ fun ContactCollectionLayout(state: ConversationPresenter.UiState.CollectingConta
                     onValueChange = { phone = it },
                     label = { Text(stringResource(Res.string.contact_phone_hint)) },
                     singleLine = true,
-                    isError = phoneError,
-                    supportingText = if (phoneError) {
-                        { Text(invalidPhoneMessage, color = MaterialTheme.colorScheme.error) }
-                    } else {
-                        null
+                    isError = state.phoneError,
+                    supportingText = when {
+                        state.phoneError -> {
+                            {
+                                Text(
+                                    stringResource(Res.string.contact_invalid_phone),
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                        else -> null
                     },
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Phone,
@@ -178,7 +180,8 @@ fun ContactCollectionLayout(state: ConversationPresenter.UiState.CollectingConta
             }
 
             Button(
-                enabled = !phoneError,
+                // A contact needs a name, and any filled optional field must be plausible.
+                enabled = firstName.isNotBlank() && !state.emailError && !state.phoneError,
                 onClick = { state.eventSink(ConversationPresenter.UiEvent.CollectingContact.Save) },
                 modifier = Modifier
                     .fillMaxWidth()

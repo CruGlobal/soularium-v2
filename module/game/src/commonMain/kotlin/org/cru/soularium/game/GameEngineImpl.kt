@@ -76,7 +76,13 @@ internal class GameEngineImpl(
         val loadResult =
             runCatching { host.findSessionState(sessionId) }
                 .onFailure { logger.e(it) { "findSessionState on start" } }
-        val loaded = loadResult.getOrNull()
+        val persisted = loadResult.getOrNull()
+        // A snapshot that deserialized but is semantically impossible (e.g. a question
+        // number from a newer build after a downgrade) would crash-loop resume through
+        // Question.forNumber — treat it like the corrupt-snapshot case instead.
+        val invalidSnapshot = persisted != null && !isValidSnapshot(persisted)
+        if (invalidSnapshot) logger.e { "invalid persisted session state on start: $persisted" }
+        val loaded = persisted.takeUnless { invalidSnapshot }
         if (loaded != null) {
             _state.update { it.copy(session = snapBackToPromptIfMidQuestion(loaded)) }
             runCatching { host.loadParticipantNames(sessionId) }
@@ -93,7 +99,7 @@ internal class GameEngineImpl(
                         logger.e(it) { "sessionExists on start" }
                         false
                     }
-            if (!exists || loadResult.isFailure) {
+            if (!exists || loadResult.isFailure || invalidSnapshot) {
                 runCatching { host.createSession(Session(id = sessionId, kind = kind), SessionState.NotStarted) }
                     .onFailure { logger.e(it) { "createSession on start" } }
             }
@@ -122,23 +128,25 @@ internal class GameEngineImpl(
         queue.close() // worker drains what is already queued, then the scope dies
     }
 
-    private fun enqueue(context: () -> String, op: suspend () -> Unit) {
-        queue.trySend(QueuedOp(context, op))
-    }
+    private fun enqueue(context: () -> String, op: suspend () -> Unit): Boolean =
+        queue.trySend(QueuedOp(context, op)).isSuccess
 
     /**
      * Enqueues [op] behind every effect queued so far and suspends until it has run. The caller
-     * always resumes — failures thrown by [op] are reported by the worker loop, not rethrown.
+     * always resumes — failures thrown by [op] are reported by the worker loop, not rethrown,
+     * and after [close] the op is skipped rather than suspending forever on the closed queue.
      */
     private suspend fun awaitQueued(context: String, op: suspend () -> Unit) {
         val done = CompletableDeferred<Unit>()
-        enqueue({ context }) {
-            try {
-                op()
-            } finally {
-                done.complete(Unit)
+        val queued =
+            enqueue({ context }) {
+                try {
+                    op()
+                } finally {
+                    done.complete(Unit)
+                }
             }
-        }
+        if (!queued) done.complete(Unit)
         done.await()
     }
 
@@ -434,6 +442,10 @@ internal class GameEngineImpl(
      * question prompt on resume so the user restarts that question cleanly instead of landing on
      * an empty selection.
      */
+    /** Rejects states that deserialized cleanly but can't be operated on (e.g. version skew). */
+    private fun isValidSnapshot(state: SessionState): Boolean =
+        state !is SessionState.InQuestion || state.questionNumber in 1..Question.entries.size
+
     private fun snapBackToPromptIfMidQuestion(state: SessionState): SessionState =
         if (state is SessionState.InQuestion && state.activity != QuestionState.ShowingPrompt) {
             state.copy(activity = QuestionState.ShowingPrompt)

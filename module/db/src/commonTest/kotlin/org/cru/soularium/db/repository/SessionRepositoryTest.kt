@@ -7,6 +7,8 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
+import org.cru.soularium.model.ContactInfo
+import org.cru.soularium.model.Conversation
 import org.cru.soularium.model.Session
 import org.cru.soularium.model.game.SessionState
 
@@ -129,6 +131,28 @@ abstract class SessionRepositoryTest {
                 "a bookmarked session that has ended stays out of the bookmarked list",
             )
         }
+    }
+
+    @Test
+    fun `persistState - ignores a deleted session`() = runTest {
+        val sessionId = Session.Id.random()
+        repository.persistState(sessionId, SessionState.Concluded)
+
+        assertNull(repository.findSession(sessionId), "a deleted session is not resurrected")
+        assertNull(repository.findSessionState(sessionId))
+    }
+
+    @Test
+    fun `upsertParticipants - ignores a deleted session`() = runTest {
+        val sessionId = Session.Id.random()
+
+        assertTrue(repository.upsertParticipants(sessionId, listOf("Ana")).isEmpty())
+        assertTrue(repository.loadConversations(sessionId).isEmpty())
+    }
+
+    @Test
+    fun `upsertContact - ignores a deleted conversation`() = runTest {
+        repository.upsertContact(Conversation.Id.random(), ContactInfo("Ana"))
     }
 
     @Test

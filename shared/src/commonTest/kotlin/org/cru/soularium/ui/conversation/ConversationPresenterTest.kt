@@ -37,11 +37,12 @@ class ConversationPresenterTest {
     private val screen = ConversationScreen(sessionId, Session.Kind.SOLO)
     private val navigator = FakeNavigator(screen)
 
-    private fun presenter(fakeEngine: FakeGameEngine = FakeGameEngine()) = ConversationPresenter(
-        navigator = navigator,
-        screen = screen,
-        gameEngineFactory = FakeGameEngine.Factory(fakeEngine),
-    )
+    private fun presenter(fakeEngine: FakeGameEngine = FakeGameEngine(), kind: Session.Kind = Session.Kind.SOLO) =
+        ConversationPresenter(
+            navigator = navigator,
+            screen = ConversationScreen(sessionId, kind),
+            gameEngineFactory = FakeGameEngine.Factory(fakeEngine),
+        )
 
     // ── Bootstrap ─────────────────────────────────────────────────────────
 
@@ -86,7 +87,7 @@ class ConversationPresenterTest {
     }
 
     @Test
-    fun `UiState - QuestionPrompt - participantName - resolves the active participant and group flag`() = runTest {
+    fun `UiState - QuestionPrompt - participantName - resolves the active participant`() = runTest {
         val fakeEngine = FakeGameEngine(
             GameState(
                 session = SessionState.InQuestion(2, 1, QuestionState.ShowingPrompt),
@@ -96,7 +97,36 @@ class ConversationPresenterTest {
         presenter(fakeEngine = fakeEngine).test {
             val prompt = awaitItem() as ConversationPresenter.UiState.QuestionPrompt
             assertEquals("Bob", prompt.participantName)
-            assertTrue(prompt.isGroup)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `UiState - QuestionPrompt - isGroup - reflects the session kind for a one-participant group`() = runTest {
+        val fakeEngine = FakeGameEngine(
+            GameState(
+                session = SessionState.InQuestion(1, 0, QuestionState.ShowingPrompt),
+                participantNames = listOf("Alice"),
+            ),
+        )
+        presenter(fakeEngine = fakeEngine, kind = Session.Kind.GROUP).test {
+            val prompt = awaitItem() as ConversationPresenter.UiState.QuestionPrompt
+            assertTrue(prompt.isGroup, "a group session with one participant still gets the group treatment")
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `UiState - QuestionPrompt - isGroup - false for a solo session regardless of participant count`() = runTest {
+        val fakeEngine = FakeGameEngine(
+            GameState(
+                session = SessionState.InQuestion(1, 0, QuestionState.ShowingPrompt),
+                participantNames = listOf("Alice", "Bob"),
+            ),
+        )
+        presenter(fakeEngine = fakeEngine, kind = Session.Kind.SOLO).test {
+            val prompt = awaitItem() as ConversationPresenter.UiState.QuestionPrompt
+            assertFalse(prompt.isGroup)
             cancelAndIgnoreRemainingEvents()
         }
     }

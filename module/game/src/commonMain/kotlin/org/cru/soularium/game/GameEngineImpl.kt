@@ -350,7 +350,7 @@ internal class GameEngineImpl(
                 ),
             )
         }
-        SessionEvent.SkipContact ->
+        is SessionEvent.SkipContact ->
             StepResult(
                 next = state.copy(session = SessionState.Concluded),
                 effects = listOf(Effect.PersistState(SessionState.Concluded)),
@@ -372,20 +372,31 @@ internal class GameEngineImpl(
                 SessionState.CollectingContact(nextIndex)
             }
         return when (event) {
+            // A stale index means the event was meant for a participant whose form
+            // already advanced (e.g. a double-tap) — reject it instead of consuming
+            // the next participant's form.
             is SessionEvent.CollectContact ->
-                StepResult(
-                    next = state.copy(session = advanced),
-                    effects =
-                    listOf(
-                        Effect.PersistState(advanced),
-                        Effect.PersistContact(event.participantIndex, event.info),
-                    ),
-                )
-            SessionEvent.SkipContact ->
-                StepResult(
-                    next = state.copy(session = advanced),
-                    effects = listOf(Effect.PersistState(advanced)),
-                )
+                if (event.participantIndex != session.participantIndex) {
+                    invalid(state, session.toString(), event)
+                } else {
+                    StepResult(
+                        next = state.copy(session = advanced),
+                        effects =
+                        listOf(
+                            Effect.PersistState(advanced),
+                            Effect.PersistContact(event.participantIndex, event.info),
+                        ),
+                    )
+                }
+            is SessionEvent.SkipContact ->
+                if (event.participantIndex != session.participantIndex) {
+                    invalid(state, session.toString(), event)
+                } else {
+                    StepResult(
+                        next = state.copy(session = advanced),
+                        effects = listOf(Effect.PersistState(advanced)),
+                    )
+                }
             SessionEvent.Conclude -> concludeResult(state)
             else -> invalid(state, session.toString(), event)
         }

@@ -238,8 +238,12 @@ class ConversationPresenter(
                         )
                     }
                 }
-                UiEvent.CollectingContact.Skip ->
-                    engine.dispatch(SessionEvent.SkipContact)
+                UiEvent.CollectingContact.Skip -> {
+                    val current = game.session as? SessionState.CollectingContact
+                    if (current != null) {
+                        engine.dispatch(SessionEvent.SkipContact(current.participantIndex))
+                    }
+                }
 
                 // Global events
                 UiEvent.RequestExit -> when {

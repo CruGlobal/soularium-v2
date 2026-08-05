@@ -319,7 +319,7 @@ class GameEngineTest {
     @Test
     fun `Summary plus SkipContact goes to Concluded`() = runTest {
         val e = engine(initial = GameState(session = SessionState.Summary))
-        e.dispatch(SessionEvent.SkipContact)
+        e.dispatch(SessionEvent.SkipContact(0))
         assertEquals(SessionState.Concluded, e.state.value.session)
     }
 
@@ -343,9 +343,56 @@ class GameEngineTest {
                 initial =
                 GameState(session = SessionState.CollectingContact(0), participantNames = listOf("Alice", "Bob")),
             )
-        e.dispatch(SessionEvent.SkipContact)
+        e.dispatch(SessionEvent.SkipContact(0))
         val next = assertIs<SessionState.CollectingContact>(e.state.value.session)
         assertEquals(1, next.participantIndex)
+    }
+
+    @Test
+    fun `dispatch - SkipContact - with a stale participant index is invalid`() = runTest {
+        val host = FakeGameEngineHost()
+        val e =
+            engine(
+                host,
+                initial =
+                GameState(
+                    session = SessionState.CollectingContact(1),
+                    participantNames = listOf("Alice", "Bob", "Cara"),
+                ),
+            )
+        e.dispatch(SessionEvent.SkipContact(0))
+        assertEquals(
+            SessionState.CollectingContact(1),
+            e.state.value.session,
+            "a double-tapped Skip cannot consume the next participant's form",
+        )
+        advanceUntilIdle()
+        val analytics = host.executed.filterIsInstance<Effect.LogAnalytics>().single()
+        assertEquals("transition_error", analytics.event)
+    }
+
+    @Test
+    fun `dispatch - CollectContact - with a stale participant index is invalid`() = runTest {
+        val host = FakeGameEngineHost()
+        val e =
+            engine(
+                host,
+                initial =
+                GameState(
+                    session = SessionState.CollectingContact(1),
+                    participantNames = listOf("Alice", "Bob", "Cara"),
+                ),
+            )
+        e.dispatch(SessionEvent.CollectContact(0, ContactInfo("Alice")))
+        assertEquals(
+            SessionState.CollectingContact(1),
+            e.state.value.session,
+            "a double-tapped Save cannot re-persist and skip the next participant's form",
+        )
+        advanceUntilIdle()
+        assertTrue(host.executed.filterIsInstance<Effect.PersistContact>().isEmpty())
+        val analytics = host.executed.filterIsInstance<Effect.LogAnalytics>().single()
+        assertEquals("transition_error", analytics.event)
     }
 
     @Test
@@ -355,7 +402,7 @@ class GameEngineTest {
                 initial =
                 GameState(session = SessionState.CollectingContact(1), participantNames = listOf("Alice", "Bob")),
             )
-        e.dispatch(SessionEvent.SkipContact)
+        e.dispatch(SessionEvent.SkipContact(1))
         assertEquals(SessionState.Concluded, e.state.value.session)
     }
 

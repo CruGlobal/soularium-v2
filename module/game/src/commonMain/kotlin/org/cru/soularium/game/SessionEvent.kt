@@ -26,7 +26,7 @@ sealed interface SessionEvent {
 
     data class CollectContact(val participantIndex: Int, val info: ContactInfo) : SessionEvent
 
-    data object SkipContact : SessionEvent
+    data class SkipContact(val participantIndex: Int) : SessionEvent
 
     data object Conclude : SessionEvent
 }

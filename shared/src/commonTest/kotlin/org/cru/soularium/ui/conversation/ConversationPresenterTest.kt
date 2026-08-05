@@ -376,7 +376,7 @@ class ConversationPresenterTest {
             awaitItem().eventSink(ConversationPresenter.UiEvent.CollectingContact.Skip)
             cancelAndIgnoreRemainingEvents()
         }
-        assertEquals(SessionEvent.SkipContact, fakeEngine.dispatched.single())
+        assertEquals(SessionEvent.SkipContact(0), fakeEngine.dispatched.single())
     }
 
     @Test

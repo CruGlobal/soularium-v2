@@ -734,18 +734,28 @@ class GameEngineTest {
     }
 
     @Test
-    fun `start with an unreadable snapshot recreates the session`() = runTest {
+    fun `start - a read failure on an existing session does not overwrite it`() = runTest {
         val host =
             FakeGameEngineHost().apply {
-                findSessionStateError = IllegalStateException("corrupt")
+                findSessionStateError = IllegalStateException("transient read failure")
                 sessionExists = true
             }
         val e = engine(host)
         e.start()
         advanceUntilIdle()
-        assertEquals(1, host.created.size) // force-recreated
+        assertTrue(host.created.isEmpty(), "one failed read must not destroy the session's state and bookmark")
         assertTrue(logWriter.messages.contains("findSessionState on start"))
-        assertEquals(SessionState.AddingParticipants, e.state.value.session)
+        assertEquals(SessionState.NotStarted, e.state.value.session, "start bails instead of auto-starting")
+    }
+
+    @Test
+    fun `start - a sessionExists failure does not create`() = runTest {
+        val host = FakeGameEngineHost().apply { sessionExistsError = IllegalStateException("transient") }
+        val e = engine(host)
+        e.start()
+        advanceUntilIdle()
+        assertTrue(host.created.isEmpty(), "unable to tell whether the session exists — don't risk overwriting it")
+        assertEquals(SessionState.NotStarted, e.state.value.session)
     }
 
     @Test

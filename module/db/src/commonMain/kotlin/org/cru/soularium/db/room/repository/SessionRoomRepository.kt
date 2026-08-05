@@ -31,6 +31,7 @@ internal abstract class SessionRoomRepository(private val db: SoulariumDatabase)
         return session.id
     }
 
+    @Transaction
     override suspend fun persistState(id: Session.Id, state: SessionState) {
         val current = sessionDao.findSession(id) ?: return
         // Reaching Concluded ends the session, so it surfaces under
@@ -49,12 +50,14 @@ internal abstract class SessionRoomRepository(private val db: SoulariumDatabase)
         )
     }
 
+    @Transaction
     override suspend fun setBookmarked(id: Session.Id, bookmarked: Boolean) {
         val current = sessionDao.findSession(id) ?: return
         val bookmarkedAt = if (bookmarked) Clock.System.now() else null
         sessionDao.upsert(current.copy(bookmarkedAt = bookmarkedAt))
     }
 
+    @Transaction
     override suspend fun setEnded(id: Session.Id) {
         val current = sessionDao.findSession(id) ?: return
         sessionDao.upsert(current.copy(endedAt = Clock.System.now()))
@@ -66,7 +69,10 @@ internal abstract class SessionRoomRepository(private val db: SoulariumDatabase)
         sessionDao.upsert(current.copy(selectionInstructionsShown = true))
     }
 
+    @Transaction
     override suspend fun upsertParticipants(sessionId: Session.Id, names: List<String>): List<Conversation.Id> {
+        // Tolerate a concurrently deleted session instead of violating the FK.
+        sessionDao.findSession(sessionId) ?: return emptyList()
         val existing = conversationDao.forSession(sessionId.value)
         val keptIds = mutableListOf<Conversation.Id>()
         names.forEachIndexed { index, name ->
@@ -93,6 +99,7 @@ internal abstract class SessionRoomRepository(private val db: SoulariumDatabase)
         return keptIds
     }
 
+    @Transaction
     override suspend fun upsertContact(conversationId: Conversation.Id, info: ContactInfo) {
         val current = conversationDao.byId(conversationId.value) ?: return
         conversationDao.upsert(

@@ -75,6 +75,7 @@ class FakeSessionRepository : SessionRepository {
 
     override suspend fun persistState(id: Session.Id, state: SessionState) {
         persistedStates += id to state
+        if (id !in sessions.value) return
         states[id] = state
         if (state == SessionState.Concluded) {
             completedIds.update { it + id }
@@ -98,6 +99,7 @@ class FakeSessionRepository : SessionRepository {
 
     override suspend fun upsertParticipants(sessionId: Session.Id, names: List<String>): List<Conversation.Id> {
         lastUpsertedParticipants = names
+        if (sessionId !in sessions.value) return emptyList()
         val existing = conversations.value[sessionId].orEmpty()
         val list = names.mapIndexed { idx, name ->
             Conversation(

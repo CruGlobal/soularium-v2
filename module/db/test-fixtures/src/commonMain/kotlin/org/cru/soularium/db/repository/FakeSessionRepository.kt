@@ -1,5 +1,6 @@
 package org.cru.soularium.db.repository
 
+import kotlin.time.Clock
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
@@ -78,16 +79,26 @@ class FakeSessionRepository : SessionRepository {
         if (id !in sessions.value) return
         states[id] = state
         if (state == SessionState.Concluded) {
+            // Reaching Concluded ends the session, mirroring the Room repository.
+            sessions.update { all ->
+                all[id]?.let { s -> all + (id to s.copy(endedAt = s.endedAt ?: Clock.System.now())) } ?: all
+            }
             completedIds.update { it + id }
             bookmarkedIds.update { it - id }
         }
     }
 
     override suspend fun setBookmarked(id: Session.Id, bookmarked: Boolean) {
+        sessions.update { all ->
+            all[id]?.let { s ->
+                all + (id to s.copy(bookmarkedAt = if (bookmarked) Clock.System.now() else null))
+            } ?: all
+        }
         bookmarkedIds.update { if (bookmarked) it + id else it - id }
     }
 
     override suspend fun setEnded(id: Session.Id) {
+        sessions.update { all -> all[id]?.let { s -> all + (id to s.copy(endedAt = Clock.System.now())) } ?: all }
         completedIds.update { it + id }
     }
 
@@ -106,7 +117,7 @@ class FakeSessionRepository : SessionRepository {
                 id = existing.getOrNull(idx)?.id ?: Conversation.Id.random(),
                 sessionId = sessionId,
                 displayOrder = idx,
-                contact = ContactInfo(name),
+                contact = existing.getOrNull(idx)?.contact?.copy(name = name) ?: ContactInfo(name),
             )
         }
         conversations.update { it + (sessionId to list) }
@@ -128,7 +139,8 @@ class FakeSessionRepository : SessionRepository {
         isFinal: Boolean,
     ) {
         picks.update { all ->
-            val bucket = all[conversationId].orEmpty().filterNot { it.questionNumber == questionNumber } +
+            val bucket = all[conversationId].orEmpty()
+                .filterNot { it.questionNumber == questionNumber && it.isFinal == isFinal } +
                 cardIds.mapIndexed { order, cardId ->
                     CardPick(
                         id = CardPick.Id.random(),

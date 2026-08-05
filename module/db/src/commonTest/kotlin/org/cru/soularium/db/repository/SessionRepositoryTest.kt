@@ -156,6 +156,41 @@ abstract class SessionRepositoryTest {
     }
 
     @Test
+    fun `upsertParticipants - preserves stored contact details on re-upsert`() = runTest {
+        val sessionId = Session.Id.random()
+        repository.createSession(Session(id = sessionId, kind = Session.Kind.GROUP), SessionState.AddingParticipants)
+        val conversationId = repository.upsertParticipants(sessionId, listOf("Ana")).single()
+        val contact = ContactInfo("Ana", surname = "Diaz", email = "ana@example.com", notes = "notes")
+        repository.upsertContact(conversationId, contact)
+
+        repository.upsertParticipants(sessionId, listOf("Ana", "Ben"))
+
+        assertEquals(
+            contact,
+            repository.loadConversations(sessionId).first { it.id == conversationId }.contact,
+            "re-upserting the participant list keeps the stored contact details",
+        )
+    }
+
+    @Test
+    fun `upsertPicks - replaces only the matching isFinal partition of the question`() = runTest {
+        val sessionId = Session.Id.random()
+        repository.createSession(Session(id = sessionId, kind = Session.Kind.SOLO), SessionState.AddingParticipants)
+        val conversationId = repository.upsertParticipants(sessionId, listOf("Ana")).single()
+        repository.upsertPicks(conversationId, questionNumber = 1, cardIds = listOf(1, 2, 3), isFinal = false)
+
+        repository.upsertPicks(conversationId, questionNumber = 1, cardIds = listOf(4), isFinal = true)
+
+        val picks = repository.loadPicks(conversationId)
+        assertEquals(
+            listOf(1, 2, 3),
+            picks.filterNot { it.isFinal }.map { it.cardId },
+            "final picks do not clobber the question's draft picks",
+        )
+        assertEquals(listOf(4), picks.filter { it.isFinal }.map { it.cardId })
+    }
+
+    @Test
     fun `deleteSession - cascades to conversations and card picks`() = runTest {
         val sessionId = Session.Id.random()
         repository.createSession(Session(id = sessionId, kind = Session.Kind.SOLO), SessionState.AddingParticipants)

@@ -11,6 +11,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -745,6 +746,40 @@ class GameEngineTest {
         assertEquals(1, host.created.size) // force-recreated
         assertTrue(logWriter.messages.contains("findSessionState on start"))
         assertEquals(SessionState.AddingParticipants, e.state.value.session)
+    }
+
+    @Test
+    fun `start - an out-of-range question number recreates the session`() = runTest {
+        val host =
+            FakeGameEngineHost().apply {
+                persistedState = inQuestion(q = 9)
+                sessionExists = true
+            }
+        val e = engine(host)
+        e.start()
+        advanceUntilIdle()
+        assertEquals(1, host.created.size, "a semantically invalid snapshot is recreated like a corrupt one")
+        assertEquals(SessionState.AddingParticipants, e.state.value.session)
+    }
+
+    @Test
+    fun `bookmark - after close resumes without hanging`() = runTest(timeout = 10.seconds) {
+        val host = FakeGameEngineHost()
+        val e = engine(host, initial = GameState(session = SessionState.AddingParticipants))
+        e.close()
+        e.bookmark()
+        assertTrue(host.bookmarked.isEmpty(), "the queued op is skipped after close")
+    }
+
+    @Test
+    fun `loadSummaries - after close resumes with an empty list`() = runTest(timeout = 10.seconds) {
+        val host =
+            FakeGameEngineHost().apply {
+                summaries = listOf(GameEngine.ParticipantSummary(0, "Riley", emptyList()))
+            }
+        val e = engine(host, initial = GameState(session = SessionState.Summary))
+        e.close()
+        assertTrue(e.loadSummaries().isEmpty())
     }
 
     @Test

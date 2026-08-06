@@ -344,10 +344,11 @@ internal class GameEngineImpl(
             is SessionEvent.ToggleCard ->
                 if (session.activity == QuestionState.Selecting) {
                     val toggled =
-                        if (event.cardId in state.draftPicks) {
-                            state.draftPicks - event.cardId
-                        } else {
-                            state.draftPicks + event.cardId
+                        when {
+                            event.cardId in state.draftPicks -> state.draftPicks - event.cardId
+                            // ignore picks beyond the question's cap; deselecting above still works
+                            state.draftPicks.size >= question.requiredImageCount -> state.draftPicks
+                            else -> state.draftPicks + event.cardId
                         }
                     StepResult(next = state.copy(draftPicks = toggled))
                 } else {

@@ -22,6 +22,7 @@ class ConversationLayoutTest {
 
     private fun addingParticipants(showExitDialog: Boolean) = ConversationPresenter.UiState.AddingParticipants(
         participantNames = listOf("Alice"),
+        isGroup = true,
         showExitDialog = showExitDialog,
         eventSink = eventSink::invoke,
     )

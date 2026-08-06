@@ -93,13 +93,17 @@ internal class GameEngineImpl(
                 .onFailure { logger.e(it) { "loadSelectionInstructionsShown on start" } }
         }
         if (_state.value.session == SessionState.NotStarted) {
+            // A failed read says nothing about whether the session exists — taking the
+            // create path from here would blindly upsert over an existing row, wiping
+            // its state snapshot and bookmark. Bail out; the next start() retries.
+            if (loadResult.isFailure) return
             val exists =
                 runCatching { host.sessionExists(sessionId) }
                     .getOrElse {
                         logger.e(it) { "sessionExists on start" }
-                        false
+                        return
                     }
-            if (!exists || loadResult.isFailure || invalidSnapshot) {
+            if (!exists || invalidSnapshot) {
                 runCatching { host.createSession(Session(id = sessionId, kind = kind), SessionState.NotStarted) }
                     .onFailure { logger.e(it) { "createSession on start" } }
             }

@@ -28,13 +28,20 @@ class TermsLayoutPaparazziTest(
         InspectableTerms(showAgree = false)
     }
 
+    // Terms as the backstack root (quit after the intro, relaunched): the gate offers
+    // Agree only — there is nothing to go back to.
+    @Test
+    fun `TermsLayout() - root gate`() = snapshot {
+        InspectableTerms(showAgree = true, showBack = false)
+    }
+
     // TermsLayout loads its Markdown asynchronously, which never resolves in Paparazzi's
     // single-frame render. LocalInspectionMode switches it to a synchronous load; the base
     // fixture only scopes that to resource setup, so provide it around the content here.
     @Composable
-    private fun InspectableTerms(showAgree: Boolean) {
+    private fun InspectableTerms(showAgree: Boolean, showBack: Boolean = true) {
         CompositionLocalProvider(LocalInspectionMode provides true) {
-            TermsLayout(state = TermsPresenter.UiState(showAgree = showAgree, eventSink = {}))
+            TermsLayout(state = TermsPresenter.UiState(showAgree = showAgree, showBack = showBack, eventSink = {}))
         }
     }
 }

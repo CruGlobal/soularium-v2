@@ -42,6 +42,24 @@ class TermsPresenterTest {
     }
 
     @Test
+    fun `UiState - showBack - false when Terms is the backstack root`() = runTest {
+        // The post-intro launch gate: Terms is the start screen with nothing to pop to.
+        val rootNavigator = FakeNavigator(TermsScreen)
+        TermsPresenter(rootNavigator, deviceStateRepo).test {
+            assertFalse(awaitItem().showBack, "a Back button with nothing to pop to just looks broken")
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `UiState - showBack - true when reached from another screen`() = runTest {
+        presenter.test {
+            assertTrue(awaitItem().showBack)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `offers Agree while the user has not yet accepted the terms`() = runTest {
         presenter.test {
             assertTrue(awaitItemMatching { it.showAgree }.showAgree)

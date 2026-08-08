@@ -56,7 +56,7 @@ datastore-preferences-core = { module = "androidx.datastore:datastore-preference
 firebase-analytics = { module = "com.google.firebase:firebase-analytics-ktx" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebase-bom" }
 firebase-crashlytics = { module = "com.google.firebase:firebase-crashlytics-ktx" }
-gitlive-firebase-crashlytics = "dev.gitlive:firebase-crashlytics:2.5.0"
+gitlive-firebase-crashlytics = "dev.gitlive:firebase-crashlytics:2.6.0"
 gtoSupport-androidx-core = { module = "org.ccci.gto.android:gto-support-androidx-core", version.ref = "gtoSupport" }
 gtoSupport-androidx-room = { module = "org.ccci.gto.android:gto-support-androidx-room", version.ref = "gtoSupport" }
 gtoSupport-androidx-test-junit = { module = "org.ccci.gto.android:gto-support-androidx-test-junit", version.ref = "gtoSupport" }

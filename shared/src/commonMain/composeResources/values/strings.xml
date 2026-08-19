@@ -69,6 +69,7 @@
     <string name="participants_name_hint">Name</string>
     <string name="participants_name_placeholder">Raoul</string>
     <string name="participants_empty">Add at least one person to begin.</string>
+    <string name="participants_empty_solo">Add your name to begin.</string>
     <string name="participants_remove_action">Remove %1$s</string>
 
     <!-- Question prompt headers -->

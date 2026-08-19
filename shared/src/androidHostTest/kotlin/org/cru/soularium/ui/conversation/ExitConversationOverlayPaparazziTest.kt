@@ -20,6 +20,7 @@ class ExitConversationOverlayPaparazziTest(
         AddParticipantsLayout(
             state = ConversationPresenter.UiState.AddingParticipants(
                 participantNames = listOf("Alice", "Bob"),
+                isGroup = true,
                 showExitDialog = true,
                 eventSink = {},
             ),

@@ -40,7 +40,12 @@ internal class FakeGameEngineHost : GameEngineImpl.Host {
         return summaries
     }
 
-    override suspend fun sessionExists(id: Session.Id): Boolean = sessionExists
+    var sessionExistsError: Throwable? = null
+
+    override suspend fun sessionExists(id: Session.Id): Boolean {
+        sessionExistsError?.let { throw it }
+        return sessionExists
+    }
 
     override suspend fun createSession(session: Session, initialState: SessionState) {
         created += session to initialState

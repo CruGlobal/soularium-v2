@@ -546,6 +546,37 @@ class GameEngineTest {
     }
 
     @Test
+    fun `dispatch - ToggleCard - at the required count ignores an additional pick`() = runTest {
+        val host = FakeGameEngineHost()
+        val e = engine(
+            host,
+            initial = GameState(session = inQuestion(phase = QuestionState.Selecting), draftPicks = listOf(1, 2, 3)),
+        )
+        e.dispatch(SessionEvent.ToggleCard(4))
+        assertEquals(listOf(1, 2, 3), e.state.value.draftPicks)
+        advanceUntilIdle()
+        assertTrue(host.executed.filterIsInstance<Effect.LogAnalytics>().isEmpty())
+    }
+
+    @Test
+    fun `dispatch - ToggleCard - at the required count still deselects a picked card`() = runTest {
+        val e = engine(
+            initial = GameState(session = inQuestion(phase = QuestionState.Selecting), draftPicks = listOf(1, 2, 3)),
+        )
+        e.dispatch(SessionEvent.ToggleCard(2))
+        assertEquals(listOf(1, 3), e.state.value.draftPicks)
+    }
+
+    @Test
+    fun `dispatch - ToggleCard - respects the single-image cap of question 3`() = runTest {
+        val e = engine(
+            initial = GameState(session = inQuestion(q = 3, phase = QuestionState.Selecting), draftPicks = listOf(7)),
+        )
+        e.dispatch(SessionEvent.ToggleCard(8))
+        assertEquals(listOf(7), e.state.value.draftPicks)
+    }
+
+    @Test
     fun `draft picks are kept through Finalizing and Discussing`() = runTest {
         val e =
             engine(

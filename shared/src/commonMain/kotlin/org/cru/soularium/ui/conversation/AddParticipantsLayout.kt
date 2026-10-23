@@ -38,8 +38,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import org.cru.soularium.generated.resources.Res
 import org.cru.soularium.generated.resources.action_add
+import org.cru.soularium.generated.resources.contact_create_prompt
 import org.cru.soularium.generated.resources.cta_continue
 import org.cru.soularium.generated.resources.participants_empty
+import org.cru.soularium.generated.resources.participants_empty_solo
 import org.cru.soularium.generated.resources.participants_name_hint
 import org.cru.soularium.generated.resources.participants_name_placeholder
 import org.cru.soularium.generated.resources.participants_remove_action
@@ -89,7 +91,9 @@ fun AddParticipantsLayout(state: ConversationPresenter.UiState.AddingParticipant
                     .padding(top = 48.dp, bottom = 24.dp),
             ) {
                 Text(
-                    text = stringResource(Res.string.participants_title),
+                    text = stringResource(
+                        if (state.isGroup) Res.string.participants_title else Res.string.contact_create_prompt,
+                    ),
                     style = MaterialTheme.typography.headlineLarge,
                     textAlign = TextAlign.Start,
                     color = MaterialTheme.colorScheme.onBackground,
@@ -108,7 +112,12 @@ fun AddParticipantsLayout(state: ConversationPresenter.UiState.AddingParticipant
                         value = nameInput,
                         onValueChange = { nameInput = it },
                         label = { Text(stringResource(Res.string.participants_name_hint)) },
-                        placeholder = { Text(stringResource(Res.string.participants_name_placeholder)) },
+                        // "Raoul" is an example of someone else's name — omit it when asking for your own
+                        placeholder = if (state.isGroup) {
+                            { Text(stringResource(Res.string.participants_name_placeholder)) }
+                        } else {
+                            null
+                        },
                         singleLine = true,
                         modifier = Modifier.weight(1f),
                     )
@@ -130,7 +139,9 @@ fun AddParticipantsLayout(state: ConversationPresenter.UiState.AddingParticipant
                 // Participant chips or empty hint
                 if (participantNames.isEmpty()) {
                     Text(
-                        text = stringResource(Res.string.participants_empty),
+                        text = stringResource(
+                            if (state.isGroup) Res.string.participants_empty else Res.string.participants_empty_solo,
+                        ),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.fillMaxWidth(),

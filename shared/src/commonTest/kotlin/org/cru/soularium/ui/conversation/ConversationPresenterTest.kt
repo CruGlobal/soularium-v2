@@ -71,6 +71,26 @@ class ConversationPresenterTest {
     }
 
     @Test
+    fun `UiState - AddingParticipants - isGroup - false for a solo session`() = runTest {
+        val fakeEngine = FakeGameEngine(GameState(session = SessionState.AddingParticipants))
+        presenter(fakeEngine = fakeEngine, kind = Session.Kind.SOLO).test {
+            val state = awaitItem() as ConversationPresenter.UiState.AddingParticipants
+            assertFalse(state.isGroup)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `UiState - AddingParticipants - isGroup - true for a group session`() = runTest {
+        val fakeEngine = FakeGameEngine(GameState(session = SessionState.AddingParticipants))
+        presenter(fakeEngine = fakeEngine, kind = Session.Kind.GROUP).test {
+            val state = awaitItem() as ConversationPresenter.UiState.AddingParticipants
+            assertTrue(state.isGroup)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `UiState - QuestionPrompt - questionNumber - reflects the engine's current question`() = runTest {
         val fakeEngine = FakeGameEngine(
             GameState(

@@ -51,6 +51,7 @@ class ConversationPresenter(
 
         data class AddingParticipants(
             val participantNames: List<String>,
+            val isGroup: Boolean,
             override val showExitDialog: Boolean,
             override val eventSink: (UiEvent) -> Unit,
         ) : UiState
@@ -321,7 +322,12 @@ class ConversationPresenter(
             UiState.Loading(showExitDialog, eventSink)
 
         SessionState.AddingParticipants ->
-            UiState.AddingParticipants(game.participantNames, showExitDialog, eventSink)
+            UiState.AddingParticipants(
+                participantNames = game.participantNames,
+                isGroup = screen.kind == Session.Kind.GROUP,
+                showExitDialog = showExitDialog,
+                eventSink = eventSink,
+            )
 
         is SessionState.InQuestion -> {
             val question = Question.forNumber(sessionState.questionNumber)
